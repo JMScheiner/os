@@ -3,7 +3,7 @@
 
 .globl exec
 
-print:
+exec:
 	pushl		%esi					//%esi is callee saved.	
 
 	leal 		8(%esp),		%esi	//Load the address of the first argument.
