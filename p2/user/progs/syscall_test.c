@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <simics.h>
 
+/** 
+* @brief Test syscalls.
+*/
 int main(int argc, const char *argv[])
 {
 	int pid, status;
