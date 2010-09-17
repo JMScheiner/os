@@ -4,5 +4,5 @@
 .globl vanish
 
 vanish: 
-	int 	$VANISH_INT	
+	int 	$VANISH_INT		//Trap to vanish
 

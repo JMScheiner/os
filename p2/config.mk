@@ -62,7 +62,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the user/progs
 # directory
 #
-STUDENTTESTS =
+STUDENTTESTS = syscall_test
 
 ###########################################################################
 # Object files for your thread library
@@ -80,5 +80,5 @@ THREAD_OBJS = malloc.o
 ###########################################################################
 # Object files for your syscall wrappers
 ###########################################################################
-SYSCALL_OBJS = syscall.o set_status.o vanish.o
+SYSCALL_OBJS = syscall.o set_status.o vanish.o sleep.o print.o
 
