@@ -21,26 +21,6 @@
  */
 
 
-int yield(int pid)
-{
-	return -1;
-}
-
-int deschedule(int *flag)
-{
-	return -1;
-}
-
-int make_runnable(int pid)
-{
-	return -1;
-}
-
-int gettid(void)
-{
-	return -1;
-}
-
 char getchar(void)
 {
 	return -1;
@@ -85,11 +65,6 @@ int new_pages(void * addr, int len)
 int remove_pages(void * addr)
 {
 	return -1;
-}
-
-int get_ticks()
-{
-	return 1;
 }
 
 void misbehave(int mode)
