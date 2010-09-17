@@ -21,21 +21,6 @@
  */
 
 
-int fork(void)
-{
-	return -1;
-}
-
-int exec(char *execname, char *argvec[])
-{
-	return -1;
-}
-
-int wait(int *status_ptr)
-{
-	return -1;
-}
-
 int yield(int pid)
 {
 	return -1;
@@ -90,14 +75,6 @@ void halt(void)
 int ls(int size, char * buf)
 {
 	return -1;
-}
-
-void task_vanish(int status)
-{
-	status ^= status;
-	status /= status;
-	while (1)
-		continue;
 }
 
 int new_pages(void * addr, int len)

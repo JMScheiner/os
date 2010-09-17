@@ -80,5 +80,6 @@ THREAD_OBJS = malloc.o
 ###########################################################################
 # Object files for your syscall wrappers
 ###########################################################################
-SYSCALL_OBJS = syscall.o set_status.o vanish.o sleep.o print.o
+SYSCALL_OBJS = syscall.o sleep.o print.o fork.o exec.o set_status.o vanish.o
+SYSCALL_OBJS += wait.o task_vanish.o
 
