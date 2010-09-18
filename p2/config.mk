@@ -62,12 +62,12 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the user/progs
 # directory
 #
-STUDENTTESTS = syscall_test
+STUDENTTESTS = syscall_test atomic_test
 
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
-THREAD_OBJS = malloc.o
+THREAD_OBJS = malloc.o atomic.o
 
 # Thread Group Library Support.
 #
@@ -80,7 +80,7 @@ THREAD_OBJS = malloc.o
 ###########################################################################
 # Object files for your syscall wrappers
 ###########################################################################
-SYSCALL_OBJS = syscall.o sleep.o print.o fork.o exec.o set_status.o vanish.o
+SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
 SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
 SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
