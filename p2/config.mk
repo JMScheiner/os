@@ -82,5 +82,8 @@ THREAD_OBJS = malloc.o
 ###########################################################################
 SYSCALL_OBJS = syscall.o sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
-SYSCALL_OBJS += get_ticks.o
+SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
+SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
+SYSCALL_OBJS += halt.o misbehave.o
+
 
