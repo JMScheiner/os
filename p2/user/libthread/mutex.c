@@ -5,71 +5,96 @@
 
 int mutex_init(mutex_t *mp)
 {
-	//mp->next = NULL
-	//mp->start = NULL
+	return tts_init(&mp->lock);
 }
 
 int mutex_destroy(mutex_t *mp)
 {
-
+	return tts_destroy(&mp->lock);
 }
-
-
-//When I say "list end modifier lock" 
-//	I'm referring to a lock we'll put in each 
-//		thread's space (a simple TS lock that we can spin on).
-//		For each of these locks, there are only two threads touching
-//		them, the one adding itself to the list, and the one that
-//		owns the lock.
 
 int mutex_lock( mutex_t *mp )
 {
-	// Retrieve tcb for this thread.
-	// Exchange mp->next with my own list* 
-	// 	^^ This line ensures that only one thread
-	// 		sees a given node as the end of the list.
-	//
-	// if(list != NULL)
-	// {
-	// 	Lock list end modifier lock, or spin.
-	//
-	// 	if(mp->start)
-	// 	{
-	// 		//The guy hasn't released his lock yet.
-	//			list->next = me;
-	//			deschedule()
-	//		}
-	//		else
-	//		{
-	//			//The guy has already released the lock.
-	//			mp->start = me;
-	//			free to run (just return).
-	//		}
-	//		Unlock list end modifier lock.
-	// }
-	// else
-	// {
-	// 	mp->start = me
-	//		We're free to run.
-	// }
-	//		
+	return tts_lock(&mp->lock);
 }
 
 int mutex_unlock( mutex_t *mp )
 {
-	// Lock list end modifier lock, or spin.
-	// if(my->next != NULL)
-	// {
-	// 	set my->next runnable.
-	// }
-	// else
-	// {
-	// 	set mp->start = NULL
-	// }
-	// continue running
-	//
-	// Unlock list end modifier lock.
+	return tts_unlock(&mp->lock);
 }
 
+
+/** 
+* @brief Locks a basic test and test-and-set lock.
+* 
+* @param lock The lock to lock.
+* 
+* @return Zero on success.
+*/
+int tts_lock(tts_lock_t* lock)
+{
+	int flag = 0;
+
+	//Just spin.
+	while(flag == 0)
+	{
+		//If we have a chance of acquiring the lock...
+		if(*lock > 0)
+		{
+			atomic_xchg(&flag, lock);
+		}
+	}
+	
+	return 0;
+}
+
+/** 
+* @brief Unlocks a basic test and test-and-set lock.
+* 
+* @param lock The lock to unlock.
+* 
+* @return Zero on success, a negative int when the lock
+* 	isn't locked to begin with.
+*/
+int tts_unlock(tts_lock_t* lock)
+{
+	int value = 1;
+	atomic_xchg(lock, &value);
+
+	//The lock wasn't unlocked to begin with.
+	if(one != 0)
+		return -1;
+	else
+		return 0;
+}
+
+/** 
+* @brief Initializes a basic test and test-and-set lock.
+* 
+* @param lock The lock to initialize.
+* 
+* @return Zero on success, a negative in otherwise.
+*/
+int tts_init(tts_lock_t* lock)
+{
+	*lock = 1;
+	return 0;
+}
+
+/** 
+* @brief Destroys a basic test and test-and-set lock.
+* 
+* @param lock The lock to destroy.
+* 
+* @return Zero on success, a negative int, if the lock 
+* 	was being used.
+*/
+int tts_destroy(tts_lock_t* lock)
+{
+	if(*lock == 0)
+		return -1;
+	
+	return 0;
+}
 
 
