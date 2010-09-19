@@ -1,8 +1,4 @@
-#test commit
-#include <syscall_int.h>
-
-.globl vanish
-
-vanish: 
-	int 	$VANISH_INT		//Trap to vanish
-
+#define PARAM_COUNT 0
+#define TRAP VANISH_INT
+#define NAME vanish
+#include "syscall.def"

@@ -1,9 +1,4 @@
-
-#include <syscall_int.h>
-
-.globl gettid
-
-gettid: 
-	int 		$GETTID_INT			//Trap to gettid
-	ret								//Value is already in %eax, so return.
-
+#define PARAM_COUNT 0
+#define TRAP GETTID_INT
+#define NAME gettid
+#include "syscall.def"

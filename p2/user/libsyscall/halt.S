@@ -1,10 +1,4 @@
-#include <syscall_int.h>
-
-.globl halt
-
-halt: 
-	int 	$HALT_INT		//Trap to halt
-	ret
-
-
-
+#define PARAM_COUNT 0
+#define TRAP HALT_INT
+#define NAME halt
+#include "syscall.def"
