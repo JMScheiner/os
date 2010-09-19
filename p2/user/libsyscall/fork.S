@@ -1,10 +1,4 @@
-
-#include <syscall_int.h>
-
-.globl fork 
-
-fork: 
-	int 	$FORK_INT		//Trap to fork
-	ret						//%eax contains return value.
-
-
+#define PARAM_COUNT 0
+#define TRAP FORK_INT
+#define NAME fork
+#include "syscall.def"

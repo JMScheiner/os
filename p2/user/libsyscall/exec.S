@@ -1,15 +1,4 @@
-
-#include <syscall_int.h>
-
-.globl exec
-
-exec:
-	pushl		%esi					//%esi is callee saved.	
-
-	leal 		8(%esp),		%esi	//Load the address of the first argument.
-	int 		$EXEC_INT			//Trap to exec.
-	
-	popl		%esi					//Pull the old %esi off the stack.
-	ret 								//If we're still here, %eax contains the return value.
-
-
+#define PARAM_COUNT 2
+#define TRAP EXEC_INT
+#define NAME exec
+#include "syscall.def"
