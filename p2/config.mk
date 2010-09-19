@@ -80,17 +80,10 @@ THREAD_OBJS = malloc.o atomic.o
 ###########################################################################
 # Object files for your syscall wrappers
 ###########################################################################
-<<<<<<< HEAD:p2/config.mk
 SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
 SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
 SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
 SYSCALL_OBJS += halt.o misbehave.o
 
-=======
-SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o misbehave.o
-SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
-SYSCALL_OBJS += get_ticks.o halt.o ls.o get_cursor_pos.o set_cursor_pos.o
-SYSCALL_OBJS += set_term_color.o readline.o getchar.o remove_pages.o new_pages.o
->>>>>>> 6ecf4c43fd3eaeff0ff451693be8b3a4bbfbabcb:p2/config.mk
 
