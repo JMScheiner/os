@@ -43,8 +43,6 @@ int mutex_lock( mutex_t *mp )
 		//	will make_runnable us, so we shouldn't deschedule.
 		deschedule(&me->dont_deschedule); /* (1) */
 
-		me->descheduling = 0;
-		
 	}
 	else tts_unlock(&mp->qlock);
 	
