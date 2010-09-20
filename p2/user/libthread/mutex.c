@@ -23,7 +23,6 @@ int mutex_destroy(mutex_t *mp)
 
 int mutex_lock( mutex_t *mp )
 {
-	int value = 1;
 	tcb_t* next, *me;
 	
 	me = get_tcb();
@@ -34,14 +33,21 @@ int mutex_lock( mutex_t *mp )
 	if(next)
 	{
 		ENQUEUE_LAST(&mp->q, me);
-		tts_unlock(&mp->qlock);
-
-		//BANG Bad stuff happens here.
-		//	Specifically, we get make_runnable'd and never wake up again.
-		//	Need to xchg _something_ here.
 		
-		deschedule(&value);
+		
+		
+		me->dont_deschedule = 0;
+		tts_unlock(&mp->qlock);
+		
+		//If dont_deschedule is 1, that means the releasing thread has or 
+		//	will make_runnable us, so we shouldn't deschedule.
+		deschedule(&me->dont_deschedule); /* (1) */
+
+		me->descheduling = 0;
+		
 	}
+	else tts_unlock(&mp->qlock);
+	
 	return 0;
 }
 
@@ -53,9 +59,10 @@ int mutex_unlock( mutex_t *mp )
 	DEQUEUE_FIRST(&mp->q, next);
 	if(next != 0)
 	{
-		//Need some extra machinery to see if the person
-		//	is ready to be made runnable.
-		make_runnable(next->tid);
+		next->dont_deschedule = 1; /* (2) */
+		make_runnable(next->tid);  /* (3) */
+		
+		//Every possible ordering of (1), (2), and (3) should be sound.
 	}
 
 	tts_unlock(&mp->qlock);

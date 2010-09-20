@@ -36,6 +36,7 @@ typedef struct _TCB_
 	//Maybe some other useful things like a stack pointer.
 	
 	//Useful things for mutexes: 
+	int dont_deschedule;
 	struct _TCB_* next;
 	struct _TCB_* prev;
 } tcb_t;
