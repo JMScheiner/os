@@ -9,6 +9,10 @@
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
 
+#define false 0
+#define true 1
+typedef unsigned int bool;
+
 typedef volatile int tts_lock_t;
 
 /* A simple test and test-and-set lock implementation. 

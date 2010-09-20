@@ -13,3 +13,7 @@ int thr_join(int tid, void **statusp);
 
 void thr_exit(void *status);
 
+int thr_getid(void);
+
+int thr_yield(int tid);
+
