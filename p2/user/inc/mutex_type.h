@@ -9,6 +9,7 @@
 
 typedef struct mutex 
 {
+	int in_use;
 	tcb_queue q;
 	tts_lock_t qlock;
 } mutex_t;

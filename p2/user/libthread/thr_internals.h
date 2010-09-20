@@ -20,6 +20,7 @@ typedef int tts_lock_t;
  * 	until that code is written.
  */
 int tts_lock(tts_lock_t* lock);
+int tts_try_lock(tts_lock_t* lock);
 int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);

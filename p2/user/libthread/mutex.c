@@ -11,6 +11,7 @@ tcb_t* get_tcb()
 
 int mutex_init(mutex_t *mp)
 {
+	mp->in_use = 0;
 	STATIC_INIT_QUEUE(&mp->q);
 	tts_init(&mp->qlock);
 	return 0;
@@ -18,34 +19,50 @@ int mutex_init(mutex_t *mp)
 
 int mutex_destroy(mutex_t *mp)
 {
+	tts_destroy(&mp->qlock);
 	return 0;		
 }
 
+int mutex_try_lock(mutex_t *mp)
+{
+	int flag = 0;
+	atomic_xchg(&flag, &mp->in_use);
+	if(flag == 0)
+		return -1;
+	else
+		return 0;
+}
+
+
 int mutex_lock( mutex_t *mp )
 {
-	tcb_t* next, *me;
-	
-	me = get_tcb();
+	int flag = 0;
 	
 	tts_lock(&mp->qlock);
-	PEEK_FIRST(&mp->q, next);
-
-	if(next)
+	atomic_xchg(&flag, &mp->in_use);
+	
+	if(flag == 0)
 	{
+		//The mutex is in use, so we yield to the more 
+		// complicated list mechanism...
+		tcb_t* me = get_tcb();
+		
+		//Add ourself to the list.
 		ENQUEUE_LAST(&mp->q, me);
 		
-		
-		
+		//Arrange for us to be descheduleable.
 		me->dont_deschedule = 0;
-		tts_unlock(&mp->qlock);
 		
+		//Unleash the floodgates.
+		tts_unlock(&mp->qlock);
+			
 		//If dont_deschedule is 1, that means the releasing thread has or 
 		//	will make_runnable us, so we shouldn't deschedule.
 		deschedule(&me->dont_deschedule); /* (1) */
-
-	}
+	} 
 	else tts_unlock(&mp->qlock);
 	
+	//We have the lock.
 	return 0;
 }
 
@@ -57,14 +74,27 @@ int mutex_unlock( mutex_t *mp )
 	DEQUEUE_FIRST(&mp->q, next);
 	if(next != 0)
 	{
+		//The list is occupied, we should let someone run.
+		
 		next->dont_deschedule = 1; /* (2) */
 		make_runnable(next->tid);  /* (3) */
 		
 		//Every possible ordering of (1), (2), and (3) should be sound.
-	}
+	} else mp->in_use = 1;
 
 	tts_unlock(&mp->qlock);
 	return 0;
+}
+
+int tts_try_lock(tts_lock_t* lock)
+{
+	int flag = 0;
+	atomic_xchg(&flag, lock);
+	
+	if(flag == 1)
+		return 0;
+	else
+		return -1;
 }
 
 
