@@ -62,7 +62,7 @@ int tts_unlock(tts_lock_t* lock)
 	atomic_xchg(lock, &value);
 
 	//The lock wasn't unlocked to begin with.
-	if(one != 0)
+	if(value != 0)
 		return -1;
 	else
 		return 0;
