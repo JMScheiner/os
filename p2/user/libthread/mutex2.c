@@ -1,4 +1,3 @@
-
 #include <mutex_type.h>
 #include <thr_internals.h>
 #include <syscall.h>
@@ -11,79 +10,68 @@ tcb_t* get_tcb()
 
 int mutex_init(mutex_t *mp)
 {
-	mp->in_use = 0;
-	STATIC_INIT_QUEUE(&mp->q);
-	tts_init(&mp->qlock);
-	return 0;
+
 }
 
 int mutex_destroy(mutex_t *mp)
 {
-	tts_destroy(&mp->qlock);
-	return 0;		
+
 }
 
 int mutex_try_lock(mutex_t *mp)
 {
-	int flag = 0;
-	atomic_xchg(&flag, &mp->in_use);
-	if(flag == 0)
-		return -1;
-	else
-		return 0;
 }
 
 
 int mutex_lock( mutex_t *mp )
 {
-	int flag = 0;
+	int nthreads = 1;
+	tcb_t* swap = *me = get_tcb();
 	
-	tts_lock(&mp->qlock);
-	atomic_xchg(&flag, &mp->in_use);
-	
-	if(flag == 0)
+	atomic_xadd(&nthreads, &mp->lock_sem);
+	if(nthreads == 0)
 	{
-		//The mutex is in use, so we yield to the more 
-		// complicated list mechanism...
-		tcb_t* me = get_tcb();
+		//We're free to take the mutex.
 		
-		//Add ourself to the list.
-		ENQUEUE_LAST(&mp->q, me);
+		//BANG 5000 people add themselves to the end of the list.
+		//WE NEED TO BE AT THE END OF THE LIST ALREADY.
+		atomic_xchg(&swap, &mp->last);
 		
-		//Arrange for us to be descheduleable.
-		me->dont_deschedule = 0;
-		
-		//Unleash the floodgates.
-		tts_unlock(&mp->qlock);
-			
-		//If dont_deschedule is 1, that means the releasing thread has or 
-		//	will make_runnable us, so we shouldn't deschedule.
-		deschedule(&me->dont_deschedule); /* (1) */
-	} 
-	else tts_unlock(&mp->qlock);
-	
-	//We have the lock.
-	return 0;
+		// If we can guarantee it will be null for the first guy, 
+		// 	that would be nice.
+		//		assert(!swap);
+	}
+	else
+	{
+		//We need to queue ourselves for execution.
+		atomic_xchg(&swap, &mp->last);
+		assert(swap);
+
+		me->cancel_deschedule = 0;
+
+		//Unleashes the make_runnable flood gate: 
+		swap->next = me;
+		deschedule(&me->cancel_deschedule);
+	}
 }
 
 int mutex_unlock( mutex_t *mp )
 {
-	tcb_t* next;
-	tts_lock(&mp->qlock);
-	
-	DEQUEUE_FIRST(&mp->q, next);
-	if(next != 0)
+	int nthreads = -1;
+	tcb_t* me = get_tcb();
+	atomic_xadd(&nthreads, &mp->lock_sem);
+	if(nthreads == 0)
 	{
-		//The list is occupied, we should let someone run.
-		
-		next->dont_deschedule = 1; /* (2) */
-		make_runnable(next->tid);  /* (3) */
-		
-		//Every possible ordering of (1), (2), and (3) should be sound.
-	} else mp->in_use = 1;
-
-	tts_unlock(&mp->qlock);
-	return 0;
+		//We're good to just leave.
+		//BUT WE SHOULD NULL mp->last!!!
+		//	mp->last = NULL
+	}
+	else
+	{
+		while(me->next == NULL) { /* busy wait */ } 
+		me->next.cancel_deschedule = 0;
+		make_runnable(me->next.tid);
+	}
 }
 
 int tts_try_lock(tts_lock_t* lock)
