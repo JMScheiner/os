@@ -22,8 +22,6 @@ LD = 410-ld
 AR = 410-ar
 OBJCOPY = 410-objcopy
 
-AFS_DIR = /afs/cs.cmu.edu/academic/class/15410-f06/Web/update
-
 PROJROOT = $(PWD)
 # All paths relative to PROJROOT unless otherwise noted
 410KDIR = 410kern

@@ -4,12 +4,10 @@
  *         internal to the thread library.
  */
 
-
-
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
 
-
+#include <queue.h>
 
 /** 
 * @brief Definition for a basic test and test-and-set lock.
@@ -26,8 +24,6 @@ int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);
 
-
-
 /** 
 * @brief Thread control block - should be created during
 * 	thr_create, and put either at the top of the threads
@@ -40,7 +36,6 @@ typedef struct _TCB_
 	//Maybe some other useful things like a stack pointer.
 	
 	//Useful things for mutexes: 
-	tts_lock_t list_lock;
 	struct _TCB_* next;
 	struct _TCB_* prev;
 } tcb_t;
@@ -51,6 +46,9 @@ typedef struct _TCB_
 * @return The TCB for the running thread.
 */
 tcb_t* get_tcb();
+
+//Queue definitions:
+DEFINE_QUEUE(tcb_queue, tcb_t*);
 
 #endif /* THR_INTERNALS_H */
 

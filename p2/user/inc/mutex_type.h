@@ -7,8 +7,10 @@
 
 #include <thr_internals.h>
 
-typedef struct mutex {
-	tts_lock_t lock;
+typedef struct mutex 
+{
+	tcb_queue q;
+	tts_lock_t qlock;
 } mutex_t;
 
 #endif /* _MUTEX_TYPE_H */

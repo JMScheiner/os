@@ -1,26 +1,65 @@
 
 #include <mutex_type.h>
 #include <thr_internals.h>
+#include <syscall.h>
 #include <atomic.h>
+
+tcb_t* get_tcb()
+{
+	return NULL;
+}
 
 int mutex_init(mutex_t *mp)
 {
-	return tts_init(&mp->lock);
+	STATIC_INIT_QUEUE(&mp->q);
+	tts_init(&mp->qlock);
+	return 0;
 }
 
 int mutex_destroy(mutex_t *mp)
 {
-	return tts_destroy(&mp->lock);
+	return 0;		
 }
 
 int mutex_lock( mutex_t *mp )
 {
-	return tts_lock(&mp->lock);
+	int value = 1;
+	tcb_t* next, *me;
+	
+	me = get_tcb();
+	
+	tts_lock(&mp->qlock);
+	PEEK_FIRST(&mp->q, next);
+
+	if(next)
+	{
+		ENQUEUE_LAST(&mp->q, me);
+		tts_unlock(&mp->qlock);
+
+		//BANG Bad stuff happens here.
+		//	Specifically, we get make_runnable'd and never wake up again.
+		//	Need to xchg _something_ here.
+		
+		deschedule(&value);
+	}
+	return 0;
 }
 
 int mutex_unlock( mutex_t *mp )
 {
-	return tts_unlock(&mp->lock);
+	tcb_t* next;
+	tts_lock(&mp->qlock);
+	
+	DEQUEUE_FIRST(&mp->q, next);
+	if(next != 0)
+	{
+		//Need some extra machinery to see if the person
+		//	is ready to be made runnable.
+		make_runnable(next->tid);
+	}
+
+	tts_unlock(&mp->qlock);
+	return 0;
 }
 
 

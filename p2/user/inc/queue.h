@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <stddef.h>
 
 /** @def DEFINE_QUEUE(queue_type, node_type)
  *
@@ -156,9 +157,7 @@
 #define DEQUEUE_FIRST(queue, node) \
 	do { \
 		assert(queue); \
-		if (node) { \
-			node = (queue)->first; \
-		} \
+		(node) = (queue)->first; \
 		if ((queue)->first) { \
 			if ((queue)->first == (queue)->last) { \
 				(queue)->first = NULL; \
@@ -183,7 +182,7 @@
 	do { \
 		assert(queue); \
 		if (node) { \
-			node = (queue)->last; \
+			(node) = (queue)->last; \
 		} \
 		if ((queue)->last) { \
 			if ((queue)->last == (queue)->first) { \
@@ -208,10 +207,10 @@
 	do { \
 		assert(queue); \
 		assert(node); \
-		if (node == (queue)->first) { \
+		if ((node) == (queue)->first) { \
 			DEQUEUE_FIRST(queue, node); \
 		} \
-		else if (node == (queue)->last) { \
+		else if ((node) == (queue)->last) { \
 			DEQUEUE_LAST(queue, node); \
 		} \
 		else { \
@@ -228,8 +227,11 @@
  *
  * @return The first node in queue.
  */
-#define PEEK_FIRST(queue) \
-	assert(queue), (queue)->first;
+#define PEEK_FIRST(queue, node) \
+	do { \
+		assert(queue);  \
+		node = (queue)->first; \
+	} while (0)
 
 /** @def PEEK_LAST(queue)
  *
@@ -254,5 +256,5 @@
 #define FOREACH(queue, node) \
 	assert(queue); \
 	assert(node); \
-	for (node = (queue)->first; node != NULL; node = (node)->next)
+	for ((node) = (queue)->first; (node) != NULL; (node) = (node)->next)
 
