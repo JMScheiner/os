@@ -28,43 +28,41 @@ int mutex_lock( mutex_t *mp )
 	int nthreads = 1;
 	tcb_t* swap = *me = get_tcb();
 	
-	atomic_xadd(&nthreads, &mp->lock_sem);
+	//If these could be atomic together, that would be swell.
+	{ 
+		atomic_xadd(&nthreads, &mp->lock_sem);
+		atomic_xchg(&swap, &mp->last);
+	}
+
 	if(nthreads == 0)
 	{
-		//We're free to take the mutex.
-		
-		//BANG 5000 people add themselves to the end of the list.
-		//WE NEED TO BE AT THE END OF THE LIST ALREADY.
-		atomic_xchg(&swap, &mp->last);
-		
-		// If we can guarantee it will be null for the first guy, 
-		// 	that would be nice.
-		//		assert(!swap);
+		//No one is in the critical section, 
+		//	we're free to take the mutex, AND we are at 
+		//	the end of the list, insuring we'll have someone
+		//	to run.
 	}
 	else
 	{
 		//We need to queue ourselves for execution.
-		atomic_xchg(&swap, &mp->last);
 		assert(swap);
-
 		me->cancel_deschedule = 0;
 
-		//Unleashes the make_runnable flood gate: 
+		//May unleash the make_runnable flood gate: 
 		swap->next = me;
 		deschedule(&me->cancel_deschedule);
 	}
+	return 0;
 }
 
 int mutex_unlock( mutex_t *mp )
 {
 	int nthreads = -1;
 	tcb_t* me = get_tcb();
+	
 	atomic_xadd(&nthreads, &mp->lock_sem);
 	if(nthreads == 0)
 	{
 		//We're good to just leave.
-		//BUT WE SHOULD NULL mp->last!!!
-		//	mp->last = NULL
 	}
 	else
 	{
@@ -72,6 +70,8 @@ int mutex_unlock( mutex_t *mp )
 		me->next.cancel_deschedule = 0;
 		make_runnable(me->next.tid);
 	}
+	
+	return 0;
 }
 
 int tts_try_lock(tts_lock_t* lock)
