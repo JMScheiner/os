@@ -10,6 +10,9 @@ tcb_t* get_tcb()
 
 int mutex_init(mutex_t *mp)
 {
+	mp->lock_sem = 0;
+	mp->running = NULL;
+	mp->last = NULL;
 
 }
 
@@ -20,28 +23,30 @@ int mutex_destroy(mutex_t *mp)
 
 int mutex_try_lock(mutex_t *mp)
 {
+
 }
 
 
 int mutex_lock( mutex_t *mp )
 {
 	int nthreads = 1;
-	tcb_t* swap = *me = get_tcb();
+
+	//Allocate yourself a node for this mutex.
+	mutex_node* swap, *me;
+	swap = me = (mutex_node*)malloc(sizeof(mutex_node));
+	me->tid = gettid();
+	me->next = NULL;
 	
 	//If these could be atomic together, that would be swell.
 	{ 
-		atomic_xadd(&nthreads, &mp->lock_sem);
+		//Swap yourself into the end of the mutex's list.
 		atomic_xchg(&swap, &mp->last);
+		
+		//Increase the semaphore, swap its original value into nthreads. 
+		atomic_xadd(&nthreads, &mp->lock_sem);
 	}
-
-	if(nthreads == 0)
-	{
-		//No one is in the critical section, 
-		//	we're free to take the mutex, AND we are at 
-		//	the end of the list, insuring we'll have someone
-		//	to run.
-	}
-	else
+	
+	if(nthreads != 0)
 	{
 		//We need to queue ourselves for execution.
 		assert(swap);
@@ -51,26 +56,29 @@ int mutex_lock( mutex_t *mp )
 		swap->next = me;
 		deschedule(&me->cancel_deschedule);
 	}
+	//else there is no contention for the mutex.
+	
+	//Save our mutex_node as the first in the list.
+	mutex->running = me;
 	return 0;
 }
 
 int mutex_unlock( mutex_t *mp )
 {
 	int nthreads = -1;
-	tcb_t* me = get_tcb();
-	
+	mutex_node* me = mp->running;
 	atomic_xadd(&nthreads, &mp->lock_sem);
-	if(nthreads == 0)
+	
+	if(nthreads != 1)
 	{
-		//We're good to just leave.
-	}
-	else
-	{
+		//Someone was / is trying to lock.
 		while(me->next == NULL) { /* busy wait */ } 
-		me->next.cancel_deschedule = 0;
+		me->next.cancel_deschedule = 1;
 		make_runnable(me->next.tid);
 	}
+	//else, noone was waiting for the mutex.
 	
+	free(me);
 	return 0;
 }
 

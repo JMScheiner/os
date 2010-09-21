@@ -25,6 +25,12 @@ int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);
 
+typedef struct _mnode { 
+	int tid;
+	struct _mnode* next;
+} mutex_node;
+
+
 /** 
 * @brief Thread control block - should be created during
 * 	thr_create, and put either at the top of the threads
