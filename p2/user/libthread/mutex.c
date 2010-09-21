@@ -7,6 +7,13 @@
 #include <simics.h>
 #include <stdio.h>
 
+/** 
+* @brief Initialize a mutex for locking.
+* 
+* @param mp The mutex to initialize.
+* 
+* @return 0 on success, -1 on failure.
+*/
 int mutex_init(mutex_t *mp)
 {
 	if(!mp)
@@ -21,23 +28,80 @@ int mutex_init(mutex_t *mp)
 	return 0;
 }
 
+/** 
+* @brief Destroy a mutex, e.g. deactivate it.
+* 
+* @param mp The mutex to destroy.
+* 
+* @return 0 on success, 
+* 	-1 if mp is NULL, 
+* 	-2 if the lock is in use.
+*/
 int mutex_destroy(mutex_t *mp)
 {
 	if(!mp)
 		return -1;
-
+	
+	//FIXME mutex_destroy needs to atomically 
+	//	deactivate the mutex, so we can block 
+	//	invocations of lock_mutex, and return -1 if someone
+	//	holds the mutex illegally.
+	
 	mp->initialized = 0;
-	return 1;
+	return 0;
 }
 
+/** 
+* @brief Try locking the mutex.
+* 	Not implemented yet.
+* 
+* @param mp The mutex to try and lock.
+* 
+* @return 0 on success
+* 	-1 on failure.
+*/
 int mutex_try_lock(mutex_t *mp)
 {
 	assert(mp);
 	//TODO
-	return 1;
+	return 0;
 }
 
 
+/** 
+* @brief Locks a mutex.
+* 
+* @param mp The mutex to lock.
+*
+* 	This is complicated, but everything is serialized by atomically
+* 		swapping yourself into the end of the list.
+*	
+*	Each list element contains a basic lock which it contends for
+*		with the next thread that will call mutex_lock.
+*		
+*		- Threads "try_lock" the lock in the parent.
+*			
+*			- If they succeed in acquiring their parents lock, they can safely
+*				tell the parent who they are, to prepare for descheduling.
+*
+*				- The parent is able to cancel deschedule by setting cancel_deschedule in the child,
+*					so there isn't a race condition between deschedule and make_runnable.
+*			
+*			- If they fail to acquire the lock, they busy wait for him to finish
+*				on the value "held" in the mutex.
+*			
+*		- When parents acquire the lock, they set mp->next to either NULL or their child.
+*			
+*			- This is so in mutex_unlock we can decide whether to take down the "held" flag 
+*				and let children who failed to get the lock go, or actively "make_runnable" 
+*				the next person waiting for the mutex.
+*		
+*		- Every thread is blocking on mutex->held, busy waiting on its parent, or is running in the 
+*			critical section.
+* 
+* @return 0 on success, 
+* 	-1 on failure.
+*/
 int mutex_lock( mutex_t *mp )
 {
 	if(!mp)
@@ -110,6 +174,22 @@ int mutex_lock( mutex_t *mp )
 	return 0;
 }
 
+/** 
+* @brief Unlock the mutex.
+*
+* Following on the description of mutex_lock, after its critical section,
+* 	a thread is responsible for:
+* 		- Releasing a busy waiting thread they don't know about, or
+* 		- make_runnable'ing a thread they do know about. "...if(next)..."
+*
+*	I would like to cmpxchg NULL into "mp->last" if possible, but this isn't
+*		necessary for unlock to be correct.
+* 
+* @param mp  The mutex to unlock.
+* 
+* @return 0 on success.
+* 	-1 on failure.
+*/
 int mutex_unlock( mutex_t *mp )
 {
 	assert(mp);
@@ -130,7 +210,7 @@ int mutex_unlock( mutex_t *mp )
 	}
 	
 	//If after all that we are still last, we can safely swap in NULL.
-	next = NULL;
+	//next = NULL;
 	
 	//TODO This would be nice, but simics is complaining about cmpxchg.
 	//	 It is not necessary.
