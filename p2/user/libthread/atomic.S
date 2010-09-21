@@ -22,6 +22,20 @@ atomic_xadd:
 	ret
 
 atomic_cmpxchg: 
-	//TODO Will write if we need it.
+	movl	4(%esp), 	%ecx	//Load &source into %ecx
+	movl 	8(%esp), 	%edx	//Load &destination into %edx.
+	movl 	12(%esp), 	%eax	//Load comp into %eax.
+	
+	lock# cmpxchg	(%edx),	%ecx //Exchange %ecx into (%edx), if (%edx) = %eax.
+	
+	//cmpxchg will set ZF on success.
+	jnz atomic_cmpxchg_failed
+	movl $0 , %eax				//Indicate success.
+	ret
 
+atomic_cmpxchg_failed:
+	//%eax contains (%edx)
+	movl 	%eax,	(%ecx) 	//Move the original value into &source.
+	movl 	$-1,	%eax
+	ret
 
