@@ -33,32 +33,40 @@ int mutex_lock( mutex_t *mp )
 	//  This is the line that guarantees bounded waiting.
 	atomic_xchg(&swap, &mp->last);
 	
-	//Protect against accessing something that is no longer on the stack:
-	int accessible = tts_try_lock(&swap->access);
-	
-	if(accessible == 0)
+	if(swap)
 	{
-		//We are free to modify the guy before us.
-		swap->next = &me;
-		me.cancel_deschedule = 0;
+		//Protect against accessing something that is no longer on the stack:
+		int accessible = tts_try_lock(&swap->access);
 		
-		//Open the flood gates - this works because 
-		//	(1), (2), and (3) are valid in any order.
-		tts_unlock(&swap->access);
-		deschedule(&me->cancel_deschedule); /* (1) */
-	}
-	else
-	{
-		//We tried to lock but "swap" was past (4)
-		//We are next to run.
-		while(mp->running)
-			yield(mp->active_tid);
+		if(accessible == 0)
+		{
+			//We are free to modify the guy before us.
+			swap->next = &me;
+			me.cancel_deschedule = 0;
+			
+			//Open the flood gates - this works because 
+			//	(1), (2), and (3) are valid in any order.
+			tts_unlock(&swap->access);
+			deschedule(&me->cancel_deschedule); /* (1) */
+		}
+		else
+		{
+			//We tried to lock but "swap" was past (4)
+			//We are next to run.
+			while(mp->running)
+				yield(mp->active_tid);
+		}
 	}
 	
 	/************* Lock Acquired **************/
 
 	mp->running = 1;
 	mp->active_tid = me.tid;
+
+	//This, "running_thread" will only serve as an identifier to insure that 
+	// someone has modified the list by the time we finish. It will never
+	// actually be accessed.
+	mp->running_thread = &me;
 	
 	//Protect against accessing "me" after this point:
 	
@@ -87,6 +95,9 @@ int mutex_unlock( mutex_t *mp )
 		// about itself go.
 		mp->running = 0;
 	}
+	
+	//If after all that we are still last, we can safely swap in NULL.
+	atomic_cmpxchg(NULL, &mp->last, mp->running_thread);
 	return 0;
 }
 
