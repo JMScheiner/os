@@ -9,9 +9,12 @@
 
 typedef struct mutex 
 {
-	int in_use;
-	tcb_queue q;
-	tts_lock_t qlock;
+	mutex_node* last;
+	mutex_node* next;
+	mutex_node* running;
+	int held;
+	int tid;
+	int initialized;
 } mutex_t;
 
 #endif /* _MUTEX_TYPE_H */

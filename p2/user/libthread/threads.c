@@ -56,7 +56,7 @@ int thr_init(unsigned int size) {
  */
 int thr_create(void *(*func)(void *), void *arg) {
 	assert(initialized);
-	char *stack_top = (char *)malloc(stack_size + PAGE_SIZE);
+	char *stack_top = (char *)malloc(stack_size + PAGE_SIZE); //free this
 	assert(stack_top);
 	char *stack_bottom = stack_top + stack_size + PAGE_SIZE;
 	stack_bottom &= PAGE_SIZE;
@@ -66,7 +66,7 @@ int thr_create(void *(*func)(void *), void *arg) {
 			(thread_status_block_t *)malloc(sizeof(thread_status_block_t));
 		assert(tsb);
 		tsb->tid = tid;
-		tsb->exited = false;
+		tsb->exited = false; //race
 		assert(mutex_init(&tsb->lock) == 0);
 		assert(cond_init(&tsb->signal) == 0);
 		assert(mutex_lock(&queue_lock) == 0);
@@ -144,7 +144,7 @@ void thr_exit(void *status) {
  * @return the current thread's ID
  */
 int thr_getid(void) {
-	return gittid();
+	return gettid();
 }
 
 /** @brief Defer execution of this thread in favor of another
