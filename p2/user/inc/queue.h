@@ -5,6 +5,9 @@
  * @author Tim Wilson (tjwilson)
  */
 
+#ifndef QUEUE_H
+#define QUEUE_H
+
 #include <assert.h>
 #include <stddef.h>
 
@@ -20,11 +23,11 @@
  *        type must define next and prev pointers.
  */
 #define DEFINE_QUEUE(queue_type, node_type) \
-	struct queue_type##_struct { \
+	struct queue_type##_queue_struct { \
 		node_type first; \
 		node_type last; \
 	}; \
-	typedef struct queue_type##_struct queue_type
+	typedef struct queue_type##_queue_struct queue_type
 
 /** @def STATIC_INIT_QUEUE(queue)
  *
@@ -49,10 +52,10 @@
  */
 #define DYNAMIC_INIT_QUEUE(queue_type, queue_name) \
 	do { \
-		queue_name = (queue_type)calloc(sizeof(struct queue_type##struct)); \
+		queue_name = (queue_type)calloc(sizeof(struct queue_type##_queue_struct)); \
 		assert(queue_name) \
 	} \
-	while (0);
+	while (0)
 
 /** @def ENQUEUE_FIRST(queue, node)
  *
@@ -219,13 +222,13 @@
 		} \
 	} while (0)
 
-/** @def PEEK_FIRST(queue)
+/** @def PEEK_FIRST(queue, node)
  *
- * @brief Return the first node of the queue.
+ * @brief Get the first node of the queue.
  *
  * @param queue The queue.
  *
- * @return The first node in queue.
+ * @param node The variable to place the first node in.
  */
 #define PEEK_FIRST(queue, node) \
 	do { \
@@ -233,16 +236,19 @@
 		node = (queue)->first; \
 	} while (0)
 
-/** @def PEEK_LAST(queue)
+/** @def PEEK_LAST(queue, node)
  *
- * @brief Return the last node of the queue.
+ * @brief Get the last node of the queue.
  *
  * @param queue The queue.
  *
- * @return The last node in queue.
+ * @param node The variable to place the last node in.
  */
 #define PEEK_LAST(queue) \
-	assert(queue), (queue)->last;
+	do { \
+		assert(queue);  \
+		node = (queue)->flast; \
+	} while (0)
 
 /** @def FOREACH(queue, node) \
  *
@@ -257,4 +263,6 @@
 	assert(queue); \
 	assert(node); \
 	for ((node) = (queue)->first; (node) != NULL; (node) = (node)->next)
+
+#endif
 
