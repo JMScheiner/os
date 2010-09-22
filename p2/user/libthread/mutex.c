@@ -28,9 +28,9 @@ int mutex_init(mutex_t *mp)
 	mp->last = NULL;
 	mp->running = NULL;
 	mp->next = NULL;
-	mp->held = 0;
+	mp->held = FALSE;
 	mp->tid = 0;
-	mp->initialized = 1;
+	mp->initialized = TRUE;
 	return 0;
 }
 
@@ -53,7 +53,7 @@ int mutex_destroy(mutex_t *mp)
 	//	invocations of lock_mutex, and return -1 if someone
 	//	holds the mutex illegally.
 	
-	mp->initialized = 0;
+	mp->initialized = FALSE;
 	return 0;
 }
 
@@ -137,12 +137,12 @@ int mutex_lock( mutex_t *mp )
 		{
 			//We are free to modify the guy before us.
 			swap->next = &me;
-			me.cancel_deschedule = 0;
+			me.cancel_deschedule = FALSE;
 			
 			//Open the flood gates - this works because 
 			//	(1), (2), and (3) are valid in any order.
 			tts_unlock(&swap->access);
-			deschedule(&me.cancel_deschedule); /* (1) */
+			deschedule((int*)&me.cancel_deschedule); /* (1) */
 		}
 		else
 		{
@@ -153,14 +153,14 @@ int mutex_lock( mutex_t *mp )
 			// 	before we get to this point? 
 			// 		- Everyone after us is blocking above, 
 			// 		- mp->running is still 0. (who would have changed it?)
-			while(mp->held)
+			while(mp->held == TRUE)
 				yield(mp->tid);
 		}
 	}
 	
 	/************* Lock Acquired **************/
 
-	mp->held = 1;
+	mp->held = TRUE;
 	mp->tid = me.tid;
 
 	//This, "running" will only serve as an identifier to insure that 
@@ -205,14 +205,14 @@ int mutex_unlock( mutex_t *mp )
 	if(next)
 	{
 		//Someone is trying to run. Let him go.
-		next->cancel_deschedule = 1; /* (2) */
+		next->cancel_deschedule = TRUE; /* (2) */
 		make_runnable(next->tid);    /* (3) */
 	}
 	else
 	{
 		//Let a thread that wasn't able to tell this thread
 		// about itself go.
-		mp->held = 0;
+		mp->held = FALSE;
 	}
 	
 	//If after all that we are still last, we can safely swap in NULL.

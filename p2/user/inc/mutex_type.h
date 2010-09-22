@@ -12,9 +12,9 @@ typedef struct mutex
 	mutex_node* last;
 	mutex_node* next;
 	mutex_node* running;
-	int held;
+	boolean_t held;
+	boolean_t initialized;
 	int tid;
-	int initialized;
 } mutex_t;
 
 #endif /* _MUTEX_TYPE_H */

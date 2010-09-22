@@ -4,11 +4,10 @@
  *         internal to the thread library.
  */
 
+#include <types.h>
+
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
-
-
-
 
 /** 
 * @brief Definition for a basic test and test-and-set lock.
@@ -35,7 +34,7 @@ int tts_destroy(tts_lock_t* lock);
 typedef struct _mnode { 
 	tts_lock_t access;
 	int tid;
-	int cancel_deschedule;
+	boolean_t cancel_deschedule;
 	struct _mnode* next;
 } mutex_node;
 
