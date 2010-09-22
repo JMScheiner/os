@@ -53,7 +53,10 @@ int cond_wait( cond_t* cv, mutex_t* mp)
 		mutex_unlock(cv->lock);
 	}
 	else if(cv->broadcast_countdown == 1)
+	{
 		cv->broadcast_countdown = 0;
+		cv->broadcast = 0;
+	}
 
 	return 0;
 }

@@ -1,3 +1,9 @@
+/** 
+* @file mutex.c
+* @brief See function descriptions.
+* @author Justin Scheiner
+*/
+
 #include <mutex_type.h>
 #include <thr_internals.h>
 #include <syscall.h>
