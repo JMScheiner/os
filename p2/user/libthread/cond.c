@@ -11,74 +11,74 @@
 */
 
 #include <cond.h>
+#include <syscall.h>
+#include <cond_type.h>
 #include <mutex.h>
+#include <thr_internals.h>
 
 int cond_init( cond_t* cv)
 {
-	mutex_init(cv->lock);
-	mutex_lock(cv->lock);
+	mutex_init(&cv->qlock);
+	STATIC_INIT_QUEUE(&cv->q);
 	return 0;
 }
 
 int cond_destroy( cond_t* cv)
 {
-	mutex_destroy(cv->lock);
+	mutex_destroy(&cv->qlock);
 	return 0;
 }
 
-int cond_wait( cond_t* cv, mutex_t* mp)
+int cond_wait( cond_t* cv, mutex_t* mp )
 {
-	int nthreads = 1;
+	mutex_lock(&cv->qlock);
 
-	//FIXME I assume here that cond_wait WON'T be called with a different 
-	//	mutex.  I'm not sure this is a good assumption, but the docs say 
-	//
-	//	"release the associated mutex that it needs to hold to check the condition"
-	//
-	cv->lock = mp;
-	atomic_xadd(&nthreads, &cv->nthreads);
+	cond_link_t link;
+	link.tid = gettid();
+	link.cancel_deschedule = FALSE;
+	
+	mutex_lock(&cv->qlock);
+	ENQUEUE_LAST(&cv->q, &link);
+	mutex_unlock(&cv->qlock);
+	
+	deschedule((int*)&link.cancel_deschedule);
 
-	//Acquire the lock for the condition variable.
-	//	Note that only a cond_signal or cond_broadcast will release the lock
-	//	so this is fine.
-	mutex_lock(cv->lock);
-	
-	nthreads = -1;
-	atomic_xadd(&nthreads, &cv->nthreads);
-	
-	// The last thread shouldn't release the mutex.
-	if(cv->broadcast_countdown > 1 && cv->broadcast)
-	{
-		cv->broadcast_countdown--;
-		mutex_unlock(cv->lock);
-	}
-	else if(cv->broadcast_countdown == 1)
-	{
-		cv->broadcast_countdown = 0;
-		cv->broadcast = 0;
-	}
+	//I am not sure that I am using mp right here.
+	mutex_lock(mp);
 
 	return 0;
 }
 
 int cond_signal( cond_t* cv )
 {
-	//If we beat the waiting thread to its call to mutex_lock, that's fine, 
-	//	since it will be a race condition either way, and it is consistent with the spec.
+	cond_link_t* link;
 	
-	if(cv->nthreads)
-		mutex_unlock(cv->lock);	
+	mutex_lock(&cv->qlock);
+	
+	DEQUEUE_FIRST(&cv->q, link);
+	if(link)
+	{
+		link->cancel_deschedule = TRUE;
+		make_runnable(link->tid);
+	}
+	
+	mutex_unlock(&cv->qlock);
 	
 	return 0;
 }
 
 int cond_broadcast( cond_t* cv)
 {
-	cv->broadcast = 1;
-	cv->broadcast_countdown = cv->nthreads;
+	cond_link_t* link;
 
-	if(cv->broadcast_countdown)
-		mutex_unlock(cv->lock);
+	mutex_lock(&cv->qlock);
+	FOREACH(&cv->q, link)
+	{
+		link->cancel_deschedule = TRUE;
+		make_runnable(link->tid);
+	}
+	mutex_unlock(&cv->qlock);
+	
 	return 0;
 }
 

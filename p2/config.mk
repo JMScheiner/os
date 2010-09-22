@@ -67,7 +67,7 @@ STUDENTTESTS = syscall_test atomic_test queue_test mutex_test
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
-THREAD_OBJS = malloc.o atomic.o threads.o mutex.o
+THREAD_OBJS = malloc.o atomic.o mutex.o cond.o
 
 # Thread Group Library Support.
 #

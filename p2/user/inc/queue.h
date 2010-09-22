@@ -209,7 +209,6 @@
 #define DEQUEUE_ELEM(queue, node) \
 	do { \
 		assert(queue); \
-		assert(node); \
 		if ((node) == (queue)->first) { \
 			DEQUEUE_FIRST(queue, node); \
 		} \
@@ -261,7 +260,6 @@
  */
 #define FOREACH(queue, node) \
 	assert(queue); \
-	assert(node); \
 	for ((node) = (queue)->first; (node) != NULL; (node) = (node)->next)
 
 #endif

@@ -4,10 +4,13 @@
  *         internal to the thread library.
  */
 
-#include <types.h>
-
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
+
+#include <types.h>
+#include <queue.h>
+
+/** Structures for mutexes **/
 
 /** 
 * @brief Definition for a basic test and test-and-set lock.
@@ -20,7 +23,7 @@ typedef struct
 
 /* 
  * A simple test and test-and-set lock implementation. 
- * 	Do not ensure bounded waiting, yield to running thread.
+ * 	Do not ensure bounded waiting.
  */
 int tts_lock(tts_lock_t* lock);
 int tts_try_lock(tts_lock_t* lock);
@@ -37,6 +40,18 @@ typedef struct _mnode {
 	boolean_t cancel_deschedule;
 	struct _mnode* next;
 } mutex_node;
+
+
+/** Structures for condition variables **/
+typedef struct cond_link
+{
+	struct cond_link* next;
+	struct cond_link* prev;
+	int tid;
+	boolean_t cancel_deschedule;
+} cond_link_t;
+
+DEFINE_QUEUE(cond_queue_t, cond_link_t*);
 
 #endif /* THR_INTERNALS_H */
 

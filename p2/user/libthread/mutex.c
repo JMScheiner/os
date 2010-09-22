@@ -215,11 +215,8 @@ int mutex_unlock( mutex_t *mp )
 		mp->held = FALSE;
 	}
 	
-	//If after all that we are still last, we can safely swap in NULL.
-	//next = NULL;
-	
 	//TODO This would be nice, but simics is complaining about cmpxchg.
-	//	 It is not necessary.
+	//next = NULL;
 	//atomic_cmpxchg((int*)&next, (int*)&mp->last, (int)mp->running);
 	return 0;
 }
