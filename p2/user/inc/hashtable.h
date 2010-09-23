@@ -84,12 +84,12 @@ unsigned int prime_hashtable_sizes[] =
  */
 #define STATIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function) \
 	do { \
-		(hashtable_name)->size = 0; \
-		(hashtable_name)->table_index = 0; \
-		(hashtable_name)->hash = (hash_function); \
-		(hashtable_name)->table = (struct hashtable_type##_link_struct **)calloc( \
+		(hashtable_name).size = 0; \
+		(hashtable_name).table_index = 0; \
+		(hashtable_name).hash = (hash_function); \
+		(hashtable_name).table = (struct hashtable_type##_link_struct **)calloc( \
 				sizeof(struct hashtable_type##_link_struct *), prime_hashtable_sizes[0]); \
-		assert((hashtable_name)->table); \
+		assert((hashtable_name).table); \
 	} while (0)
 
 /** @def DYNAMIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function)
@@ -109,7 +109,7 @@ unsigned int prime_hashtable_sizes[] =
 	do { \
 		hashtable_name = (hashtable_type)malloc(sizeof(struct hashtable_type##struct)); \
 		assert(hashtable_name); \
-		STATIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function); \
+		STATIC_INIT_HASHTABLE(hashtable_type, *hashtable_name, hash_function); \
 	} while (0)
 
 /** @def STATIC_FREE_HASHTABLE(hashtable_name)
@@ -119,7 +119,7 @@ unsigned int prime_hashtable_sizes[] =
  * @param hashtable_name The hashtable to free.
  */
 #define STATIC_FREE_HASHTABLE(hashtable_name) \
-	free((hashtable_name)->table)
+	free((hashtable_name).table)
 
 /** @def DYNAMIC_FREE_HASHTABLE(hashtable_name)
  *
@@ -129,7 +129,7 @@ unsigned int prime_hashtable_sizes[] =
  */
 #define DYNAMIC_FREE_HASHTABLE(hashtable_name) \
 	do { \
-		STATIC_FREE_HASHTABLE(hashtable_name); \
+		STATIC_FREE_HASHTABLE(*hashtable_name); \
 		free(hashtable_name); \
 	} while (0)
 
@@ -165,35 +165,34 @@ unsigned int prime_hashtable_sizes[] =
  */
 #define HASHTABLE_PUT(hashtable_type, hashtable_name, key_name, val_name) \
 	do { \
-		assert(hashtable_name); \
 		size_t _HASH_; \
 		struct hashtable_type##_link_struct *_LINK_ = NULL; \
-		if ((hashtable_name)->size == prime_hashtable_sizes[(hashtable_name)->table_index]) { \
+		if ((hashtable_name).size == prime_hashtable_sizes[(hashtable_name).table_index]) { \
 			struct hashtable_type##_link_struct **_TABLE_ = \
 				(struct hashtable_type##_link_struct **)calloc( \
 						sizeof(struct hashtable_type##_link_struct *), \
-						prime_hashtable_sizes[(hashtable_name)->table_index + 1]); \
+						prime_hashtable_sizes[(hashtable_name).table_index + 1]); \
 			size_t _INDEX_; \
 			for (_INDEX_ = 0; \
-						_INDEX_ < prime_hashtable_sizes[(hashtable_name)->table_index]; \
+						_INDEX_ < prime_hashtable_sizes[(hashtable_name).table_index]; \
 						_INDEX_++) { \
-				while ((hashtable_name)->table[_INDEX_] != NULL) { \
-					_LINK_ = (hashtable_name)->table[_INDEX_]->next; \
-					_HASH_ = (hashtable_name)->hash( \
-							(hashtable_name)->table[_INDEX_]->key) % \
-							prime_hashtable_sizes[(hashtable_name)->table_index + 1]; \
-					(hashtable_name)->table[_INDEX_]->next = _TABLE_[_HASH_]; \
-					_TABLE_[_HASH_] = (hashtable_name)->table[_INDEX_]; \
-					(hashtable_name)->table[_INDEX_] = _LINK_; \
+				while ((hashtable_name).table[_INDEX_] != NULL) { \
+					_LINK_ = (hashtable_name).table[_INDEX_]->next; \
+					_HASH_ = (hashtable_name).hash( \
+							(hashtable_name).table[_INDEX_]->key) % \
+							prime_hashtable_sizes[(hashtable_name).table_index + 1]; \
+					(hashtable_name).table[_INDEX_]->next = _TABLE_[_HASH_]; \
+					_TABLE_[_HASH_] = (hashtable_name).table[_INDEX_]; \
+					(hashtable_name).table[_INDEX_] = _LINK_; \
 				} \
 			} \
-			free((hashtable_name)->table); \
-			(hashtable_name)->table = _TABLE_; \
-			(hashtable_name)->table_index++; \
+			free((hashtable_name).table); \
+			(hashtable_name).table = _TABLE_; \
+			(hashtable_name).table_index++; \
 		} \
-		_HASH_ = (hashtable_name)->hash(key_name) % \
-				prime_hashtable_sizes[(hashtable_name)->table_index]; \
-		for (_LINK_ = (hashtable_name)->table[_HASH_]; \
+		_HASH_ = (hashtable_name).hash(key_name) % \
+				prime_hashtable_sizes[(hashtable_name).table_index]; \
+		for (_LINK_ = (hashtable_name).table[_HASH_]; \
 					_LINK_ != NULL; \
 					_LINK_ = _LINK_->next) { \
 			if (_LINK_->key == (key_name)) { \
@@ -206,9 +205,9 @@ unsigned int prime_hashtable_sizes[] =
 					sizeof(struct hashtable_type##_link_struct)); \
 			_LINK_->key = key_name; \
 			_LINK_->val = val_name; \
-			_LINK_->next = (hashtable_name)->table[_HASH_]; \
-			(hashtable_name)->table[_HASH_] = _LINK_; \
-			(hashtable_name)->size++; \
+			_LINK_->next = (hashtable_name).table[_HASH_]; \
+			(hashtable_name).table[_HASH_] = _LINK_; \
+			(hashtable_name).size++; \
 		} \
 	} while (0)
 
@@ -224,10 +223,10 @@ unsigned int prime_hashtable_sizes[] =
  */
 #define HASHTABLE_GET(hashtable_type, hashtable_name, key_name, val_name) \
 	do { \
-		size_t _HASH_ = (hashtable_name)->hash(key_name) % \
-				prime_hashtable_sizes[(hashtable_name)->table_index]; \
+		size_t _HASH_ = (hashtable_name).hash(key_name) % \
+				prime_hashtable_sizes[(hashtable_name).table_index]; \
 		struct hashtable_type##_link_struct *_LINK_; \
-		for (_LINK_ = (hashtable_name)->table[_HASH_]; \
+		for (_LINK_ = (hashtable_name).table[_HASH_]; \
 					_LINK_ != NULL; \
 					_LINK_ = _LINK_->next) { \
 			if (_LINK_->key == (key_name)) { \
@@ -237,27 +236,30 @@ unsigned int prime_hashtable_sizes[] =
 		} \
 	} while (0)
 
-/** @def HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name)
+/** @def HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name, val_name)
  *
- * @brief Remove a key, value pair from the hashtable. Do nothing if the
- *        specified key is not in the table.
+ * @brief Remove a key, value pair from the hashtable, placing the value in
+ *        val_name. Do nothing if the specified key is not in the table.
  *
  * @param hashtable_type The type of the hashtable.
  * @param hashtable_name The hashtable.
  * @param key_name The key to remove from the hashtable.
+ * @param val_name The variable to place the value in.
  */
-#define HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name) \
+#define HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name, val_name) \
 	do { \
-		size_t _HASH_ = (hashtable_name)->hash(key_name) % \
-				prime_hashtable_sizes[(hashtable_name)->table_index]; \
-		struct hashtable_type##_link_struct *_LINK_ = (hashtable_name)->table[_HASH_]; \
+		size_t _HASH_ = (hashtable_name).hash(key_name) % \
+				prime_hashtable_sizes[(hashtable_name).table_index]; \
+		struct hashtable_type##_link_struct *_LINK_ = (hashtable_name).table[_HASH_]; \
 		if (_LINK_ != NULL && _LINK_->key == (key_name)) { \
-			(hashtable_name)->table[_HASH_] = (hashtable_name)->table[_HASH_]->next; \
+			(val_name) = _LINK_->val; \
+			(hashtable_name).table[_HASH_] = (hashtable_name).table[_HASH_]->next; \
 			free(_LINK_); \
 		} \
 		else { \
 			for ( ; _LINK_ != NULL; _LINK_ = _LINK_->next) { \
 				if (_LINK_->next != NULL && _LINK_->next->key == (key_name)) { \
+					(val_name) = _LINK_->next->val; \
 					free(_LINK_->next); \
 					_LINK_->next = _LINK_->next->next; \
 					break; \

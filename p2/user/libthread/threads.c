@@ -7,30 +7,123 @@
 
 #include <assert.h>
 #include <mutex_type.h>
+#include <cond_type.h>
 #include <syscall.h>
 #include <threads.h>
 #include <thr_internals.h>
-#include <queue.h>
+#include <types.h>
+#include <hashtable.h>
+#include <stdlib.h>
 
+/** @brief The alignment of the stack pointer. This must be a power of 2. */
+#define ESP_ALIGN 4
+
+/** @brief The size of the kill stack. Must be large enough to hold a call to
+ * free. */
+#define KILL_STACK_SIZE 1024
+
+/** @brief The size of a child stack. Initialized in thr_init. */
 static unsigned int stack_size;
-static bool initialized = false;
 
-struct thread_status_block {
+/** @brief Has thr_init been called? */
+static boolean_t initialized = FALSE;
+
+/** @brief Thread control block. Stores information about a thread. */
+typedef struct {
+
+	/** @brief The stack this thread is executing on. This will be NULL for the
+	 * main thread. */
+	char *stack;
+
+	/** @brief The tid of this thread. */
 	int tid;
-	void *status;
-	mutex_t lock;
-	cond_t signal;
-	bool exited;
-	struct thread_status_block *next;
-	struct thread_status_block *prev;
-};
-typedef struct thread_status_block thread_status_block_t;
 
-DEFINE_QUEUE(thread_queue_t, thread_status_block_t *);
-static thread_queue_t thread_queue;
-static mutex_t queue_lock;
+	/** @brief Optional status returned by this thread in thr_exit. */
+	void *statusp;
+
+	/** @brief A lock for this block. */
+	mutex_t lock;
+
+	/** @brief A signal to indicate that this thread has exited. */
+	cond_t signal;
+
+	/** @brief TRUE iff this thread has/is exiting. The thread's status must be
+	 * set before this is set to TRUE. */
+	boolean_t exited;
+
+	/** @brief TRUE iff all fields of the tcb have been initialized. */
+	boolean_t initialized;
+
+	/** @brief TRUE iff some thread has joined on the thread this tcb is for. */
+	boolean_t waited_on;
+} tcb_t;
+
+/** @brief The logical top of the shared kill stack. */
+static char kill_stack_top[KILL_STACK_SIZE + 2*ESP_ALIGN - 1];
+
+/** @brief The base of the shared kill stack. A thread jumps to this stack just
+ * before it exits so it can free its own stack. */
+static char *kill_stack;
+
+/** @brief A lock on the kill stack. */
+static mutex_t kill_stack_lock;
+
+/** @brief Define a hashtable type from int to tcb_t *. */
+DEFINE_HASHTABLE(hashtable_t, int, tcb_t *);
+
+/** @brief A table mapping tids to thread control blocks. The main parent
+ * thread will be in this table. */
+static hashtable_t tid_table;
+
+/** @brief A lock for the tid_table. */
+static mutex_t tid_table_lock;
+
+/** @brief A table mapping stack addresses (kind of) to thread control blocks.
+ * The main parent thread will not be in this table. */
+static hashtable_t stack_table;
+
+/** @brief A lock for the stack_table. */
+static mutex_t stack_table_lock;
+
+/** @brief The maximum stack address a child thread could have. */
+static char *max_child_stack_addr = NULL;
+
+/** @brief A lock to synchronize writes to the maximum stack address. */
+static mutex_t max_child_stack_addr_lock;
+
+/** @brief The thread control block for the main parent thread. */
+static tcb_t main_thread;
+
+/** @brief Hash an address to the index of the range the address lies in.
+ *
+ * This function has the property that prehash(addr) == prehash(stack_top) or
+ * prehash(addr) == 1 + prehash(stack_top) if addr lies on the stack whose top
+ * is stack_top.
+ *
+ * Furthermore, prehash(stack1) != prehash(stack2) if stack1 and stack2 are the
+ * tops of different stacks.
+ *
+ * @param addr The address to hash.
+ *
+ * @return An index that identifies which stack addr is on.
+ */
+static unsigned int prehash(char *addr) {
+	return ((unsigned int)addr) / (stack_size + 2*ESP_ALIGN - 1);
+}
+
+/** @brief Identity hash function
+ *
+ * @param key The key to hash
+ *
+ * @return The hash value
+ */
+static unsigned int hash(int key) {
+	return (unsigned int)key;
+}
 
 /** @brief Initialize the thread library
+ *
+ * Also, create a thread control block for the main parent thread.
  *
  * @param size The amount of stack space in bytes that each thread will
  *        have available
@@ -39,10 +132,30 @@ static mutex_t queue_lock;
  */
 int thr_init(unsigned int size) {
 	assert(!initialized);
-	initialized = true;
+	initialized = TRUE;
 	stack_size = size;
-	STATIC_INIT_QUEUE(thread_queue);
-	assert(mutex_init(&queue_lock) == 0);
+
+	/* Initialize the main_thread block. */
+	main_thread.stack = NULL;
+	main_thread.tid = gettid();
+	assert(mutex_init(&(main_thread.lock)));
+	assert(cond_init(&(main_thread.signal)));
+	main_thread.exited = FALSE;
+
+	/* Initialize the hash tables and their locks. */
+	STATIC_INIT_HASHTABLE(hashtable_t, tid_table, hash);
+	STATIC_INIT_HASHTABLE(hashtable_t, stack_table, hash);
+	HASHTABLE_PUT(hashtable_t, tid_table, main_thread.tid, &main_thread);
+	assert(mutex_init(&tid_table_lock) == 0);
+	assert(mutex_init(&stack_table_lock) == 0);
+
+	/* Initialize the max stack address lock. */
+	assert(mutex_init(&max_child_stack_addr_lock) == 0);
+
+	/* Initialize the kill stack and its lock. */
+	kill_stack = kill_stack_top + KILL_STACK_SIZE + ESP_ALIGN - 1;
+	kill_stack = (char *) (((unsigned int)kill_stack) & ~(ESP_ALIGN - 1));
+	assert(mutex_init(&kill_stack_lock) == 0);
 	return -1;
 }
 
@@ -56,25 +169,86 @@ int thr_init(unsigned int size) {
  */
 int thr_create(void *(*func)(void *), void *arg) {
 	assert(initialized);
-	char *stack_top = (char *)malloc(stack_size + PAGE_SIZE); //free this
-	assert(stack_top);
-	char *stack_bottom = stack_top + stack_size + PAGE_SIZE;
-	stack_bottom &= PAGE_SIZE;
-	int tid = thread_fork(func, arg, stack_bottom - 4);
-	if (tid >= 0) {
-		thread_status_block_t *tsb = 
-			(thread_status_block_t *)malloc(sizeof(thread_status_block_t));
-		assert(tsb);
-		tsb->tid = tid;
-		tsb->exited = false; //race
-		assert(mutex_init(&tsb->lock) == 0);
-		assert(cond_init(&tsb->signal) == 0);
-		assert(mutex_lock(&queue_lock) == 0);
-		ENQUEUE_FIRST(tsb);
-		assert(mutex_unlock(&queue_lock) == 0);
+
+	/* Create a thread control block and initialize its stack, mutex, and
+	 * condition variable. */
+	tcb_t *tcb = (tcb_t *)malloc(sizeof(tcb_t));
+	assert(tcb);
+	tcb->exited = FALSE;
+	tcb->initialized = FALSE;
+	tcb->waited_on = FALSE;
+	assert(mutex_init(&tcb->lock) == 0);
+	assert(cond_init(&tcb->signal) == 0);
+	tcb->stack = (char *)malloc(stack_size + 2*ESP_ALIGN - 1);
+	assert(tcb->stack);
+	
+	/* Compute the base address of the child stack. */
+	char *stack_bottom = tcb->stack + stack_size + ESP_ALIGN - 1;
+	stack_bottom = (char *) (((unsigned int)stack_bottom) & ~(ESP_ALIGN - 1));
+	
+	/* Update the max child stack address. */
+	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
+	if (max_child_stack_addr < stack_bottom) {
+		max_child_stack_addr = stack_bottom;
 	}
-	return tid;
+	assert(mutex_unlock(&max_child_stack_addr_lock) == 0);
+	
+	/* Fork the new child thread. If we fail, undo all the initialization we've
+	 * done. */
+	int ret = thread_fork(func, arg, stack_bottom, tcb);
+	if (ret < 0) {
+		assert(mutex_destroy(&tcb->lock) == 0);
+		assert(cond_destroy(&tcb->signal) == 0);
+		free(tcb->stack);
+		free(tcb);
+	}
+	return ret;
 }
+
+/** @brief Initialize a new child thread. 
+ *
+ * The tid still needs to be fetched, and the child needs to add its tcb to the
+ * hashtables.
+ *
+ * @param tcb The partial thread control block of the thread. 
+ */
+void thr_child_init(tcb_t *tcb) {
+	assert(tcb);
+	
+	tcb->tid = gettid();
+	
+	assert(mutex_lock(&tid_table_lock) == 0);
+	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
+	assert(mutex_unlock(&tid_table_lock) == 0);
+	
+	unsigned int key = prehash(tcb->stack);
+	
+	assert(mutex_lock(&stack_table_lock) == 0);
+	HASHTABLE_PUT(hashtable_t, stack_table, key, tcb);
+	assert(mutex_unlock(&stack_table_lock) == 0);
+
+	/* Notify the parent that we've fully initialized ourself. */
+	tcb->initialized = TRUE;
+	assert(cond_signal(&tcb->signal) == 0);
+}
+
+/** @brief Wait for our child to completely initialize itself.
+ *
+ * We must wait for our child to move to its new stack before we continue.
+ * Otherwise we might clobber parts of our stack before our child leaves it.
+ * Additionally we must wait for our child to set its tid in its tcb and add
+ * itself to the two tcb tables.
+ *
+ * @param tcb The tcb of the child we're waiting on.
+ */
+void wait_for_child(tcb_t *tcb) {
+	assert(tcb);
+	assert(mutex_lock(&tcb->lock) == 0);
+	while (!tcb->initialized) {
+		assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
+	}
+	assert(mutex_unlock(&tcb->lock) == 0);
+}	
 
 /** @brief Wait for the specified thread to exit and collect its status
  *
@@ -88,28 +262,47 @@ int thr_create(void *(*func)(void *), void *arg) {
  */
 int thr_join(int tid, void **statusp) {
 	assert(initialized);
-	thread_status_block_t *tsb;
-	assert(mutex_lock(&queue_lock) == 0);
-	FOREACH(thread_queue, tsb) {
-		if (tsb->tid == tid) {
-			DEQUEUE_ELEM(thread_queue, tsb);
-			assert(mutex_unlock(&queue_lock) == 0);
-			assert(mutex_lock(&tsb->lock) == 0);
-			while (!tsb->exited) {
-				assert(cond_wait(&tsb->signal, &tsb->lock) == 0);
-			}
-			assert(mutex_unlock(&tsb->lock) == 0);
-			assert(mutex_destroy(&tsb->lock) == 0);
-			assert(cond_destroy(&tsb->signal) == 0);
-			if (statusp) {
-				*statusp = tsb->statusp;
-			}
-			free(tsb);
-			return 0;
+	tcb_t *tcb = NULL;
+	
+	/* Get the tcb corresponding to this tid from the tid_table. */
+	assert(mutex_lock(&tid_table_lock) == 0);
+	HASHTABLE_GET(hashtable_t, tid_table, tid, tcb);
+
+	/* If we're not the first to join on this thread, exit promptly. */
+	if (tcb && tcb->waited_on == FALSE) {
+		tcb->waited_on = TRUE;
+		assert(mutex_unlock(&tid_table_lock) == 0);
+
+		/* Wait for the joined thread to signal completion. */
+		assert(mutex_lock(&tcb->lock) == 0);
+		while (!tcb->exited) {
+			assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
 		}
+		assert(mutex_unlock(&tcb->lock) == 0);
+
+		/* Remove the joined thread from the tid_table. */
+		assert(mutex_lock(&tid_table_lock) == 0);
+		HASHTABLE_REMOVE(hashtable_t, tid_table, tid, tcb);
+		assert(mutex_unlock(&tid_table_lock) == 0);
+
+		/* Copy the joined thread's status. */
+		if (statusp) {
+			*statusp = tcb->statusp;
+		}
+
+		/* Deallocate the joined thread. */
+		assert(mutex_destroy(&tcb->lock) == 0);
+		assert(cond_destroy(&tcb->signal) == 0);
+		free(tcb);
+		return 0;
 	}
-	mutex_unlock(&queue_lock);
+	assert(mutex_unlock(&tid_table_lock) == 0);
 	return -1;
+}
+
+/** TODO */
+void mutex_unlock_and_vanish(mutex_t *mutex) {
+	assert(FALSE);
 }
 
 /** @brief Exit this thread with the given status
@@ -119,24 +312,39 @@ int thr_join(int tid, void **statusp) {
  */
 void thr_exit(void *status) {
 	assert(initialized);
-	thread_status_block_t *tsb;
+	tcb_t *tcb;
+
+	/* Get our tcb. */
 	int tid = thr_getid();
-	assert(mutex_lock(&queue_lock) == 0);
-	FOREACH(thread_queue, tsb) {
-		if (tsb->tid == tid) {
-			assert(mutex_unlock(&queue_lock) == 0);
-			tsb->statusp = status;
-			tsb->exited = true;
-			assert(cond_signal(&tsb->signal) == 0);
-			vanish();
-			// Shouldn't reach here!
-			assert(false);
-			return;
-		}
+	assert(mutex_lock(&tid_table_lock) == 0);
+	HASHTABLE_GET(hashtable_t, tid_table, tid, tcb);
+	assert(mutex_unlock(&tid_table_lock) == 0);
+
+	/* Set our status. */
+	tcb->statusp = status;
+	tcb->exited = TRUE;
+
+	if (tid == main_thread.tid) {
+		/* If we're the main thread, we can simply disappear. */
+		assert(cond_signal(&tcb->signal) == 0);
+		vanish();
 	}
-	// Shouldn't reach here!
-	assert(false);
-	return;
+	else {
+		/* Otherwise we must free our stack. We call free from the stack we are
+		 * deallocating, so we must jump to the kill_stack dedicated for this
+		 * purpose. */
+		assert(mutex_lock(&kill_stack_lock) == 0);
+		switch_to_stack(kill_stack);
+		free(tcb->stack);
+		assert(cond_signal(&tcb->signal) == 0);
+
+		/* After unlocking the kill_stack mutex, we must vanish immediately without
+		 * touching the stack again. This means we can't even try to return from
+		 * mutex_unlock. */
+		mutex_unlock_and_vanish(&kill_stack_lock);
+	}
+	// Shouldn't reach here
+	assert(FALSE);
 }
 
 /** @brief Return the thread ID of the currently running thread
@@ -144,7 +352,31 @@ void thr_exit(void *status) {
  * @return the current thread's ID
  */
 int thr_getid(void) {
-	return gettid();
+	assert(initialized);
+	tcb_t *tcb;
+	char *stack_addr = get_addr();
+
+	/* If our address is higher than the address of any child stack, then we must
+	 * be the parent thread. */
+	if (stack_addr > max_child_stack_addr) {
+		return main_thread.tid;
+	}
+
+	unsigned int key = prehash(stack_addr);
+
+	/* Our stack address will either use the same key as the top address of our
+	 * stack, or it will be one greater. */
+	assert(mutex_lock(&stack_table_lock) == 0);
+	HASHTABLE_GET(hashtable_t, stack_table, key, tcb);
+
+	/* If the top of the retrieved stack is above us, then we must be on the
+	 * stack below the retrieved one. */
+	if (tcb->stack > stack_addr) {
+		HASHTABLE_GET(hashtable_t, stack_table, key - 1, tcb);
+	}
+	assert(mutex_unlock(&stack_table_lock) == 0);
+	assert(tcb);
+	return tcb->tid;
 }
 
 /** @brief Defer execution of this thread in favor of another
@@ -157,3 +389,4 @@ int thr_getid(void) {
 int thr_yield(int tid) {
 	return yield(tid);
 }
+

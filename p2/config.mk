@@ -67,7 +67,7 @@ STUDENTTESTS = syscall_test atomic_test queue_test mutex_test
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
-THREAD_OBJS = malloc.o atomic.o threads.o mutex.o
+THREAD_OBJS = malloc.o atomic.o threads.o mutex.o thread_helper.o thread_fork.o cond.o
 
 # Thread Group Library Support.
 #
@@ -84,6 +84,6 @@ SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
 SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
 SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
-SYSCALL_OBJS += halt.o misbehave.o thread_fork.o
+SYSCALL_OBJS += halt.o misbehave.o
 
 
