@@ -1,4 +1,4 @@
-.globl mutex_unlock
+.globl mutex_unlock_and_vanish
 
 #include <syscall_int.h>
 

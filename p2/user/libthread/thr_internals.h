@@ -33,8 +33,6 @@ int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);
 
-int mutex_unlock_and_vanish(mutex_t *mp);
-
 /** 
 * @brief Useful for stack based mutex waiting lists.
 */
@@ -93,6 +91,8 @@ typedef struct tcb {
 
 void thr_child_init(tcb_t *tcb);
 void wait_for_child(tcb_t *tcb);
+int mutex_unlock_and_vanish(mutex_t* mp);
+
 tcb_t *thr_gettcb(boolean_t remove_tcb);
 
 #endif /* THR_INTERNALS_H */

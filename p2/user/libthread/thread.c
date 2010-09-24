@@ -5,16 +5,17 @@
  * @author Tim Wilson
  */
 
-#include <assert.h>
-#include <mutex_type.h>
-#include <cond_type.h>
-#include <syscall.h>
-#include <threads.h>
+#include <thread.h>
+
+#include <mutex.h>
+#include <cond.h>
 #include <thr_internals.h>
 #include <thread_helper.h>
 #include <thread_fork.h>
-#include <types.h>
 #include <hashtable.h>
+#include <syscall.h>
+#include <types.h>
+#include <assert.h>
 #include <stdlib.h>
 
 /** @brief The alignment of the stack pointer. This must be a power of 2. */

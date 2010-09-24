@@ -4,7 +4,8 @@
 * @author Justin Scheiner
 */
 
-#include <mutex_type.h>
+#include <mutex.h>
+#include <thread.h>
 #include <thr_internals.h>
 #include <syscall.h>
 #include <atomic.h>

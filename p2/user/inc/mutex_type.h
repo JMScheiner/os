@@ -18,10 +18,4 @@ typedef struct mutex {
 	int tid;
 } mutex_t;
 
-int mutex_init(mutex_t *mp);
-int mutex_destroy(mutex_t *mp);
-int mutex_lock(mutex_t *mp);
-int mutex_unlock(mutex_t *mp);
-int mutex_unlock_and_vanish(mutex_t* mp);
-
 #endif /* _MUTEX_TYPE_H */

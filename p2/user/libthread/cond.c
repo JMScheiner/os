@@ -10,10 +10,10 @@
 * @date 2010-09-21
 */
 
+#include <mutex.h>
 #include <cond.h>
 #include <syscall.h>
 #include <cond_type.h>
-#include <mutex_type.h>
 #include <thr_internals.h>
 
 int cond_init( cond_t* cv)
