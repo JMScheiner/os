@@ -12,6 +12,21 @@
 #include <queue.h>
 #include <mutex_type.h>
 
+#define THR_DEBUG
+
+#ifdef THR_DEBUG
+	#include <stdio.h>
+	#define thr_debug_print(...) do { \
+		printf(__VA_ARGS__); \
+	} while(0)
+
+#else
+
+	#define thr_debug_print(...) do { \
+	} while(0)
+
+#endif //THR_DEBUG
+
 /** Structures for mutexes **/
 
 /** 
@@ -32,16 +47,6 @@ int tts_try_lock(tts_lock_t* lock);
 int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);
-
-/** 
-* @brief Useful for stack based mutex waiting lists.
-*/
-struct _mnode { 
-	tts_lock_t access;
-	int tid;
-	boolean_t cancel_deschedule;
-	struct _mnode* next;
-};
 
 /** Structures for condition variables **/
 typedef struct cond_link
@@ -87,7 +92,20 @@ typedef struct tcb {
 
 	/** @brief TRUE iff all fields of the tcb have been initialized. */
 	boolean_t initialized;
+
+	/*** Information for mutex's ***/
+	/** @brief Locked if this thread owns the mutex, or someone is trying
+	 * to lock the mutex after this thread will own it. */
+	tts_lock_t mutex_tts_lock;
 } tcb_t;
+
+/** 
+* @brief Useful for stack based mutex waiting lists.
+*/
+struct _mnode { 
+	boolean_t cancel_deschedule;
+	struct _mnode* next_thread;
+};
 
 void thr_child_init(tcb_t *tcb);
 void wait_for_child(tcb_t *tcb);

@@ -9,13 +9,12 @@
 
 typedef struct _mnode mutex_node;
 
-typedef struct mutex {
-	mutex_node* last;
-	mutex_node* next;
-	mutex_node* running;
-	boolean_t held;
-	boolean_t initialized;
-	int tid;
+typedef struct mutex 
+{
+	int initialized;
+	int ticket;
+	int now_serving;
+	int active_tid;
 } mutex_t;
 
 #endif /* _MUTEX_TYPE_H */

@@ -17,8 +17,9 @@ atomic_xadd:
 	movl  8(%esp), 	%edx 		//Load &destination into %edx
 	movl	(%eax),		%ecx 		//Load source into %ecx
 	
-	lock# xadd	(%edx),	%ecx	//source = destination, destination = source + destination, 
-	movl	%ecx,			(%eax)	//Load the result back into source.
+	//Generates invalid opcode with lock#! Is this not valid!?
+	lock xaddl	%ecx, (%edx)	//source = destination, destination = source + destination, 
+	movl	%ecx,		(%eax)		//Load the result back into source.
 	ret
 
 atomic_cmpxchg: 
@@ -26,7 +27,7 @@ atomic_cmpxchg:
 	movl 	8(%esp), 	%edx	//Load &destination into %edx.
 	movl 	12(%esp), 	%eax	//Load comp into %eax.
 	
-	lock# cmpxchg	(%edx),	%ecx //Exchange %ecx into (%edx), if (%edx) = %eax.
+	lock cmpxchg	%ecx, (%edx) //Exchange %ecx into (%edx), if (%edx) = %eax.
 	
 	//cmpxchg will set ZF on success.
 	jnz atomic_cmpxchg_failed

@@ -113,8 +113,10 @@ int thr_init(unsigned int size) {
 	/* Initialize the main_thread block. */
 	main_thread.stack = NULL;
 	main_thread.tid = gettid();
+	ret |= tts_init(&main_thread.mutex_tts_lock);
 	ret |= mutex_init(&(main_thread.lock));
 	ret |= cond_init(&(main_thread.signal));
+
 	main_thread.initialized = TRUE;
 	main_thread.exited = FALSE;
 
@@ -201,6 +203,10 @@ void thr_child_init(tcb_t *tcb) {
 	assert(tcb);
 	
 	tcb->tid = gettid();
+
+	//Before we can do any mutex locking, we need to initialize the 
+	//	tts_lock for this thread.
+	tts_init(&tcb->mutex_tts_lock);
 	
 	assert(mutex_lock(&tid_table_lock) == 0);
 	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
