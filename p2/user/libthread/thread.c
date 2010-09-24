@@ -18,6 +18,7 @@
 #include <types.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <simics.h>
 
 /** @brief The alignment of the stack pointer. This must be a power of 2. */
 #define ESP_ALIGN 4
@@ -113,7 +114,6 @@ int thr_init(unsigned int size) {
 	/* Initialize the main_thread block. */
 	main_thread.stack = NULL;
 	main_thread.tid = gettid();
-	ret |= tts_init(&main_thread.mutex_tts_lock);
 	ret |= mutex_init(&(main_thread.lock));
 	ret |= cond_init(&(main_thread.signal));
 
@@ -134,6 +134,7 @@ int thr_init(unsigned int size) {
 	kill_stack = kill_stack_top + KILL_STACK_SIZE + ESP_ALIGN - 1;
 	kill_stack = (char *) (((unsigned int)kill_stack) & ~(ESP_ALIGN - 1));
 	ret |= mutex_init(&kill_stack_lock);
+	assert(ret == 0);
 	return ret;
 }
 
@@ -169,7 +170,6 @@ int thr_create(void *(*func)(void *), void *arg) {
 	stack_bottom = (char *) (((unsigned int)stack_bottom) & ~(ESP_ALIGN - 1));
 	
 	/* Update the max child stack address. */
-	printf("&max_child_stack_addr_lock = %x\n", (int)&max_child_stack_addr_lock);
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
 	if (max_child_stack_addr < stack_bottom) {
 		max_child_stack_addr = stack_bottom;
@@ -199,14 +199,13 @@ fail_mutex:
  *
  * @param tcb The partial thread control block of the thread. 
  */
-void thr_child_init(tcb_t *tcb) {
+void *thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	assert(tcb);
 	
+	lprintf("In thr_child_init at address %p, tcb = %p. \n",  
+		get_addr(), tcb);
 	tcb->tid = gettid();
-
-	//Before we can do any mutex locking, we need to initialize the 
-	//	tts_lock for this thread.
-	tts_init(&tcb->mutex_tts_lock);
+	lprintf("[%d] Finished getting tid.\n", tcb->tid);
 	
 	assert(mutex_lock(&tid_table_lock) == 0);
 	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
@@ -223,6 +222,7 @@ void thr_child_init(tcb_t *tcb) {
 	tcb->initialized = TRUE;
 	assert(mutex_unlock(&tcb->lock) == 0);
 	assert(cond_signal(&tcb->signal) == 0);
+	return func(arg);
 }
 
 /** @brief Wait for our child to completely initialize itself.
@@ -237,6 +237,8 @@ void thr_child_init(tcb_t *tcb) {
 void wait_for_child(tcb_t *tcb) {
 	assert(tcb);
 	assert(mutex_lock(&tcb->lock) == 0);
+
+	lprintf("[%d] Waiting for child\n", thr_getid());
 	while (!tcb->initialized) {
 		assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
 	}

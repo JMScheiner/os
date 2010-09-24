@@ -54,7 +54,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the 410user/progs
 # directory
 #
-410TESTS = startle
+410TESTS = startle mandelbrot cyclone agility_drill beady_test join_specific_test
 
 ###########################################################################
 # Test programs you have written which you wish to run
@@ -77,7 +77,7 @@ THREAD_OBJS += mutex_unlock_and_vanish.o
 # P3" we give you can't build libthrgrp.a.  Once you install your thread
 # library and fix THREAD_OBJS above, uncomment this line to enable building
 # libthrgrp.a:
-#410USER_LIBS_EARLY += libthrgrp.a
+410USER_LIBS_EARLY += libthrgrp.a
 
 ###########################################################################
 # Object files for your syscall wrappers

@@ -5,14 +5,12 @@
 #ifndef _COND_TYPE_H
 #define _COND_TYPE_H
 
-#include <mutex_type.h>
+#include <thr_internals.h>
 
-typedef struct cond cond_t;
-
-int cond_init(cond_t *cv);
-int cond_destroy(cond_t *cv);
-int cond_wait(cond_t *cv, mutex_t *mp);
-int cond_signal(cond_t *cv);
-int cond_broadcast(cond_t *cv);
+typedef struct cond 
+{
+	cond_queue_t q;
+	mutex_t qlock;
+} cond_t;
 
 #endif /* _COND_TYPE_H */

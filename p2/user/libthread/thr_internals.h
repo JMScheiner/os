@@ -7,10 +7,10 @@
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
 
-#include <cond_type.h>
+#include <cond.h>
 #include <types.h>
 #include <queue.h>
-#include <mutex_type.h>
+#include <mutex.h>
 
 #define THR_DEBUG
 
@@ -92,11 +92,6 @@ typedef struct tcb {
 
 	/** @brief TRUE iff all fields of the tcb have been initialized. */
 	boolean_t initialized;
-
-	/*** Information for mutex's ***/
-	/** @brief Locked if this thread owns the mutex, or someone is trying
-	 * to lock the mutex after this thread will own it. */
-	tts_lock_t mutex_tts_lock;
 } tcb_t;
 
 /** 
@@ -107,7 +102,7 @@ struct _mnode {
 	struct _mnode* next_thread;
 };
 
-void thr_child_init(tcb_t *tcb);
+void *thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
 int mutex_unlock_and_vanish(mutex_t* mp);
 

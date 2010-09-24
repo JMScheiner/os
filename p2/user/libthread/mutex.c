@@ -29,7 +29,7 @@ int mutex_init(mutex_t *mp)
 	mutex_id++;
 	mp->ticket = 0;
 	mp->now_serving = 0;
-	mp->active_tid = 0;
+	mp->active_tid = -1;
 	mp->initialized = TRUE;
 	return 0;
 }
@@ -68,17 +68,20 @@ int mutex_try_lock(mutex_t *mp)
 
 int mutex_lock( mutex_t *mp )
 {
-	int tid = thr_getid();
+	//int tid = gettid();
 	int ticket = 1;
+
 	atomic_xadd(&ticket, &mp->ticket);
 	
 	while(ticket != mp->now_serving)
 	{
-		yield(mp->active_tid);
+		//yield(mp->active_tid);
+		yield(-1);
 	}
+	//BANG race condition. We could yield to the wrong person.
 
 	//We have the mutex.
-	mp->active_tid = tid;
+	//mp->active_tid = tid;
 	return 0;
 }
 

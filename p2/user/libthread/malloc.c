@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <types.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <mutex.h>
 
 mutex_t heap_lock;

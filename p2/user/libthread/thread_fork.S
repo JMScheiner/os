@@ -27,11 +27,11 @@ thread_fork:
 	movl   16(%ebp), %esp    // Move to the base of the child's stack frame
 	pushl  %eax              // Save the return of THREAD_FORK_INT
 	pushl  20(%ebp)          // Push the tcb of the child as an argument
+	pushl  12(%ebp)			 // Save arg on new stack.
+	pushl   8(%ebp)			 // Save func on new stack.
 	call   thr_child_init    // Initialize the child and get a stack frame
-	subl   -4, %esp          // Pop the argument
-	pushl  12(%ebp)          // Push the argument for the child
-	call   *8(%ebp)          // Execute the child's first function
-	subl   -4, %esp          // Pop the argument
+	subl   -12, %esp         // Pop func, arg, and tcb
+	pushl	 %eax					 // Pass status to thread exit.
 	call   thr_exit          // Exit with the return THREAD_FORK_INT as status
 	// We should never reach here
 PARENT:
