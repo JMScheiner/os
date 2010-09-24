@@ -11,6 +11,8 @@
 #include <syscall.h>
 #include <threads.h>
 #include <thr_internals.h>
+#include <thread_helper.h>
+#include <thread_fork.h>
 #include <types.h>
 #include <hashtable.h>
 #include <stdlib.h>
@@ -27,33 +29,6 @@ static unsigned int stack_size;
 
 /** @brief Has thr_init been called? */
 static boolean_t initialized = FALSE;
-
-/** @brief Thread control block. Stores information about a thread. */
-typedef struct {
-
-	/** @brief The stack this thread is executing on. This will be NULL for the
-	 * main thread. */
-	char *stack;
-
-	/** @brief The tid of this thread. */
-	int tid;
-
-	/** @brief Optional status returned by this thread in thr_exit. */
-	void *statusp;
-
-	/** @brief A lock for this block. */
-	mutex_t lock;
-
-	/** @brief A signal to indicate that this thread has exited. */
-	cond_t signal;
-
-	/** @brief TRUE iff this thread has/is exiting. The thread's status must be
-	 * set before this is set to TRUE. */
-	boolean_t exited;
-
-	/** @brief TRUE iff all fields of the tcb have been initialized. */
-	boolean_t initialized;
-} tcb_t;
 
 /** @brief The logical top of the shared kill stack. */
 static char kill_stack_top[KILL_STACK_SIZE + 2*ESP_ALIGN - 1];
@@ -129,7 +104,7 @@ static unsigned int hash(int key) {
  */
 int thr_init(unsigned int size) {
 	assert(!initialized);
-	int ret;
+	int ret = 0;
 	initialized = TRUE;
 	stack_size = size;
 
@@ -305,9 +280,9 @@ int thr_join(int tid, void **statusp) {
 	return -1;
 }
 
-static tcb_t *thr_gettcb(boolean_t remove_tcb) {
+tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	assert(initialized);
-	tcb_t *tcb;
+	tcb_t *tcb = NULL;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
