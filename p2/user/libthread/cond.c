@@ -41,9 +41,8 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 	ENQUEUE_LAST(&cv->q, &link);
 	mutex_unlock(&cv->qlock);
 	
+	mutex_unlock(mp);
 	deschedule((int*)&link.cancel_deschedule);
-
-	//I am not sure that I am using mp right here.
 	mutex_lock(mp);
 
 	return 0;
@@ -77,6 +76,11 @@ int cond_broadcast( cond_t* cv)
 		link->cancel_deschedule = TRUE;
 		make_runnable(link->tid);
 	}
+
+	//Sorry about the wrong semantics, but this
+	// needs to happen. Maybe an "EMPTY_QUEUE" function
+	// is in order.
+	STATIC_INIT_QUEUE(queue);
 	mutex_unlock(&cv->qlock);
 	
 	return 0;

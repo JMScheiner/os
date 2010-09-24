@@ -269,7 +269,10 @@ int tts_lock(tts_lock_t* lock)
 		{
 			atomic_xchg(&flag, &lock->lock);
 		}
-		//TODO Yield to tid here? 
+		else
+		{
+			yield(-1);
+		}
 	}
 	
 	return 0;
