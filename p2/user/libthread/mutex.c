@@ -122,6 +122,11 @@ int mutex_lock( mutex_t *mp )
 	//Initialize myself. 
 	me.tid = gettid();
 	me.next = NULL;
+	
+	//Can't lock a mutex we already own.
+	if(mp->tid == me.tid)
+		return -1;
+
 	tts_init(&me.access);
 	
 	//Swap yourself into the end of the mutex's list.

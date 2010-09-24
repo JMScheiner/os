@@ -9,6 +9,7 @@
 
 #include <types.h>
 #include <queue.h>
+#include <mutex_type.h>
 
 /** Structures for mutexes **/
 
