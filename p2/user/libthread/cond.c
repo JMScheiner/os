@@ -10,10 +10,10 @@
 * @date 2010-09-21
 */
 
-#include <mutex.h>
 #include <cond.h>
+#include <mutex.h>
+#include <thread.h>
 #include <syscall.h>
-#include <cond_type.h>
 #include <thr_internals.h>
 
 int cond_init( cond_t* cv)
@@ -34,7 +34,7 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 	mutex_lock(&cv->qlock);
 
 	cond_link_t link;
-	link.tid = gettid();
+	link.tid = thr_getid();
 	link.cancel_deschedule = FALSE;
 	
 	mutex_lock(&cv->qlock);

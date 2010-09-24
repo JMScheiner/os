@@ -14,6 +14,7 @@
 #include <thread_fork.h>
 #include <hashtable.h>
 #include <syscall.h>
+#include <stdio.h>
 #include <types.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -166,6 +167,7 @@ int thr_create(void *(*func)(void *), void *arg) {
 	stack_bottom = (char *) (((unsigned int)stack_bottom) & ~(ESP_ALIGN - 1));
 	
 	/* Update the max child stack address. */
+	printf("&max_child_stack_addr_lock = %x\n", (int)&max_child_stack_addr_lock);
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
 	if (max_child_stack_addr < stack_bottom) {
 		max_child_stack_addr = stack_bottom;

@@ -121,7 +121,7 @@ int mutex_lock( mutex_t *mp )
 	mutex_node* swap = &me;
 	
 	//Initialize myself. 
-	me.tid = gettid();
+	me.tid = thr_getid();
 	me.next = NULL;
 	
 	//Can't lock a mutex we already own.
@@ -204,8 +204,11 @@ int mutex_lock( mutex_t *mp )
 */
 int mutex_unlock( mutex_t *mp )
 {
-	assert(mp);
-	assert(mp->initialized);
+	if(!mp)
+		return -1;
+
+	if(!mp->initialized)
+		return -1;
 
 	mutex_node* next = mp->next;
 	if(next)
