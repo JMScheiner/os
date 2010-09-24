@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <mutex.h>
+#include <mutex_type.h>
 
 int main(int argc, const char *argv[])
 {
