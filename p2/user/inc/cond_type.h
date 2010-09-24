@@ -7,11 +7,7 @@
 
 #include <mutex_type.h>
 
-typedef struct cond
-{
-  /* fill this in */
-	int c;
-} cond_t;
+typedef struct cond cond_t;
 
 int cond_init(cond_t *cv);
 int cond_destroy(cond_t *cv);
