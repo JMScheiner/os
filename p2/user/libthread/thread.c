@@ -199,7 +199,7 @@ fail_mutex:
  *
  * @param tcb The partial thread control block of the thread. 
  */
-void *thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
+void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	assert(tcb);
 	
 	lprintf("In thr_child_init at address %p, tcb = %p. \n",  
@@ -222,7 +222,7 @@ void *thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	tcb->initialized = TRUE;
 	assert(mutex_unlock(&tcb->lock) == 0);
 	assert(cond_signal(&tcb->signal) == 0);
-	return func(arg);
+	thr_exit(func(arg));
 }
 
 /** @brief Wait for our child to completely initialize itself.
@@ -257,8 +257,10 @@ void wait_for_child(tcb_t *tcb) {
  */
 int thr_join(int tid, void **statusp) {
 	assert(initialized);
-	tcb_t *tcb = NULL;
+	tcb_t tcb_struct;
+	tcb_t *tcb = &tcb_struct;
 
+	MAGIC_BREAK;
 	/* Get the tcb corresponding to this tid from the tid_table. */
 	assert(mutex_lock(&tid_table_lock) == 0);
 	HASHTABLE_GET(hashtable_t, tid_table, tid, tcb);
@@ -293,7 +295,8 @@ int thr_join(int tid, void **statusp) {
 
 tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	assert(initialized);
-	tcb_t *tcb = NULL;
+	tcb_t tcb_struct;
+	tcb_t *tcb = &tcb_struct;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -334,6 +337,7 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 void thr_exit(void *status) {
 	assert(initialized);
 	
+	MAGIC_BREAK;
 	/* Get tcb from stack table and remove it. */
 	tcb_t *tcb = thr_gettcb(TRUE /* remove_tcb */);
 

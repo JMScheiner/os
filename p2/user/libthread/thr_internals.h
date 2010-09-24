@@ -7,10 +7,10 @@
 #ifndef THR_INTERNALS_H
 #define THR_INTERNALS_H
 
-#include <cond.h>
+#include <cond_type.h>
 #include <types.h>
 #include <queue.h>
-#include <mutex.h>
+#include <mutex_type.h>
 
 #define THR_DEBUG
 
@@ -48,23 +48,6 @@ int tts_unlock(tts_lock_t* lock);
 int tts_init(tts_lock_t* lock);
 int tts_destroy(tts_lock_t* lock);
 
-/** Structures for condition variables **/
-typedef struct cond_link
-{
-	struct cond_link* next;
-	struct cond_link* prev;
-	int tid;
-	boolean_t cancel_deschedule;
-} cond_link_t;
-
-DEFINE_QUEUE(cond_queue_t, cond_link_t*);
-
-struct cond 
-{
-	cond_queue_t q;
-	mutex_t qlock;
-};
-
 /* Thread control block */
 
 /** @brief Thread control block. Stores information about a thread. */
@@ -94,15 +77,7 @@ typedef struct tcb {
 	boolean_t initialized;
 } tcb_t;
 
-/** 
-* @brief Useful for stack based mutex waiting lists.
-*/
-struct _mnode { 
-	boolean_t cancel_deschedule;
-	struct _mnode* next_thread;
-};
-
-void *thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
+void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
 int mutex_unlock_and_vanish(mutex_t* mp);
 

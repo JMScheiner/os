@@ -5,12 +5,15 @@
 #ifndef _MUTEX_TYPE_H
 #define _MUTEX_TYPE_H
 
-#include <types.h>
+/** 
+* @brief Useful for stack based mutex waiting lists.
+*/
+//typedef struct _mnode { 
+//	boolean_t cancel_deschedule;
+//	struct _mnode* next_thread;
+//} mutex_node;
 
-typedef struct _mnode mutex_node;
-
-typedef struct mutex 
-{
+typedef struct mutex {
 	int initialized;
 	int ticket;
 	int now_serving;
