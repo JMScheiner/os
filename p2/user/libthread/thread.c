@@ -257,8 +257,7 @@ void wait_for_child(tcb_t *tcb) {
  */
 int thr_join(int tid, void **statusp) {
 	assert(initialized);
-	tcb_t tcb_struct;
-	tcb_t *tcb = &tcb_struct;
+	tcb_t *tcb = NULL; // = &tcb_struct;
 
 	MAGIC_BREAK;
 	/* Get the tcb corresponding to this tid from the tid_table. */
@@ -295,8 +294,8 @@ int thr_join(int tid, void **statusp) {
 
 tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	assert(initialized);
-	tcb_t tcb_struct;
-	tcb_t *tcb = &tcb_struct;
+	//tcb_t tcb_struct;
+	tcb_t *tcb = NULL; //&tcb_struct;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -314,7 +313,7 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 
 	/* If the top of the retrieved stack is above us, then we must be on the
 	 * stack below the retrieved one. */
-	if (tcb->stack > stack_addr) {
+	if (!tcb || tcb->stack > stack_addr) {
 		if (remove_tcb) {
 			HASHTABLE_REMOVE(hashtable_t, stack_table, key - 1, tcb);
 		}
