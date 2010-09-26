@@ -259,7 +259,6 @@ int thr_join(int tid, void **statusp) {
 	assert(initialized);
 	tcb_t *tcb = NULL; // = &tcb_struct;
 
-	MAGIC_BREAK;
 	/* Get the tcb corresponding to this tid from the tid_table. */
 	assert(mutex_lock(&tid_table_lock) == 0);
 	HASHTABLE_GET(hashtable_t, tid_table, tid, tcb);
@@ -324,8 +323,20 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	else if (remove_tcb) {
 		HASHTABLE_REMOVE(hashtable_t, stack_table, key, tcb);
 	}
+	assert(tcb);
 	assert(mutex_unlock(&stack_table_lock) == 0);
 	return tcb;
+}
+
+void clean_up_thread(tcb_t *tcb) {
+	MAGIC_BREAK;
+	free(tcb->stack);
+	assert(cond_signal(&tcb->signal) == 0);
+
+	/* After unlocking the kill_stack mutex, we must vanish immediately without
+	 * touching the stack again. This means we can't even try to return from
+	 * mutex_unlock. */
+	mutex_unlock_and_vanish(&kill_stack_lock);
 }
 
 /** @brief Exit this thread with the given status
@@ -336,7 +347,6 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 void thr_exit(void *status) {
 	assert(initialized);
 	
-	MAGIC_BREAK;
 	/* Get tcb from stack table and remove it. */
 	tcb_t *tcb = thr_gettcb(TRUE /* remove_tcb */);
 
@@ -355,15 +365,9 @@ void thr_exit(void *status) {
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
+		MAGIC_BREAK;
 		assert(mutex_lock(&kill_stack_lock) == 0);
-		switch_to_stack(kill_stack);
-		free(tcb->stack);
-		assert(cond_signal(&tcb->signal) == 0);
-
-		/* After unlocking the kill_stack mutex, we must vanish immediately without
-		 * touching the stack again. This means we can't even try to return from
-		 * mutex_unlock. */
-		mutex_unlock_and_vanish(&kill_stack_lock);
+		switch_stacks_and_vanish(tcb, kill_stack);
 	}
 	// Shouldn't reach here
 	assert(FALSE);

@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <simics.h>
 
 /** @brief List of primes below powers of 2 to be used as table sizes. */
 unsigned int prime_hashtable_sizes[] = 
