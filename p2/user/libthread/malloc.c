@@ -72,6 +72,6 @@ void free(void *__buf)
 	}
 	
 	mutex_lock(&heap_lock);
-	free(__buf);	
+	_free(__buf);	
 	mutex_unlock(&heap_lock);
 }

@@ -79,6 +79,7 @@ typedef struct tcb {
 
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
+void clean_up_thread(tcb_t *tcb);
 int mutex_unlock_and_vanish(mutex_t* mp);
 
 tcb_t *thr_gettcb(boolean_t remove_tcb);

@@ -2,6 +2,8 @@
 #ifndef THREAD_HELPER_H
 #define THREAD_HELPER_H
 
+#include <thr_internals.h>
+
 /** @def get_addr(void)
  *
  * @brief Return the address of the stack pointer
@@ -17,7 +19,7 @@ char *get_addr(void);
  *
  * @param stack_addr The address of the stack to switch to.
  */
-void switch_to_stack(char *stack_addr);
+void switch_stacks_and_vanish(tcb_t *tcb, char *stack_addr);
 
 #endif
 
