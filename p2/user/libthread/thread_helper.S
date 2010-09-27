@@ -24,7 +24,7 @@ get_addr:
  */
 switch_stacks_and_vanish:
 	movl   %esp, %ebp       // Save the stack pointer
-	movl   12(%ebp), %esp   // Move the new stack pointer into esp
-	pushl  8(%ebp)          // Push the tcb as an argument
+	movl   8(%ebp), %esp   // Move the new stack pointer into esp
+	pushl  4(%ebp)          // Push the tcb as an argument
 	call   clean_up_thread  // Clean up our stack frame and vanish
 

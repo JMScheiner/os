@@ -26,6 +26,7 @@
 /** @brief The size of the kill stack. Must be large enough to hold a call to
  * free. */
 #define KILL_STACK_SIZE 1024
+#define INT_STACK_SIZE 128
 
 /** @brief The size of a child stack. Initialized in thr_init. */
 static unsigned int stack_size;
@@ -82,7 +83,7 @@ static tcb_t main_thread;
  *
  * @return An index that identifies which stack addr is on.
  */
-static unsigned int prehash(char *addr) {
+unsigned int prehash(char *addr) {
 	return ((unsigned int)addr) / (stack_size + 2*ESP_ALIGN - 1);
 }
 
@@ -114,7 +115,11 @@ int thr_init(unsigned int size) {
 	/* Initialize the main_thread block. */
 	main_thread.stack = NULL;
 	main_thread.tid = gettid();
+
+	mutex_debug_print("Initializing main thread lock...");
 	ret |= mutex_init(&(main_thread.lock));
+
+	mutex_debug_print("Initializing main thread condition variable...");
 	ret |= cond_init(&(main_thread.signal));
 
 	main_thread.initialized = TRUE;
@@ -123,16 +128,25 @@ int thr_init(unsigned int size) {
 	/* Initialize the hash tables and their locks. */
 	STATIC_INIT_HASHTABLE(hashtable_t, tid_table, hash);
 	STATIC_INIT_HASHTABLE(hashtable_t, stack_table, hash);
+
+	thread_debug_print("Main: inserting %d -> %p into tid table.", main_thread.tid, &main_thread);
 	HASHTABLE_PUT(hashtable_t, tid_table, main_thread.tid, &main_thread);
+	
+	mutex_debug_print("Initializing tid table lock...");
 	ret |= mutex_init(&tid_table_lock);
+	
+	mutex_debug_print("Initializing stack table lock...");
 	ret |= mutex_init(&stack_table_lock);
 
 	/* Initialize the max stack address lock. */
+	mutex_debug_print("Initializing max child stack address lock...");
 	ret |= mutex_init(&max_child_stack_addr_lock);
 
 	/* Initialize the kill stack and its lock. */
 	kill_stack = kill_stack_top + KILL_STACK_SIZE + ESP_ALIGN - 1;
 	kill_stack = (char *) (((unsigned int)kill_stack) & ~(ESP_ALIGN - 1));
+	
+	mutex_debug_print("Initializing kill stack lock...");
 	ret |= mutex_init(&kill_stack_lock);
 	assert(ret == 0);
 	return ret;
@@ -146,7 +160,8 @@ int thr_init(unsigned int size) {
  *
  * @return The thread ID of the new thread on success, less than 0 on error
  */
-int thr_create(void *(*func)(void *), void *arg) {
+int thr_create(void *(*func)(void *), void *arg) 
+{
 	assert(initialized);
 	int ret = -1;
 
@@ -156,9 +171,12 @@ int thr_create(void *(*func)(void *), void *arg) {
 	assert(tcb);
 	tcb->exited = FALSE;
 	tcb->initialized = FALSE;
+	
+	mutex_debug_print("Initializing new tcb lock...");
 	if(mutex_init(&tcb->lock)) {
 		goto fail_mutex;
 	}
+	mutex_debug_print("Initializing new tcb condition variable...");
 	if (cond_init(&tcb->signal)) {
 		goto fail_cond;
 	}
@@ -179,14 +197,17 @@ int thr_create(void *(*func)(void *), void *arg) {
 	/* Fork the new child thread. If we fail, undo all the initialization we've
 	 * done. */
 	ret = thread_fork(func, arg, stack_bottom, tcb);
+	lprintf("[%d] Got back %d from thread_fork.", thr_getid(), ret);
 	if (ret >= 0) {
 		return ret;
 	}
 
 	assert(cond_destroy(&tcb->signal) == 0);
 fail_cond:
+	lprintf(" ******** Failed to initialized condition variable ******* ");
 	assert(mutex_destroy(&tcb->lock) == 0);
 fail_mutex:
+	lprintf(" ******** Failed to initialized mutex variable ******* ");
 	free(tcb->stack);
 	free(tcb);
 	return ret;
@@ -202,12 +223,10 @@ fail_mutex:
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	assert(tcb);
 	
-	lprintf("In thr_child_init at address %p, tcb = %p. \n",  
-		get_addr(), tcb);
 	tcb->tid = gettid();
-	lprintf("[%d] Finished getting tid.\n", tcb->tid);
 	
 	assert(mutex_lock(&tid_table_lock) == 0);
+	thread_debug_print("Thread: inserting %d -> %p into tid table.", tcb->tid, tcb);
 	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	
@@ -222,6 +241,7 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	tcb->initialized = TRUE;
 	assert(mutex_unlock(&tcb->lock) == 0);
 	assert(cond_signal(&tcb->signal) == 0);
+	thread_debug_print("[%d] About to enter \"func\".", thr_getid());
 	thr_exit(func(arg));
 }
 
@@ -238,11 +258,13 @@ void wait_for_child(tcb_t *tcb) {
 	assert(tcb);
 	assert(mutex_lock(&tcb->lock) == 0);
 
-	lprintf("[%d] Waiting for child\n", thr_getid());
-	while (!tcb->initialized) {
+	thread_debug_print("[%d] Waiting for child", thr_getid());
+	while (!tcb->initialized) 
+	{
 		assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
 	}
 	assert(mutex_unlock(&tcb->lock) == 0);
+	thread_debug_print("[%d] Done waiting for child", thr_getid());
 }	
 
 /** @brief Wait for the specified thread to exit and collect its status
@@ -287,6 +309,7 @@ int thr_join(int tid, void **statusp) {
 		free(tcb);
 		return 0;
 	}
+	MAGIC_BREAK;
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	return -1;
 }
@@ -329,7 +352,6 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 }
 
 void clean_up_thread(tcb_t *tcb) {
-	MAGIC_BREAK;
 	free(tcb->stack);
 	assert(cond_signal(&tcb->signal) == 0);
 
@@ -365,7 +387,6 @@ void thr_exit(void *status) {
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
-		MAGIC_BREAK;
 		assert(mutex_lock(&kill_stack_lock) == 0);
 		switch_stacks_and_vanish(tcb, kill_stack);
 	}

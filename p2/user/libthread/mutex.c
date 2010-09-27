@@ -22,186 +22,125 @@ static int mutex_id = 0;
 * 
 * @param mp The mutex to initialize.
 * 
-* @return 0 on success, -1 on failure.
+* @return 0 on success, 
+* 			-1 if the mutex is invalid.
+* 			-2 if the mutex is already initialized.
 */
 int mutex_init(mutex_t *mp)
 {
-	mutex_id++;
+	int id = 1;
+	
+	if(!mp) return -1;
+	if(mp->initialized == TRUE) return -2;
+	
+	atomic_xadd(&id, &mutex_id);
+	mutex_debug_print("   .....Initialized %d", id);
+	mp->id = id;
 	mp->ticket = 0;
 	mp->now_serving = 0;
-	mp->active_tid = -1;
+	mp->owner_prehash = 0;
 	mp->initialized = TRUE;
+	
 	return 0;
 }
 
 /** 
 * @brief Destroy a mutex, e.g. deactivate it.
+* 	Blame the user for race conditions.
 * 
 * @param mp The mutex to destroy.
 * 
 * @return 0 on success, 
 * 	-1 if mp is NULL, 
 * 	-2 if the lock is in use.
+* 	-3 if the lock wasn't active to begin with.
 */
 int mutex_destroy(mutex_t *mp)
 {
+	if(!mp) return -1;
+	if(mp->owner_prehash) return -2;
+	if(mp->initialized == FALSE) return -3;
+	
 	mp->initialized = FALSE;
 	return 0;
 }
 
 /** 
-* @brief Try locking the mutex.
-* 	Not implemented yet.
+* @brief Straightforward implementation of the bakery algorithm. 
+* 	Atomically take a ticket (enforces bounded waiting), 
+* 	 then wait for "now_serving" to match your ticket. 
+*
+* 	Releasing the lock is equivalent to incrementing now_serving.
+*
+*  Relies on a fair scheduler, since we don't know the tid (to avoid 
+*   making an expensive system call).
 * 
-* @param mp The mutex to try and lock.
+* @param mp The mutex to lock.
 * 
-* @return 0 on success
-* 	-1 on failure.
+* @return 0 on success, 
+* 			-1 if the lock isn't valid, 
+* 			-2 if the lock is already owned by the calling thread.
+* 			-3 if the lock isn't initialized.
 */
-int mutex_try_lock(mutex_t *mp)
-{
-	assert(mp);
-	//TODO
-	return 0;
-}
-
-
 int mutex_lock( mutex_t *mp )
 {
-	//int tid = gettid();
 	int ticket = 1;
+	int my_prehash;
+	
+	if(!mp) return -1;
+	if(mp->initialized == FALSE) return -3;
+	
+	//Check if we already own the lock.
+	my_prehash = prehash((char*)&ticket);
+	if(mp->owner_prehash == my_prehash || mp->owner_prehash == my_prehash - 1 
+												  || mp->owner_prehash == my_prehash + 1)
+		return -2;
 
 	atomic_xadd(&ticket, &mp->ticket);
 	
-	while(ticket != mp->now_serving)
-	{
-		//yield(mp->active_tid);
-		yield(-1);
-	}
-	//BANG race condition. We could yield to the wrong person.
+	mutex_debug_print("[%d] Waiting for lock %d, ticket = %d, now_serving = %d", 
+		my_prehash, mp->id, ticket, mp->now_serving);
 
-	//We have the mutex.
-	//mp->active_tid = tid;
+	while(ticket != mp->now_serving)
+		yield(-1);
+
+	/* We have acquired the lock. */
+	mp->owner_prehash = my_prehash;
+	mutex_debug_print("[%d] Acquires lock %d, ticket = %d, now_serving = %d", 
+		my_prehash, mp->id, ticket, mp->now_serving);
+	
 	return 0;
 }
 
+/** 
+* @brief Increment now_serving, and leave.
+* 
+* @param mp 
+* 
+* @return -1 if mp is invalid.
+* 			 -3 if mp is not initialized.
+* 			 -2 if the calling thread does not own the lock.
+*/
 int mutex_unlock( mutex_t *mp )
 {
-	int now_serving = 1;
-	atomic_xadd(&now_serving, &mp->now_serving);
-	return 0;
-}
-
-/** 
-* @brief Attempts to lock the lock, but returns 
-* 	immediately if it cannot.
-* 
-* @param lock  The lock to try and lock.
-* 
-* @return 0 on success, a negative integer on failure.
-*/
-int tts_try_lock(tts_lock_t* lock)
-{
-	int flag = 0;
-	atomic_xchg(&flag, &lock->lock);
+	int my_prehash;
 	
-	if(flag == 1)
-	{
-		//We got the lock.
-		return 0;
-	}
-	else
-	{
-		//We failed to get the lock.
-		return -1;
-	}
-}
-
-
-/** 
-* @brief Locks a basic test and test-and-set lock.
-* 
-* @param lock The lock to lock.
-* 
-* @return Zero on success.
-*/
-int tts_lock(tts_lock_t* lock)
-{
-	int flag = 0;
-
-	//Just spin.
-	while(flag == 0)
-	{
-		//If we have a chance of acquiring the lock...
-		if(lock->lock > 0)
-		{
-			atomic_xchg(&flag, &lock->lock);
-		}
-		else
-		{
-			yield(-1);
-		}
-	}
+	if(!mp) return -1;
+	if(mp->initialized == FALSE) return -3;
 	
+	//Check if we actually own the lock.
+	my_prehash = prehash((char*)&my_prehash);
+	if(mp->owner_prehash != my_prehash && mp->owner_prehash != my_prehash + 1
+												  && mp->owner_prehash != my_prehash - 1)
+	{
+		printf("Expected prehash %d, got prehash %d\n", mp->owner_prehash, my_prehash);
+		return -2;
+	}
+
+	mutex_debug_print("[%d] Releases lock %d - ticket = %d, now_serving = %d++", 
+		my_prehash, mp->id, mp->ticket, mp->now_serving);
+	mp->owner_prehash = 0;
+	mp->now_serving++;
 	return 0;
 }
-
-/** 
-* @brief Unlocks a basic test and test-and-set lock.
-* 
-* @param lock The lock to unlock.
-* 
-* @return Zero on success, a negative int when the lock
-* 	isn't locked to begin with.
-*/
-int tts_unlock(tts_lock_t* lock)
-{
-	int value = 1;
-	atomic_xchg(&value, &lock->lock);
-
-	//The lock wasn't unlocked to begin with.
-	if(value != 0)
-	{
-		return -1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-/** 
-* @brief Initializes a basic test and test-and-set lock.
-* 
-* @param lock The lock to initialize.
-* 
-* @return Zero on success, a negative in otherwise.
-*/
-int tts_init(tts_lock_t* lock)
-{
-	lock->lock = 1;
-	lock->tid = 0;
-	return 0;
-}
-
-/** 
-* @brief Destroys a basic test and test-and-set lock.
-* 
-* @param lock The lock to destroy.
-* 
-* @return Zero on success, a negative int, if the lock 
-* 	was being used.
-*/
-int tts_destroy(tts_lock_t* lock)
-{
-	if(lock->lock == 0)
-	{
-		return -1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
 

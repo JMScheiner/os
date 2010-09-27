@@ -62,13 +62,13 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the user/progs
 # directory
 #
-STUDENTTESTS = syscall_test atomic_test queue_test 
+STUDENTTESTS = syscall_test atomic_test queue_test mutex_test sem_test
 
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
 THREAD_OBJS = mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o cond.o
-THREAD_OBJS += mutex_unlock_and_vanish.o
+THREAD_OBJS += mutex_unlock_and_vanish.o sem.o
 
 
 # Thread Group Library Support.

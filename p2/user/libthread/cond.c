@@ -40,11 +40,17 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 	ENQUEUE_LAST(cv->q, &link);
 	mutex_unlock(&cv->qlock);
 	
-	//lprintf("[%d] About to unlock condition mutex.\n", thr_getid());
-	mutex_unlock(mp);
-	//lprintf("[%d] Unlocked condition mutex.\n", thr_getid());
+	if(mutex_unlock(mp) != 0) 
+	{
+		MAGIC_BREAK;
+	}
+	
+#ifdef MUTEX_DEBUG
+	int my_prehash = prehash((char*)&link);
+#endif
+	mutex_debug_print("[%d] About to deschedule without the global or queue locks.\n", my_prehash);
 	deschedule((int*)&link.cancel_deschedule);
-	//lprintf("[%d] Back from deschedule!\n", thr_getid());
+	mutex_debug_print("[%d] Back from deschedule.\n", my_prehash);
 	mutex_lock(mp);
 
 	return 0;
@@ -53,11 +59,8 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 int cond_signal( cond_t* cv )
 {
 	cond_link_t* link;
-	//lprintf("[%d] About to lock condition queue mutex.\n", thr_getid());
 	mutex_lock(&cv->qlock);
-	//lprintf("[%d] Locked condition queue mutex.\n", thr_getid());
 	DEQUEUE_FIRST(cv->q, link);
-	//lprintf("[%d] Dequeue'd link %p from condition queue.\n", thr_getid(), link);
 	if(link)
 	{
 		link->cancel_deschedule = TRUE;

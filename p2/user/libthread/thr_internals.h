@@ -12,20 +12,35 @@
 #include <queue.h>
 #include <mutex_type.h>
 
-#define THR_DEBUG
+//#define MUTEX_DEBUG
+#define THREAD_DEBUG
 
-#ifdef THR_DEBUG
+#ifdef MUTEX_DEBUG
 	#include <stdio.h>
-	#define thr_debug_print(...) do { \
-		printf(__VA_ARGS__); \
+	#define mutex_debug_print(...) do { \
+		lprintf(__VA_ARGS__); \
 	} while(0)
 
 #else
 
-	#define thr_debug_print(...) do { \
+	#define mutex_debug_print(...) do { \
+	} while(0)
+
+#endif //MUTEX_DEBUG
+
+#ifdef THREAD_DEBUG
+	#include <stdio.h>
+	#define thread_debug_print(...) do { \
+		lprintf(__VA_ARGS__); \
+	} while(0)
+
+#else
+
+	#define thread_debug_print(...) do { \
 	} while(0)
 
 #endif //THR_DEBUG
+
 
 /** Structures for mutexes **/
 
@@ -80,6 +95,7 @@ typedef struct tcb {
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
 void clean_up_thread(tcb_t *tcb);
+unsigned int prehash(char *addr);
 int mutex_unlock_and_vanish(mutex_t* mp);
 
 tcb_t *thr_gettcb(boolean_t remove_tcb);
