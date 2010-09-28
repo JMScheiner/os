@@ -165,6 +165,25 @@ int thr_init(unsigned int size) {
 	return ret;
 }
 
+/************************ Life cycle of a thread **************************
+ * Parent                              * Child                            *
+ **************************************************************************
+ * Initializes child tcb in thr_create *                                  *
+ * Call thr_fork                       *                                  *
+ * Wait for child to init              * Jump to new stack                *
+ *                                     * Call thr_child_init              *
+ *                                     * Get tid, add self to tables      *
+ *                                     * Signal parent                    *
+ * Continue                            * Call func                        *
+ * ...                                 * ...                              *
+ * Wait for child to die               * Call thr_exit                    *
+ *                                     * Set status                       *
+ *                                     * Jump to kill stack               *
+ *                                     * Free own stack, signal exit      *
+ * Get status, free child              * Jump to int stack                *
+ *                                     * Call vanish                      *
+ **************************************************************************/
+
 /** @brief Create a new thread running the given function
  *
  * @param func The function the new thread will begin running
@@ -290,7 +309,7 @@ void wait_for_child(tcb_t *tcb) {
  */
 int thr_join(int tid, void **statusp) {
 	assert(initialized);
-	tcb_t *tcb = NULL; // = &tcb_struct;
+	tcb_t *tcb = NULL;
 
 	/* Get the tcb corresponding to this tid from the tid_table. */
 	assert(mutex_lock(&tid_table_lock) == 0);
@@ -309,6 +328,13 @@ int thr_join(int tid, void **statusp) {
 		}
 		assert(mutex_unlock(&tcb->lock) == 0);
 
+		/* If the thread is inturrupted between setting exited to TRUE and
+		 * signalling us AND we are made runnable, we could get here before the
+		 * child calls cond_signal. The thread will have the kill_stack locked, so
+		 * lock the kill_stack so we don't free our child before they cond_signal.
+		 */
+		assert(mutex_lock(&kill_stack_lock) == 0);
+
 		/* Copy the joined thread's status. */
 		if (statusp) {
 			*statusp = tcb->statusp;
@@ -318,6 +344,8 @@ int thr_join(int tid, void **statusp) {
 		assert(mutex_destroy(&tcb->lock) == 0);
 		assert(cond_destroy(&tcb->signal) == 0);
 		free(tcb);
+		
+		assert(mutex_unlock(&kill_stack_lock) == 0);
 		return 0;
 	}
 	MAGIC_BREAK;
@@ -325,10 +353,15 @@ int thr_join(int tid, void **statusp) {
 	return -1;
 }
 
+/** @brief Get our tcb from the stack_table
+ *
+ * @param remove_tcb True iff our tcb should be removed from the stack_table
+ *
+ * @return A pointer to our tcb
+ */
 tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	assert(initialized);
-	//tcb_t tcb_struct;
-	tcb_t *tcb = NULL; //&tcb_struct;
+	tcb_t *tcb = NULL;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -362,9 +395,16 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	return tcb;
 }
 
+/** @brief Free our own stack and vanish
+ *
+ * @param tcb Our thread control block
+ */
 void clean_up_thread(tcb_t *tcb) 
 {
 	free(tcb->stack);
+	assert(mutex_lock(&tcb->lock) == 0);
+	tcb->exited = TRUE;
+	assert(mutex_unlock(&tcb->lock) == 0);
 	assert(cond_signal(&tcb->signal) == 0);
 
 	/* After unlocking the kill_stack mutex, we must vanish immediately without
@@ -387,12 +427,12 @@ void thr_exit(void *status) {
 
 	/* Set our status. */
 	tcb->statusp = status;
-	assert(mutex_lock(&tcb->lock) == 0);
-	tcb->exited = TRUE;
-	assert(mutex_unlock(&tcb->lock) == 0);
 
 	if (tcb == &main_thread) {
 		/* If we're the main thread, we can simply disappear. */
+		assert(mutex_lock(&tcb->lock) == 0);
+		tcb->exited = TRUE;
+		assert(mutex_unlock(&tcb->lock) == 0);
 		assert(cond_signal(&tcb->signal) == 0);
 		vanish();
 	}

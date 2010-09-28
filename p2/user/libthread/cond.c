@@ -82,10 +82,7 @@ int cond_broadcast( cond_t* cv)
 		make_runnable(link->tid);
 	}
 
-	//Sorry about the wrong semantics, but this
-	// needs to happen. Maybe an "EMPTY_QUEUE" function
-	// is in order.
-	STATIC_INIT_QUEUE(cv->q);
+	EMPTY_QUEUE(cv->q);
 	mutex_unlock(&cv->qlock);
 	
 	return 0;
