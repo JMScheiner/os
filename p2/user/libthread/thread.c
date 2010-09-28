@@ -258,13 +258,11 @@ void wait_for_child(tcb_t *tcb) {
 	assert(tcb);
 	assert(mutex_lock(&tcb->lock) == 0);
 
-	thread_debug_print("[%d] Waiting for child", thr_getid());
 	while (!tcb->initialized) 
 	{
 		assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
 	}
 	assert(mutex_unlock(&tcb->lock) == 0);
-	thread_debug_print("[%d] Done waiting for child", thr_getid());
 }	
 
 /** @brief Wait for the specified thread to exit and collect its status
@@ -351,7 +349,8 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	return tcb;
 }
 
-void clean_up_thread(tcb_t *tcb) {
+void clean_up_thread(tcb_t *tcb) 
+{
 	free(tcb->stack);
 	assert(cond_signal(&tcb->signal) == 0);
 
@@ -383,11 +382,20 @@ void thr_exit(void *status) {
 		assert(cond_signal(&tcb->signal) == 0);
 		vanish();
 	}
-	else {
+	else 
+	{
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
 		assert(mutex_lock(&kill_stack_lock) == 0);
+		
+		/*int ret;
+		if((ret = mutex_lock(&kill_stack_lock)) != 0)
+		{
+			printf("ret = %d\n", ret);
+			MAGIC_BREAK;
+		}*/
+		
 		switch_stacks_and_vanish(tcb, kill_stack);
 	}
 	// Shouldn't reach here
