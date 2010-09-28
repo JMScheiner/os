@@ -54,7 +54,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the 410user/progs
 # directory
 #
-410TESTS = startle mandelbrot cyclone agility_drill beady_test join_specific_test
+410TESTS = startle mandelbrot cyclone agility_drill beady_test join_specific_test thr_exit_join
 
 ###########################################################################
 # Test programs you have written which you wish to run
@@ -62,7 +62,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the user/progs
 # directory
 #
-STUDENTTESTS = syscall_test atomic_test queue_test mutex_test sem_test
+STUDENTTESTS = syscall_test atomic_test queue_test mutex_test sem_test overflow
 
 ###########################################################################
 # Object files for your thread library

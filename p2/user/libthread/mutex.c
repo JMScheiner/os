@@ -38,7 +38,6 @@ int mutex_init(mutex_t *mp)
 	mp->id = id;
 	mp->ticket = 0;
 	mp->now_serving = 0;
-	mp->owner_prehash = 0;
 	mp->initialized = TRUE;
 	
 	return 0;
@@ -58,7 +57,7 @@ int mutex_init(mutex_t *mp)
 int mutex_destroy(mutex_t *mp)
 {
 	if(!mp) return -1;
-	if(mp->owner_prehash) return -2;
+	if(mp->ticket != mp->now_serving) return -2;
 	if(mp->initialized == FALSE) return -3;
 	
 	mp->initialized = FALSE;
@@ -79,25 +78,21 @@ int mutex_destroy(mutex_t *mp)
 * 
 * @return 0 on success, 
 * 			-1 if the lock isn't valid, 
-* 			-2 if the lock is already owned by the calling thread.
-* 			-3 if the lock isn't initialized.
+* 			-2 if the lock isn't initialized.
 */
 int mutex_lock( mutex_t *mp )
 {
 	int ticket = 1;
-	int my_prehash;
 	
 	if(!mp) return -1;
-	if(mp->initialized == FALSE) return -3;
+	if(mp->initialized == FALSE) return -2;
 	
-	//Check if we already own the lock.
-	my_prehash = prehash((char*)&ticket);
-	if(mp->owner_prehash == my_prehash || mp->owner_prehash == my_prehash - 1 
-												  || mp->owner_prehash == my_prehash + 1)
-		return -2;
 
 	atomic_xadd(&ticket, &mp->ticket);
 	
+#ifdef MUTEX_DEBUG
+	int my_prehash = prehash((char*)&ticket);
+#endif
 	mutex_debug_print("[%d] Waiting for lock %d, ticket = %d, now_serving = %d", 
 		my_prehash, mp->id, ticket, mp->now_serving);
 
@@ -105,7 +100,6 @@ int mutex_lock( mutex_t *mp )
 		yield(-1);
 
 	/* We have acquired the lock. */
-	mp->owner_prehash = my_prehash;
 	mutex_debug_print("[%d] Acquires lock %d, ticket = %d, now_serving = %d", 
 		my_prehash, mp->id, ticket, mp->now_serving);
 	
@@ -118,28 +112,19 @@ int mutex_lock( mutex_t *mp )
 * @param mp 
 * 
 * @return -1 if mp is invalid.
-* 			 -3 if mp is not initialized.
-* 			 -2 if the calling thread does not own the lock.
+* 			 -2 if mp is not initialized.
 */
 int mutex_unlock( mutex_t *mp )
 {
-	int my_prehash;
-	
 	if(!mp) return -1;
-	if(mp->initialized == FALSE) return -3;
-	
-	//Check if we actually own the lock.
-	my_prehash = prehash((char*)&my_prehash);
-	if(mp->owner_prehash != my_prehash && mp->owner_prehash != my_prehash + 1
-												  && mp->owner_prehash != my_prehash - 1)
-	{
-		printf("Expected prehash %d, got prehash %d\n", mp->owner_prehash, my_prehash);
-		return -2;
-	}
+	if(mp->initialized == FALSE) return -2;
 
+#ifdef MUTEX_DEBUG
+	int my_prehash = prehash((char*)&my_prehash);
+#endif
 	mutex_debug_print("[%d] Releases lock %d - ticket = %d, now_serving = %d++", 
 		my_prehash, mp->id, mp->ticket, mp->now_serving);
-	mp->owner_prehash = 0;
+
 	mp->now_serving++;
 	return 0;
 }

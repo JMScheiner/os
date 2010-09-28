@@ -15,10 +15,6 @@ typedef struct mutex {
 	/* @brief The ticket of the thread that owns the mutex. */
 	int now_serving;
 	
-	/* @brief The prehash of the thread that currently owns the mutex, 
-	 * 		 or zero, if the mutex is free. */
-	int owner_prehash;
-	
 	/* @brief Unique identifier for this mutex. */
 	int id;
 	

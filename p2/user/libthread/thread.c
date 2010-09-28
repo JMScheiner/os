@@ -26,7 +26,10 @@
 /** @brief The size of the kill stack. Must be large enough to hold a call to
  * free. */
 #define KILL_STACK_SIZE 1024
-#define INT_STACK_SIZE 128
+
+/* @brief Really this needs to be 24 for the 6 words that get put on the user stack 
+ * 	before being copied to the kernel stack by INT. */
+#define INT_STACK_SIZE 32
 
 /** @brief The size of a child stack. Initialized in thr_init. */
 static unsigned int stack_size;
@@ -40,6 +43,10 @@ static char kill_stack_top[KILL_STACK_SIZE + 2*ESP_ALIGN - 1];
 /** @brief The base of the shared kill stack. A thread jumps to this stack just
  * before it exits so it can free its own stack. */
 static char *kill_stack;
+
+/* @brief A safe place for traps to execute, so we don't overwrite part of the kill stack. */
+static char int_stack_top[INT_STACK_SIZE + 2*ESP_ALIGN - 1];
+static char* int_stack;
 
 /** @brief A lock on the kill stack. */
 static mutex_t kill_stack_lock;
@@ -148,6 +155,12 @@ int thr_init(unsigned int size) {
 	
 	mutex_debug_print("Initializing kill stack lock...");
 	ret |= mutex_init(&kill_stack_lock);
+
+	/* Initialized the "int" stack. Since interrupts are atomic, 
+	 * 	and all information gets copied to the kernel stack, no need to lock. */
+	int_stack = int_stack_top + INT_STACK_SIZE + ESP_ALIGN - 1;
+	int_stack = (char *) (((unsigned int)int_stack) & ~(ESP_ALIGN - 1));
+	
 	assert(ret == 0);
 	return ret;
 }
@@ -356,8 +369,9 @@ void clean_up_thread(tcb_t *tcb)
 
 	/* After unlocking the kill_stack mutex, we must vanish immediately without
 	 * touching the stack again. This means we can't even try to return from
-	 * mutex_unlock. */
-	mutex_unlock_and_vanish(&kill_stack_lock);
+	 * mutex_unlock. Use the int_stack to handle information put on the user stack 
+	 * by INT */
+	mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
 }
 
 /** @brief Exit this thread with the given status
@@ -387,7 +401,7 @@ void thr_exit(void *status) {
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
-		assert(mutex_lock(&kill_stack_lock) == 0);
+		mutex_lock(&kill_stack_lock);
 		
 		/*int ret;
 		if((ret = mutex_lock(&kill_stack_lock)) != 0)

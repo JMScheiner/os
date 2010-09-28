@@ -96,7 +96,7 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
 void clean_up_thread(tcb_t *tcb);
 unsigned int prehash(char *addr);
-int mutex_unlock_and_vanish(mutex_t* mp);
+int mutex_unlock_and_vanish(mutex_t* mp, char* int_stack);
 
 tcb_t *thr_gettcb(boolean_t remove_tcb);
 
