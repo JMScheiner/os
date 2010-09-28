@@ -41,28 +41,6 @@
 
 #endif //THR_DEBUG
 
-
-/** Structures for mutexes **/
-
-/** 
-* @brief Definition for a basic test and test-and-set lock.
-*/
-typedef struct 
-{ 
-	int lock;
-	int tid;
-}tts_lock_t;
-
-/* 
- * A simple test and test-and-set lock implementation. 
- * 	Do not ensure bounded waiting.
- */
-int tts_lock(tts_lock_t* lock);
-int tts_try_lock(tts_lock_t* lock);
-int tts_unlock(tts_lock_t* lock);
-int tts_init(tts_lock_t* lock);
-int tts_destroy(tts_lock_t* lock);
-
 /* Thread control block */
 
 /** @brief Thread control block. Stores information about a thread. */

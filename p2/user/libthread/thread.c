@@ -320,7 +320,6 @@ int thr_join(int tid, void **statusp) {
 		free(tcb);
 		return 0;
 	}
-	MAGIC_BREAK;
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	return -1;
 }
@@ -402,13 +401,6 @@ void thr_exit(void *status) {
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
 		mutex_lock(&kill_stack_lock);
-		
-		/*int ret;
-		if((ret = mutex_lock(&kill_stack_lock)) != 0)
-		{
-			printf("ret = %d\n", ret);
-			MAGIC_BREAK;
-		}*/
 		
 		switch_stacks_and_vanish(tcb, kill_stack);
 	}
