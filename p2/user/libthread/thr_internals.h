@@ -59,9 +59,12 @@ typedef struct tcb {
 	/** @brief A lock for this block. */
 	mutex_t lock;
 
-	/** @brief A signal to indicate that this thread has exited. */
-	cond_t signal;
+	/** @brief A signal to indicate that this thread has been initialized. */
+	cond_t init_signal;
 
+	/** @brief A signal to indicate that this thread has exited. */
+	cond_t exit_signal;
+	
 	/** @brief TRUE iff this thread has/is exiting. The thread's status must be
 	 * set before this is set to TRUE. */
 	boolean_t exited;

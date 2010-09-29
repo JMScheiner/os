@@ -210,6 +210,18 @@
 		} \
 	} while (0)
 
+/** @def EMPTY_QUEUE(queue)
+ *
+ * @brief Remove all nodes from the queue.
+ *
+ * @param queue The queue to empty.
+ */
+#define EMPTY_QUEUE(queue) \
+	do { \
+		(queue).first = NULL; \
+		(queue).last = NULL; \
+	} while (0)
+
 /** @def PEEK_FIRST(queue, node)
  *
  * @brief Get the first node of the queue.

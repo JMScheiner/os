@@ -126,8 +126,9 @@ int thr_init(unsigned int size) {
 	mutex_debug_print("Initializing main thread lock...");
 	ret |= mutex_init(&(main_thread.lock));
 
-	mutex_debug_print("Initializing main thread condition variable...");
-	ret |= cond_init(&(main_thread.signal));
+	mutex_debug_print("Initializing main thread condition variables...");
+	ret |= cond_init(&(main_thread.init_signal));
+	ret |= cond_init(&(main_thread.exit_signal));
 
 	main_thread.initialized = TRUE;
 	main_thread.exited = FALSE;
@@ -165,6 +166,25 @@ int thr_init(unsigned int size) {
 	return ret;
 }
 
+/************************ Life cycle of a thread **************************
+ * Parent                              * Child                            *
+ **************************************************************************
+ * Initializes child tcb in thr_create *                                  *
+ * Call thr_fork                       *                                  *
+ * Wait for child to init              * Jump to new stack                *
+ *                                     * Call thr_child_init              *
+ *                                     * Get tid, add self to tables      *
+ *                                     * Signal parent                    *
+ * Continue                            * Call func                        *
+ * ...                                 * ...                              *
+ * Wait for child to die               * Call thr_exit                    *
+ *                                     * Set status                       *
+ *                                     * Jump to kill stack               *
+ *                                     * Free own stack, signal exit      *
+ * Get status, free child              * Jump to int stack                *
+ *                                     * Call vanish                      *
+ **************************************************************************/
+
 /** @brief Create a new thread running the given function
  *
  * @param func The function the new thread will begin running
@@ -180,7 +200,7 @@ int thr_create(void *(*func)(void *), void *arg)
 
 	/* Create a thread control block and initialize its stack, mutex, and
 	 * condition variable. */
-	tcb_t *tcb = (tcb_t *)malloc(sizeof(tcb_t));
+	tcb_t *tcb = (tcb_t *)calloc(1, sizeof(tcb_t));
 	assert(tcb);
 	tcb->exited = FALSE;
 	tcb->initialized = FALSE;
@@ -190,8 +210,11 @@ int thr_create(void *(*func)(void *), void *arg)
 		goto fail_mutex;
 	}
 	mutex_debug_print("Initializing new tcb condition variable...");
-	if (cond_init(&tcb->signal)) {
-		goto fail_cond;
+	if (cond_init(&tcb->init_signal)) {
+		goto fail_init_cond;
+	}
+	if (cond_init(&tcb->exit_signal)) {
+		goto fail_exit_cond;
 	}
 	tcb->stack = (char *)malloc(stack_size + 2*ESP_ALIGN - 1);
 	assert(tcb->stack);
@@ -199,7 +222,14 @@ int thr_create(void *(*func)(void *), void *arg)
 	/* Compute the base address of the child stack. */
 	char *stack_bottom = tcb->stack + stack_size + ESP_ALIGN - 1;
 	stack_bottom = (char *) (((unsigned int)stack_bottom) & ~(ESP_ALIGN - 1));
+
+	/* Place the child in the stack_table so it can call thr_getid */
+	unsigned int key = prehash(tcb->stack);
 	
+	assert(mutex_lock(&stack_table_lock) == 0);
+	HASHTABLE_PUT(hashtable_t, stack_table, key, tcb);
+	assert(mutex_unlock(&stack_table_lock) == 0);
+
 	/* Update the max child stack address. */
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
 	if (max_child_stack_addr < stack_bottom) {
@@ -214,14 +244,22 @@ int thr_create(void *(*func)(void *), void *arg)
 	if (ret >= 0) {
 		return ret;
 	}
+	lprintf(" ******** Failed to create child thread ******** ");
 
-	assert(cond_destroy(&tcb->signal) == 0);
-fail_cond:
+	assert(mutex_lock(&stack_table_lock) == 0);
+	HASHTABLE_REMOVE(hashtable_t, stack_table, key, tcb);
+	assert(mutex_unlock(&stack_table_lock) == 0);
+	
+	free(tcb->stack);
+	assert(cond_destroy(&tcb->exit_signal) == 0);
+fail_exit_cond:
+	lprintf(" ******** Failed to initialized condition variable ******* ");
+	assert(cond_destroy(&tcb->init_signal) == 0);
+fail_init_cond:
 	lprintf(" ******** Failed to initialized condition variable ******* ");
 	assert(mutex_destroy(&tcb->lock) == 0);
 fail_mutex:
 	lprintf(" ******** Failed to initialized mutex variable ******* ");
-	free(tcb->stack);
 	free(tcb);
 	return ret;
 }
@@ -229,7 +267,7 @@ fail_mutex:
 /** @brief Initialize a new child thread. 
  *
  * The tid still needs to be fetched, and the child needs to add its tcb to the
- * hashtables.
+ * tid table.
  *
  * @param tcb The partial thread control block of the thread. 
  */
@@ -243,17 +281,11 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	
-	unsigned int key = prehash(tcb->stack);
-	
-	assert(mutex_lock(&stack_table_lock) == 0);
-	HASHTABLE_PUT(hashtable_t, stack_table, key, tcb);
-	assert(mutex_unlock(&stack_table_lock) == 0);
-
 	/* Notify the parent that we've fully initialized ourself. */
 	assert(mutex_lock(&tcb->lock) == 0);
 	tcb->initialized = TRUE;
 	assert(mutex_unlock(&tcb->lock) == 0);
-	assert(cond_signal(&tcb->signal) == 0);
+	assert(cond_signal(&tcb->init_signal) == 0);
 	thread_debug_print("[%d] About to enter \"func\".", thr_getid());
 	thr_exit(func(arg));
 }
@@ -273,7 +305,7 @@ void wait_for_child(tcb_t *tcb) {
 
 	while (!tcb->initialized) 
 	{
-		assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
+		assert(cond_wait(&tcb->init_signal, &tcb->lock) == 0);
 	}
 	assert(mutex_unlock(&tcb->lock) == 0);
 }	
@@ -290,7 +322,7 @@ void wait_for_child(tcb_t *tcb) {
  */
 int thr_join(int tid, void **statusp) {
 	assert(initialized);
-	tcb_t *tcb = NULL; // = &tcb_struct;
+	tcb_t *tcb = NULL;
 
 	/* Get the tcb corresponding to this tid from the tid_table. */
 	assert(mutex_lock(&tid_table_lock) == 0);
@@ -305,9 +337,16 @@ int thr_join(int tid, void **statusp) {
 		/* Wait for the joined thread to signal completion. */
 		assert(mutex_lock(&tcb->lock) == 0);
 		while (!tcb->exited) {
-			assert(cond_wait(&tcb->signal, &tcb->lock) == 0);
+			assert(cond_wait(&tcb->exit_signal, &tcb->lock) == 0);
 		}
 		assert(mutex_unlock(&tcb->lock) == 0);
+
+		/* If the thread is inturrupted between setting exited to TRUE and
+		 * signalling us AND we are made runnable, we could get here before the
+		 * child calls cond_signal. The thread will have the kill_stack locked, so
+		 * lock the kill_stack so we don't free our child before they cond_signal.
+		 */
+		assert(mutex_lock(&kill_stack_lock) == 0);
 
 		/* Copy the joined thread's status. */
 		if (statusp) {
@@ -316,18 +355,26 @@ int thr_join(int tid, void **statusp) {
 
 		/* Deallocate the joined thread. */
 		assert(mutex_destroy(&tcb->lock) == 0);
-		assert(cond_destroy(&tcb->signal) == 0);
+		assert(cond_destroy(&tcb->init_signal) == 0);
+		assert(cond_destroy(&tcb->exit_signal) == 0);
 		free(tcb);
+		
+		assert(mutex_unlock(&kill_stack_lock) == 0);
 		return 0;
 	}
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	return -1;
 }
 
+/** @brief Get our tcb from the stack_table
+ *
+ * @param remove_tcb True iff our tcb should be removed from the stack_table
+ *
+ * @return A pointer to our tcb
+ */
 tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	assert(initialized);
-	//tcb_t tcb_struct;
-	tcb_t *tcb = NULL; //&tcb_struct;
+	tcb_t *tcb = NULL;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -361,10 +408,17 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	return tcb;
 }
 
+/** @brief Free our own stack and vanish
+ *
+ * @param tcb Our thread control block
+ */
 void clean_up_thread(tcb_t *tcb) 
 {
 	free(tcb->stack);
-	assert(cond_signal(&tcb->signal) == 0);
+	assert(mutex_lock(&tcb->lock) == 0);
+	tcb->exited = TRUE;
+	assert(mutex_unlock(&tcb->lock) == 0);
+	assert(cond_signal(&tcb->exit_signal) == 0);
 
 	/* After unlocking the kill_stack mutex, we must vanish immediately without
 	 * touching the stack again. This means we can't even try to return from
@@ -386,13 +440,13 @@ void thr_exit(void *status) {
 
 	/* Set our status. */
 	tcb->statusp = status;
-	assert(mutex_lock(&tcb->lock) == 0);
-	tcb->exited = TRUE;
-	assert(mutex_unlock(&tcb->lock) == 0);
 
 	if (tcb == &main_thread) {
 		/* If we're the main thread, we can simply disappear. */
-		assert(cond_signal(&tcb->signal) == 0);
+		assert(mutex_lock(&tcb->lock) == 0);
+		tcb->exited = TRUE;
+		assert(mutex_unlock(&tcb->lock) == 0);
+		assert(cond_signal(&tcb->exit_signal) == 0);
 		vanish();
 	}
 	else 
