@@ -2,6 +2,7 @@
 .globl atomic_xchg
 .globl atomic_cmpxchg
 .globl atomic_xadd
+.globl atomic_add
 .globl atomic_cmpset
 
 atomic_xchg: 
@@ -21,6 +22,12 @@ atomic_xadd:
 	//Generates invalid opcode with lock#! Is this not valid!?
 	lock xaddl	%ecx, (%edx)	//source = destination, destination = source + destination, 
 	movl	%ecx,		(%eax)		//Load the result back into source.
+	ret
+
+atomic_add:
+	movl  4(%esp), %edx        // Load dest into %edx
+	movl  8(%esp), %eax        // Load src int %eax
+	lock  xaddl  %eax, (%edx)  // eax = *dest, *dest += src;
 	ret
 
 atomic_cmpxchg: 

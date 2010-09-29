@@ -51,6 +51,7 @@ void atomic_xadd(int* source, int* destination);
 int atomic_cmpxchg(int* source, int* destination, int comp);
 
 int atomic_cmpset(int *dest, int src, int comp);
+int atomic_add(int *dest, int src);
 
 #endif /* end of include guard: ATOMIC_XEF37AV5 */
 
