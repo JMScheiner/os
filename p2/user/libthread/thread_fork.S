@@ -29,7 +29,7 @@ thread_fork:
 	pushl  20(%ebp)          // Push the tcb of the child as an argument
 	pushl  12(%ebp)          // Save arg on new stack.
 	pushl  8(%ebp)           // Save func on new stack.
-	call   thr_child_init    // Initialize the child and get a stack frame
+	call   thr_child_init    // Initialize and run the child
 	// We should never reach here
 PARENT:
 	pushl  %eax              // Save the return of THREAD_FORK_INT
