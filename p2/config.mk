@@ -68,7 +68,7 @@ STUDENTTESTS = syscall_test atomic_test queue_test mutex_test sem_test #overflow
 # Object files for your thread library
 ###########################################################################
 THREAD_OBJS = mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o cond.o
-THREAD_OBJS += mutex_unlock_and_vanish.o sem.o
+THREAD_OBJS += mutex_unlock_and_vanish.o sem.o list.o
 
 
 # Thread Group Library Support.
