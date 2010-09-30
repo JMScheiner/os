@@ -111,6 +111,7 @@ int thr_init(unsigned int size) {
 	assert(!initialized);
 	int ret = 0;
 	initialized = TRUE;
+	MAGIC_BREAK;
 
 	user_stack_size = size + sizeof(tcb_t *);
 	alloc_stack_size = ALIGN_UP(2 * user_stack_size);
@@ -190,7 +191,7 @@ int thr_create(void *(*func)(void *), void *arg)
 	/*lprintf("Creating child\n");*/
 	assert(initialized);
 	int ret = -1;
-
+	
 	/* Create a thread control block and initialize its stack, mutex, and
 	 * condition variable. */
 	tcb_t *tcb = (tcb_t *)calloc(1, sizeof(tcb_t));

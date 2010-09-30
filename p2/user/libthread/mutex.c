@@ -1,120 +1,119 @@
-/** 
-* @file mutex.c
-* @brief See function descriptions.
-* @author Justin Scheiner
-*/
 
+#include <mutex_type.h>
 #include <mutex.h>
-#include <thread.h>
-#include <thr_internals.h>
 #include <syscall.h>
 #include <atomic.h>
-#include <assert.h>
+#include <types.h>
 #include <stddef.h>
+#include <thread.h>
 #include <simics.h>
-#include <stdio.h>
-#include <simics.h>
 
-static int mutex_id = 0;
+/** @brief Spin on the mutex's test and set lock until it can be locked. */
+#define LOCK(mutex, ticket) \
+	ticket = 1; \
+	atomic_xadd(&ticket, &mutex->last_ticket); \
+	while (ticket != mutex->current_ticket) \
+		yield(-1); \
 
-/** 
-* @brief Initialize a mutex for locking.
-* 
-* @param mp The mutex to initialize.
-* 
-* @return 0 on success, 
-* 			-1 if the mutex is invalid.
-* 			-2 if the mutex is already initialized.
-*/
-int mutex_init(mutex_t *mp)
-{
-	int id = 1;
-	
-	if(!mp) return -1;
-	if(mp->initialized == TRUE) return -2;
+/** @brief Unlock the mutex's test and set lock. */
+#define UNLOCK(mutex) \
+	mutex->current_ticket++
 
-	atomic_xadd(&id, &mutex_id);
-	mutex_debug_print("   .....Initialized %d", id);
-	mp->id = id;
-	mp->ticket = 0;
-	mp->now_serving = 0;
+/** @brief Initialize a mutex before its first use.
+ *
+ * @param mp A pointer to the mutex.
+ *
+ * @return 0 on success, less than 0 on error.
+ */
+int mutex_init(mutex_t *mp) {
+	if (!mp) return -1;
+	mp->head = NULL;
+	mp->tail = NULL;
+	mp->free = TRUE;
 	mp->initialized = TRUE;
-	
+	mp->current_ticket = 0;
+	mp->last_ticket = 0;
 	return 0;
 }
 
-/** 
-* @brief Destroy a mutex, e.g. deactivate it.
-* 	Blame the user for race conditions.
-* 
-* @param mp The mutex to destroy.
-* 
-* @return 0 on success, 
-* 	-1 if mp is NULL, 
-* 	-2 if the lock is in use.
-* 	-3 if the lock wasn't active to begin with.
-*/
-int mutex_destroy(mutex_t *mp)
-{
-	if(!mp) return -1;
-	if(mp->ticket != mp->now_serving) return -2;
-	if(mp->initialized == FALSE) return -3;
-	
+/** @brief Destroya mutex after its last use.
+ *
+ * @param mp A pointer to the mutex.
+ *
+ * @return 0 on success, less than 0 on error.
+ */
+int mutex_destroy(mutex_t *mp) {
+	if (!mp) return -1;
+	if (!mp->initialized) return -2;
+
 	mp->initialized = FALSE;
 	return 0;
 }
 
-/** 
-* @brief Straightforward implementation of the bakery algorithm. 
-* 	Atomically take a ticket (enforces bounded waiting), 
-* 	 then wait for "now_serving" to match your ticket. 
-*
-* 	Releasing the lock is equivalent to incrementing now_serving.
-*
-*  Relies on a fair scheduler, since we don't know the tid (to avoid 
-*   making an expensive system call).
-* 
-* @param mp The mutex to lock.
-* 
-* @return 0 on success, 
-* 			-1 if the lock isn't valid, 
-* 			-2 if the lock isn't initialized.
-*/
-int mutex_lock( mutex_t *mp )
-{
-	int ticket, tid;
-	
-	if(!mp) return -1;
-	if(mp->initialized == FALSE) return -2;
-	
-	ticket = 1;
-	tid = thr_getid();
+/** @brief Lock the mutex, forcing others to wait until it is unlocked.
+ *
+ * @param mp A pointer to the mutex.
+ *
+ * @return 0 on success, less than 0 on error.
+ */
+int mutex_lock(mutex_t *mp) {
+	if (!mp) return -1;
+	if (!mp->initialized) return -2;
 
-	atomic_xadd(&ticket, &mp->ticket);
-	
-	while(ticket != mp->now_serving)
-		thr_yield(mp->active_tid);
-	
-	mp->active_tid = tid;
+	mutex_node_t node;
+	node.tid = thr_getid();
+	node.next = NULL;
+	int ticket;
+
+	/* Acquire the lock and place our tid at the end of the waiting list 
+	 * for the mutex. */
+	LOCK(mp, ticket);
+	if (mp->tail) {
+		mp->tail->next = &node;
+	}
+	else {
+		mp->head = &node;
+	}
+	mp->tail = &node;
+	UNLOCK(mp);
+
+	/* If we are not at the head of the list and the mutex is not being 
+	 * released, then deschedule ourselves. */
+	while (!mp->free || node.tid != mp->head->tid) {
+		deschedule(&mp->free);
+	}
+
+	/* We have the mutex, so remove our tid from the head of the list */
+	mp->free = FALSE;
+	LOCK(mp, ticket);
+	mp->head = mp->head->next;
+	if (!mp->head) {
+		mp->tail = NULL;
+	}
+	UNLOCK(mp);
 	return 0;
 }
 
-/** 
-* @brief Increment now_serving, and leave.
-* 
-* @param mp 
-* 
-* @return -1 if mp is invalid.
-* 			 -2 if mp is not initialized.
-*/
-int mutex_unlock( mutex_t *mp )
-{
-	if(!mp) return -1;
-	if(mp->initialized == FALSE) return -2;
+/** @brief Unock the mutex, allowing another thread to proceed.
+ *
+ * @param mp A pointer to the mutex.
+ *
+ * @return 0 on success, less than 0 on error.
+ */
+int mutex_unlock(mutex_t *mp) {
+	if (!mp) return -1;
+	if (!mp->initialized) return -2;
+
+	int ticket;
+
+	/* Remove our tid from the head of the list, and make the next thread
+	 * runnable. */
+	mp->free = TRUE;
+	LOCK(mp, ticket);
+	if (mp->head)
+		make_runnable(mp->head->tid);
+	UNLOCK(mp);
 	
-	/* Make sure the scheduler yields to people other than me. */
-	mp->active_tid = -1;
-	mp->now_serving++;
 	return 0;
 }
 

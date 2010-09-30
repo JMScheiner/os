@@ -7,12 +7,14 @@
 #include <thread.h>
 
 /** @brief Spin on the mutex's test and set lock until it can be locked. */
-#define LOCK(mutex) \
-	while (atomic_cmpset(&mutex->lock, 1, 0) != 0)
+#define LOCK(mutex, ticket) \
+	atomic_xadd(&ticket, &mutex->last_ticket); \
+	while (ticket != mutex->current_ticket) \
+		yield(-1); \
 
 /** @brief Unlock the mutex's test and set lock. */
 #define UNLOCK(mutex) \
-	mutex->lock = 0
+	mutex->current_ticket++
 
 /** @brief A node in the mutex's linked list. */
 typedef struct mutex_node {
@@ -31,14 +33,17 @@ typedef struct mutex {
 	/* The last node in the waiting list for this mutex. */
 	mutex_node_t *tail;
 
-	/* A test and set lock to protect the waiting list. */
-	int lock;
-
 	/* True if the mutex is free. */
 	boolean_t free;
 
 	/* True iff the mutex has been initialized. */
 	boolean_t initialized;
+
+	/* The ticket currently being served. */
+	int current_ticket;
+
+	/* The last ticket not yet given out. */
+	int last_ticket;
 } mutex_t;
 
 /** @brief Initialize a mutex before its first use.
@@ -51,9 +56,10 @@ int mutex_init(mutex_t *mp) {
 	if (!mp) return -1;
 	mp->head = NULL;
 	mp->tail = NULL;
-	mp->lock = 0;
 	mp->free = TRUE;
 	mp->initialized = TRUE;
+	mp->current_ticket = 0;
+	mp->last_ticket = 0;
 }
 
 /** @brief Destroya mutex after its last use.
@@ -84,9 +90,11 @@ int mutex_lock(mutex_t *mp) {
 	mutex_node_t node;
 	node.tid = thr_getid();
 	node.next = NULL;
+	int ticket = 1;
 
-	/* Place our tid at the end of the waiting list for the mutex. */
-	LOCK(mp);
+	/* Acquire the lock and place our tid at the end of the waiting list 
+	 * for the mutex. */
+	LOCK(mp, ticket);
 	if (mp->tail) {
 		mp->tail->next = &node;
 	}
@@ -102,9 +110,9 @@ int mutex_lock(mutex_t *mp) {
 		deschedule((int *)&mp->free);
 	}
 
-	/* We have the lock, so remove our tid from the head of the list */
+	/* We have the mutex, so remove our tid from the head of the list */
 	mp->free = FALSE;
-	LOCK(mp);
+	LOCK(mp, ticket);
 	mp->head = mp->head->next;
 	if (!mp->head) {
 		mp->tail = NULL;
