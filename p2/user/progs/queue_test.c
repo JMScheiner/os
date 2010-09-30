@@ -17,8 +17,8 @@ int main(int argc, const char *argv[])
 {
 	printf("Starting up.\n");
 
-	/*elem_queue q;	
-	STATIC_INIT_QUEUE(&q);
+	elem_queue q;	
+	STATIC_INIT_QUEUE(q);
 
 	elem_t n1;
 	elem_t n2;
@@ -31,16 +31,17 @@ int main(int argc, const char *argv[])
 	n3.a = 3;
 	n3.b = 3;
 
-	ENQUEUE_FIRST(&q, (&n1));
-	ENQUEUE_FIRST(&q, (&n2));
-	ENQUEUE_FIRST(&q, (&n3));
+	ENQUEUE_FIRST(q, (&n1));
+	ENQUEUE_FIRST(q, (&n2));
+	ENQUEUE_FIRST(q, (&n3));
 	
 	elem_t* i;
 
-	FOREACH(&q, i)
+	FOREACH(q, i)
 	{
+		printf("prev, node, next, %p %p %p\n", i->prev, i, i->next);
 		printf("a = %d, b = %d\n", i->a, i->b);
-	}*/
+	}
 		
 	return 0;
 }

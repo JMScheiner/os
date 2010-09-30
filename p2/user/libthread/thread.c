@@ -55,6 +55,8 @@ static char* int_stack;
 /** @brief A lock on the kill stack. */
 static mutex_t kill_stack_lock;
 
+static tcb_t *kill_stack_tcb = NULL;
+
 /** @brief Define a hashtable type from int to tcb_t *. */
 DEFINE_HASHTABLE(hashtable_t, int, tcb_t *);
 
@@ -84,11 +86,17 @@ static unsigned int hash(int key) {
 	return (unsigned int)key;
 }
 
-#define TCB_ADDRESS(address) \
-	(tcb_t *)ALIGN_DOWN(user_stack_size * (((unsigned int)(address)) / user_stack_size) + user_stack_size)
+#define ALIGN_DOWN_TCB(address) \
+	(user_stack_size * ((unsigned int)(address) / user_stack_size))
+
+#define ALIGN_UP_TCB(address) \
+	(user_stack_size * (((unsigned int)(address) + user_stack_size - 1) / user_stack_size))
 
 #define ALIGN_DOWN(address) \
 	(((unsigned int)(address)) & ~(ESP_ALIGN - 1))
+
+#define ALIGN_UP(address) \
+	((((unsigned int)(address) - 1) | (ESP_ALIGN - 1)) + 1)
 
 /** @brief Initialize the thread library
  *
@@ -105,7 +113,7 @@ int thr_init(unsigned int size) {
 	initialized = TRUE;
 
 	user_stack_size = size + sizeof(tcb_t *);
-	alloc_stack_size = 2 * user_stack_size + ESP_ALIGN - 1;
+	alloc_stack_size = ALIGN_UP(2 * user_stack_size);
 
 	/* Initialize the main_thread block. */
 	main_thread.stack = NULL;
@@ -179,6 +187,7 @@ int thr_init(unsigned int size) {
  */
 int thr_create(void *(*func)(void *), void *arg) 
 {
+	/*lprintf("Creating child\n");*/
 	assert(initialized);
 	int ret = -1;
 
@@ -202,26 +211,26 @@ int thr_create(void *(*func)(void *), void *arg)
 	}
 	tcb->stack = (char *)malloc(alloc_stack_size);
 	assert(tcb->stack);
-	
+
 	/* Compute the base address of the child stack and place a pointer to the tcb
 	 * above it. */
-	MAGIC_BREAK;
-	tcb_t **stack_bottom = (tcb_t **)TCB_ADDRESS(tcb->stack + user_stack_size);
-	*stack_bottom = tcb;
-	lprintf("New tcb at %p\n", *stack_bottom);
-	stack_bottom--;
-
+	char *stack_base = tcb->stack + alloc_stack_size - 4;
+	stack_base = (char *)ALIGN_DOWN_TCB(stack_base);
+	*(tcb_t **)stack_base = tcb;
+/*	lprintf("New tcb at %p in [%p, %p]", stack_base, tcb->stack, tcb->stack + alloc_stack_size);*/
+	stack_base -= 4;
+	
 	/* Update the max child stack address. */
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
-	if (max_child_stack_addr < (char *)stack_bottom) {
-		max_child_stack_addr = (char *)stack_bottom;
+	if (max_child_stack_addr < (char *)stack_base) {
+		max_child_stack_addr = (char *)stack_base;
 	}
 	assert(mutex_unlock(&max_child_stack_addr_lock) == 0);
 	
 	/* Fork the new child thread. If we fail, undo all the initialization we've
 	 * done. */
-	ret = thread_fork(func, arg, (char *)*stack_bottom, tcb);
-	lprintf("[%d] Got back %d from thread_fork.", thr_getid(), ret);
+	ret = thread_fork(func, arg, stack_base, tcb);
+/*	lprintf("[%d] Got back %d from thread_fork.", thr_getid(), ret);*/
 	if (ret >= 0) {
 		return ret;
 	}
@@ -250,7 +259,8 @@ fail_mutex:
  */
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	assert(tcb);
-	lprintf("Child tcb is %p\n", tcb);
+/*	lprintf("Child tcb is %p\n", tcb);*/
+/*	lprintf("Child tcb is also %p\n", tcb2);*/
 	
 	tcb->tid = gettid();
 	
@@ -279,6 +289,7 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
  */
 void wait_for_child(tcb_t *tcb) {
 	assert(tcb);
+/*	lprintf("Waiting on tcb %p\n", tcb);*/
 	assert(mutex_lock(&tcb->lock) == 0);
 
 	while (!tcb->initialized) 
@@ -350,9 +361,13 @@ int thr_join(int tid, void **statusp) {
  */
 tcb_t *thr_gettcb() {
 	assert(initialized);
-	lprintf("In thr_gettcb\n");
-	MAGIC_BREAK;
 	char *stack_addr = get_addr();
+
+	/* If this is being called from the kill stack, return the tcb of the
+	 * thread using the kill stack. */
+	if (kill_stack_top <= stack_addr && stack_addr <= kill_stack) {
+		return kill_stack_tcb;
+	}
 
 	/* If our address is higher than the address of any child stack, then we must
 	 * be the parent thread. */
@@ -360,9 +375,8 @@ tcb_t *thr_gettcb() {
 		return &main_thread;
 	}
 
-	tcb_t *tcb = TCB_ADDRESS(stack_addr);
-	lprintf("Looking for tcb at %p\n", tcb);
-	return tcb;
+	tcb_t **tcb_addr = (tcb_t **)ALIGN_UP_TCB(stack_addr);
+	return *tcb_addr;
 }
 
 /** @brief Free our own stack and vanish
@@ -371,7 +385,7 @@ tcb_t *thr_gettcb() {
  */
 void clean_up_thread(tcb_t *tcb) 
 {
-	MAGIC_BREAK;
+	kill_stack_tcb = tcb;
 	free(tcb->stack);
 	assert(mutex_lock(&tcb->lock) == 0);
 	tcb->exited = TRUE;
@@ -382,7 +396,6 @@ void clean_up_thread(tcb_t *tcb)
 	 * touching the stack again. This means we can't even try to return from
 	 * mutex_unlock. Use the int_stack to handle information put on the user stack 
 	 * by INT */
-	MAGIC_BREAK;
 	mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
 }
 
@@ -413,10 +426,9 @@ void thr_exit(void *status) {
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
-		lprintf("Before kill stack lock\n");
+		/*lprintf("Before kill stack lock\n");*/
 		mutex_lock(&kill_stack_lock);
-		lprintf("After kill stack lock\n");
-		
+		/*lprintf("After kill stack lock\n");*/
 		switch_stacks_and_vanish(tcb, kill_stack);
 	}
 	// Shouldn't reach here
