@@ -111,7 +111,6 @@ int thr_init(unsigned int size) {
 	assert(!initialized);
 	int ret = 0;
 	initialized = TRUE;
-	MAGIC_BREAK;
 
 	user_stack_size = size + sizeof(tcb_t *);
 	alloc_stack_size = ALIGN_UP(2 * user_stack_size);

@@ -7,34 +7,23 @@
 
 #include <types.h>
 
-/** @brief A node in the mutex's linked list. */
-typedef struct mutex_node {
-	/** @brief Tid of a thread waiting on this mutex. */
-	int tid;
-
-	/** @brief Next node in the list. */
-	struct mutex_node *next;
-} mutex_node_t;
-
-/** @brief A mutex to allow exclusive access to a section of code. */
 typedef struct mutex {
-	/* The head node in the waiting list for this mutex. */
-	mutex_node_t *head;
 
-	/* The last node in the waiting list for this mutex. */
-	mutex_node_t *tail;
-
-	/* True if the mutex is free. */
-	int free;
-
-	/* True iff the mutex has been initialized. */
+	/* @brief The ticket counter, each thread is guaranteed a unique ticket. */
+	int ticket;
+	
+	/* @brief The ticket of the thread that owns the mutex. */
+	int now_serving;
+	
+	/* @brief The tid of the mutex owner. */
+	int active_tid;
+	
+	/* @brief Unique identifier for this mutex. */
+	int id;
+	
+	/* @brief Flag indicating whether this mutex is initialized.*/
 	boolean_t initialized;
-
-	/* The ticket currently being served. */
-	int current_ticket;
-
-	/* The last ticket not yet given out. */
-	int last_ticket;
+	
 } mutex_t;
 
 #endif /* _MUTEX_TYPE_H */

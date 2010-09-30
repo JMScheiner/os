@@ -1,13 +1,16 @@
 
+#include <mutex_type.h>
 #include <mutex.h>
 #include <syscall.h>
 #include <atomic.h>
 #include <types.h>
 #include <stddef.h>
 #include <thread.h>
+#include <simics.h>
 
 /** @brief Spin on the mutex's test and set lock until it can be locked. */
 #define LOCK(mutex, ticket) \
+	ticket = 1; \
 	atomic_xadd(&ticket, &mutex->last_ticket); \
 	while (ticket != mutex->current_ticket) \
 		yield(-1); \
@@ -15,36 +18,6 @@
 /** @brief Unlock the mutex's test and set lock. */
 #define UNLOCK(mutex) \
 	mutex->current_ticket++
-
-/** @brief A node in the mutex's linked list. */
-typedef struct mutex_node {
-	/** @brief Tid of a thread waiting on this mutex. */
-	int tid;
-
-	/** @brief Next node in the list. */
-	struct mutex_node *next;
-} mutex_node_t;
-
-/** @brief A mutex to allow exclusive access to a section of code. */
-typedef struct mutex {
-	/* The head node in the waiting list for this mutex. */
-	mutex_node_t *head;
-
-	/* The last node in the waiting list for this mutex. */
-	mutex_node_t *tail;
-
-	/* True if the mutex is free. */
-	boolean_t free;
-
-	/* True iff the mutex has been initialized. */
-	boolean_t initialized;
-
-	/* The ticket currently being served. */
-	int current_ticket;
-
-	/* The last ticket not yet given out. */
-	int last_ticket;
-} mutex_t;
 
 /** @brief Initialize a mutex before its first use.
  *
@@ -60,9 +33,11 @@ int mutex_init(mutex_t *mp) {
 	mp->initialized = TRUE;
 	mp->current_ticket = 0;
 	mp->last_ticket = 0;
+	mp->user = -1;
+	return 0;
 }
 
-/** @brief Destroya mutex after its last use.
+/** @brief Destroy a mutex after its last use.
  *
  * @param mp A pointer to the mutex.
  *
@@ -71,7 +46,6 @@ int mutex_init(mutex_t *mp) {
 int mutex_destroy(mutex_t *mp) {
 	if (!mp) return -1;
 	if (!mp->initialized) return -2;
-	if (mp->lock != 0) return -3;
 
 	mp->initialized = FALSE;
 	return 0;
@@ -90,7 +64,7 @@ int mutex_lock(mutex_t *mp) {
 	mutex_node_t node;
 	node.tid = thr_getid();
 	node.next = NULL;
-	int ticket = 1;
+	int ticket;
 
 	/* Acquire the lock and place our tid at the end of the waiting list 
 	 * for the mutex. */
@@ -107,11 +81,12 @@ int mutex_lock(mutex_t *mp) {
 	/* If we are not at the head of the list and the mutex is not being 
 	 * released, then deschedule ourselves. */
 	while (!mp->free || node.tid != mp->head->tid) {
-		deschedule((int *)&mp->free);
+		deschedule(&mp->free);
 	}
 
 	/* We have the mutex, so remove our tid from the head of the list */
 	mp->free = FALSE;
+	mp->user = node.tid;
 	LOCK(mp, ticket);
 	mp->head = mp->head->next;
 	if (!mp->head) {
@@ -131,11 +106,17 @@ int mutex_unlock(mutex_t *mp) {
 	if (!mp) return -1;
 	if (!mp->initialized) return -2;
 
+	int ticket;
+
 	/* Remove our tid from the head of the list, and make the next thread
 	 * runnable. */
 	mp->free = TRUE;
+	LOCK(mp, ticket);
 	if (mp->head)
 		make_runnable(mp->head->tid);
+	mp->user = -1;
+	UNLOCK(mp);
+	
 	return 0;
 }
 

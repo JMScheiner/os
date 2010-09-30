@@ -98,8 +98,8 @@ int sem_signal(sem_t* sem)
 {
 	mutex_lock(&sem->lock);
 	sem->count++;
-	cond_signal(&sem->nonzero);
 	mutex_unlock(&sem->lock);
+	cond_signal(&sem->nonzero);
 	return 0;
 }
 
