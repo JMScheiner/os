@@ -9,6 +9,7 @@
 
 #include <mutex.h>
 #include <cond.h>
+#include <list.h>
 #include <thr_internals.h>
 #include <thread_helper.h>
 #include <thread_fork.h>
@@ -44,7 +45,8 @@ static char kill_stack_top[KILL_STACK_SIZE + 2*ESP_ALIGN - 1];
  * before it exits so it can free its own stack. */
 static char *kill_stack;
 
-/* @brief A safe place for traps to execute, so we don't overwrite part of the kill stack. */
+/* @brief A safe place for traps to execute, so we don't overwrite part of 
+ * the kill stack. */
 static char int_stack_top[INT_STACK_SIZE + 2*ESP_ALIGN - 1];
 static char* int_stack;
 
@@ -61,12 +63,9 @@ static hashtable_t tid_table;
 /** @brief A lock for the tid_table. */
 static mutex_t tid_table_lock;
 
-/** @brief A table mapping stack addresses (kind of) to thread control blocks.
- * The main parent thread will not be in this table. */
-static hashtable_t stack_table;
-
-/** @brief A lock for the stack_table. */
-static mutex_t stack_table_lock;
+/** @brief A linked list mapping stack addresses (kind of) to thread control 
+ * blocks. The main parent thread will not be in this table. */
+static list_t stack_list;
 
 /** @brief The maximum stack address a child thread could have. */
 static char *max_child_stack_addr = NULL;
@@ -135,7 +134,8 @@ int thr_init(unsigned int size) {
 
 	/* Initialize the hash tables and their locks. */
 	STATIC_INIT_HASHTABLE(hashtable_t, tid_table, hash);
-	STATIC_INIT_HASHTABLE(hashtable_t, stack_table, hash);
+	stack_list = list_new();
+	/*STATIC_INIT_HASHTABLE(hashtable_t, stack_table, hash);*/
 
 	thread_debug_print("Main: inserting %d -> %p into tid table.", main_thread.tid, &main_thread);
 	HASHTABLE_PUT(hashtable_t, tid_table, main_thread.tid, &main_thread);
@@ -143,8 +143,8 @@ int thr_init(unsigned int size) {
 	mutex_debug_print("Initializing tid table lock...");
 	ret |= mutex_init(&tid_table_lock);
 	
-	mutex_debug_print("Initializing stack table lock...");
-	ret |= mutex_init(&stack_table_lock);
+	/*mutex_debug_print("Initializing stack table lock...");
+	ret |= mutex_init(&stack_table_lock);*/
 
 	/* Initialize the max stack address lock. */
 	mutex_debug_print("Initializing max child stack address lock...");
@@ -225,11 +225,14 @@ int thr_create(void *(*func)(void *), void *arg)
 
 	/* Place the child in the stack_table so it can call thr_getid */
 	unsigned int key = prehash(tcb->stack);
-	
+
+	list_insert(stack_list, key, tcb);
+
+	/*
 	assert(mutex_lock(&stack_table_lock) == 0);
 	HASHTABLE_PUT(hashtable_t, stack_table, key, tcb);
 	assert(mutex_unlock(&stack_table_lock) == 0);
-
+	*/
 	/* Update the max child stack address. */
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
 	if (max_child_stack_addr < stack_bottom) {
@@ -246,10 +249,12 @@ int thr_create(void *(*func)(void *), void *arg)
 	}
 	lprintf(" ******** Failed to create child thread ******** ");
 
+	list_delete(stack_list, key);
+	/*
 	assert(mutex_lock(&stack_table_lock) == 0);
 	HASHTABLE_REMOVE(hashtable_t, stack_table, key, tcb);
 	assert(mutex_unlock(&stack_table_lock) == 0);
-	
+	*/
 	free(tcb->stack);
 	assert(cond_destroy(&tcb->exit_signal) == 0);
 fail_exit_cond:
@@ -366,9 +371,9 @@ int thr_join(int tid, void **statusp) {
 	return -1;
 }
 
-/** @brief Get our tcb from the stack_table
+/** @brief Get our tcb from the stack_list
  *
- * @param remove_tcb True iff our tcb should be removed from the stack_table
+ * @param remove_tcb True iff our tcb should be removed from the stack_list
  *
  * @return A pointer to our tcb
  */
@@ -385,14 +390,29 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 
 	unsigned int key = prehash(stack_addr);
 
+	tcb = list_lookup(stack_list, key);
+	if (!tcb || tcb->stack > stack_addr) {
+		if (remove_tcb) {
+			tcb = list_delete(stack_list, key - 1);
+		}
+		else {
+			tcb = list_lookup(stack_list, key - 1);
+		}
+	}
+	else if (remove_tcb) {
+		tcb = list_delete(stack_list, key);
+	}
+	assert(tcb);
+	return tcb;
+
 	/* Our stack address will either use the same key as the top address of our
 	 * stack, or it will be one greater. */
-	assert(mutex_lock(&stack_table_lock) == 0);
+/*	assert(mutex_lock(&stack_table_lock) == 0);
 	HASHTABLE_GET(hashtable_t, stack_table, key, tcb);
-
+*/
 	/* If the top of the retrieved stack is above us, then we must be on the
 	 * stack below the retrieved one. */
-	if (!tcb || tcb->stack > stack_addr) {
+/*	if (!tcb || tcb->stack > stack_addr) {
 		if (remove_tcb) {
 			HASHTABLE_REMOVE(hashtable_t, stack_table, key - 1, tcb);
 		}
@@ -405,7 +425,7 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 	}
 	assert(tcb);
 	assert(mutex_unlock(&stack_table_lock) == 0);
-	return tcb;
+	return tcb;*/
 }
 
 /** @brief Free our own stack and vanish
