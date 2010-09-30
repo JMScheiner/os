@@ -205,8 +205,10 @@ int thr_create(void *(*func)(void *), void *arg)
 	
 	/* Compute the base address of the child stack and place a pointer to the tcb
 	 * above it. */
+	MAGIC_BREAK;
 	tcb_t **stack_bottom = (tcb_t **)TCB_ADDRESS(tcb->stack + user_stack_size);
 	*stack_bottom = tcb;
+	lprintf("New tcb at %p\n", *stack_bottom);
 	stack_bottom--;
 
 	/* Update the max child stack address. */
@@ -218,7 +220,7 @@ int thr_create(void *(*func)(void *), void *arg)
 	
 	/* Fork the new child thread. If we fail, undo all the initialization we've
 	 * done. */
-	ret = thread_fork(func, arg, (char *)stack_bottom, tcb);
+	ret = thread_fork(func, arg, (char *)*stack_bottom, tcb);
 	lprintf("[%d] Got back %d from thread_fork.", thr_getid(), ret);
 	if (ret >= 0) {
 		return ret;
@@ -248,6 +250,7 @@ fail_mutex:
  */
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	assert(tcb);
+	lprintf("Child tcb is %p\n", tcb);
 	
 	tcb->tid = gettid();
 	
@@ -347,6 +350,8 @@ int thr_join(int tid, void **statusp) {
  */
 tcb_t *thr_gettcb() {
 	assert(initialized);
+	lprintf("In thr_gettcb\n");
+	MAGIC_BREAK;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -355,7 +360,9 @@ tcb_t *thr_gettcb() {
 		return &main_thread;
 	}
 
-	return TCB_ADDRESS(stack_addr);
+	tcb_t *tcb = TCB_ADDRESS(stack_addr);
+	lprintf("Looking for tcb at %p\n", tcb);
+	return tcb;
 }
 
 /** @brief Free our own stack and vanish
@@ -364,6 +371,7 @@ tcb_t *thr_gettcb() {
  */
 void clean_up_thread(tcb_t *tcb) 
 {
+	MAGIC_BREAK;
 	free(tcb->stack);
 	assert(mutex_lock(&tcb->lock) == 0);
 	tcb->exited = TRUE;
@@ -374,6 +382,7 @@ void clean_up_thread(tcb_t *tcb)
 	 * touching the stack again. This means we can't even try to return from
 	 * mutex_unlock. Use the int_stack to handle information put on the user stack 
 	 * by INT */
+	MAGIC_BREAK;
 	mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
 }
 
@@ -404,7 +413,9 @@ void thr_exit(void *status) {
 		/* Otherwise we must free our stack. We call free from the stack we are
 		 * deallocating, so we must jump to the kill_stack dedicated for this
 		 * purpose. */
+		lprintf("Before kill stack lock\n");
 		mutex_lock(&kill_stack_lock);
+		lprintf("After kill stack lock\n");
 		
 		switch_stacks_and_vanish(tcb, kill_stack);
 	}
