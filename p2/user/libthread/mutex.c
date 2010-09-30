@@ -32,7 +32,7 @@ int mutex_init(mutex_t *mp)
 	
 	if(!mp) return -1;
 	if(mp->initialized == TRUE) return -2;
-	
+
 	atomic_xadd(&id, &mutex_id);
 	mutex_debug_print("   .....Initialized %d", id);
 	mp->id = id;
@@ -82,27 +82,20 @@ int mutex_destroy(mutex_t *mp)
 */
 int mutex_lock( mutex_t *mp )
 {
-	int ticket = 1;
+	int ticket, tid;
 	
 	if(!mp) return -1;
 	if(mp->initialized == FALSE) return -2;
 	
+	ticket = 1;
+	tid = thr_getid();
 
 	atomic_xadd(&ticket, &mp->ticket);
 	
-#ifdef MUTEX_DEBUG
-	int my_prehash = prehash((char*)&ticket);
-#endif
-	mutex_debug_print("[%d] Waiting for lock %d, ticket = %d, now_serving = %d", 
-		my_prehash, mp->id, ticket, mp->now_serving);
-
 	while(ticket != mp->now_serving)
-		yield(-1);
-
-	/* We have acquired the lock. */
-	mutex_debug_print("[%d] Acquires lock %d, ticket = %d, now_serving = %d", 
-		my_prehash, mp->id, ticket, mp->now_serving);
+		thr_yield(mp->active_tid);
 	
+	mp->active_tid = tid;
 	return 0;
 }
 
@@ -118,13 +111,9 @@ int mutex_unlock( mutex_t *mp )
 {
 	if(!mp) return -1;
 	if(mp->initialized == FALSE) return -2;
-
-#ifdef MUTEX_DEBUG
-	int my_prehash = prehash((char*)&my_prehash);
-#endif
-	mutex_debug_print("[%d] Releases lock %d - ticket = %d, now_serving = %d++", 
-		my_prehash, mp->id, mp->ticket, mp->now_serving);
-
+	
+	/* Make sure the scheduler yields to people other than me. */
+	mp->active_tid = -1;
 	mp->now_serving++;
 	return 0;
 }

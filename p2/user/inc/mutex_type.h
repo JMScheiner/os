@@ -15,6 +15,9 @@ typedef struct mutex {
 	/* @brief The ticket of the thread that owns the mutex. */
 	int now_serving;
 	
+	/* @brief The tid of the mutex owner. */
+	int active_tid;
+	
 	/* @brief Unique identifier for this mutex. */
 	int id;
 	
