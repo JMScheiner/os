@@ -33,7 +33,9 @@
 #define INT_STACK_SIZE 32
 
 /** @brief The size of a child stack. Initialized in thr_init. */
-static unsigned int stack_size;
+static unsigned int user_stack_size;
+
+static unsigned int alloc_stack_size;
 
 /** @brief Has thr_init been called? */
 static boolean_t initialized = FALSE;
@@ -63,10 +65,6 @@ static hashtable_t tid_table;
 /** @brief A lock for the tid_table. */
 static mutex_t tid_table_lock;
 
-/** @brief A linked list mapping stack addresses (kind of) to thread control 
- * blocks. The main parent thread will not be in this table. */
-static list_t stack_list;
-
 /** @brief The maximum stack address a child thread could have. */
 static char *max_child_stack_addr = NULL;
 
@@ -75,23 +73,6 @@ static mutex_t max_child_stack_addr_lock;
 
 /** @brief The thread control block for the main parent thread. */
 static tcb_t main_thread;
-
-/** @brief Hash an address to the index of the range the address lies in.
- *
- * This function has the property that prehash(addr) == prehash(stack_top) or
- * prehash(addr) == 1 + prehash(stack_top) if addr lies on the stack whose top
- * is stack_top.
- *
- * Furthermore, prehash(stack1) != prehash(stack2) if stack1 and stack2 are the
- * tops of different stacks.
- *
- * @param addr The address to hash.
- *
- * @return An index that identifies which stack addr is on.
- */
-unsigned int prehash(char *addr) {
-	return ((unsigned int)addr) / (stack_size + 2*ESP_ALIGN - 1);
-}
 
 /** @brief Identity hash function
  *
@@ -102,6 +83,12 @@ unsigned int prehash(char *addr) {
 static unsigned int hash(int key) {
 	return (unsigned int)key;
 }
+
+#define TCB_ADDRESS(address) \
+	(tcb_t *)ALIGN_DOWN(user_stack_size * (((unsigned int)(address)) / user_stack_size) + user_stack_size)
+
+#define ALIGN_DOWN(address) \
+	(((unsigned int)(address)) & ~(ESP_ALIGN - 1))
 
 /** @brief Initialize the thread library
  *
@@ -116,7 +103,9 @@ int thr_init(unsigned int size) {
 	assert(!initialized);
 	int ret = 0;
 	initialized = TRUE;
-	stack_size = size;
+
+	user_stack_size = size + sizeof(tcb_t *);
+	alloc_stack_size = 2 * user_stack_size + ESP_ALIGN - 1;
 
 	/* Initialize the main_thread block. */
 	main_thread.stack = NULL;
@@ -132,10 +121,8 @@ int thr_init(unsigned int size) {
 	main_thread.initialized = TRUE;
 	main_thread.exited = FALSE;
 
-	/* Initialize the hash tables and their locks. */
+	/* Initialize the tid table and its lock. */
 	STATIC_INIT_HASHTABLE(hashtable_t, tid_table, hash);
-	stack_list = list_new();
-	/*STATIC_INIT_HASHTABLE(hashtable_t, stack_table, hash);*/
 
 	thread_debug_print("Main: inserting %d -> %p into tid table.", main_thread.tid, &main_thread);
 	HASHTABLE_PUT(hashtable_t, tid_table, main_thread.tid, &main_thread);
@@ -143,16 +130,13 @@ int thr_init(unsigned int size) {
 	mutex_debug_print("Initializing tid table lock...");
 	ret |= mutex_init(&tid_table_lock);
 	
-	/*mutex_debug_print("Initializing stack table lock...");
-	ret |= mutex_init(&stack_table_lock);*/
-
 	/* Initialize the max stack address lock. */
 	mutex_debug_print("Initializing max child stack address lock...");
 	ret |= mutex_init(&max_child_stack_addr_lock);
 
 	/* Initialize the kill stack and its lock. */
 	kill_stack = kill_stack_top + KILL_STACK_SIZE + ESP_ALIGN - 1;
-	kill_stack = (char *) (((unsigned int)kill_stack) & ~(ESP_ALIGN - 1));
+	kill_stack = (char *) ALIGN_DOWN(kill_stack);
 	
 	mutex_debug_print("Initializing kill stack lock...");
 	ret |= mutex_init(&kill_stack_lock);
@@ -160,7 +144,7 @@ int thr_init(unsigned int size) {
 	/* Initialized the "int" stack. Since interrupts are atomic, 
 	 * 	and all information gets copied to the kernel stack, no need to lock. */
 	int_stack = int_stack_top + INT_STACK_SIZE + ESP_ALIGN - 1;
-	int_stack = (char *) (((unsigned int)int_stack) & ~(ESP_ALIGN - 1));
+	int_stack = (char *) ALIGN_DOWN(int_stack);
 	
 	assert(ret == 0);
 	return ret;
@@ -216,45 +200,31 @@ int thr_create(void *(*func)(void *), void *arg)
 	if (cond_init(&tcb->exit_signal)) {
 		goto fail_exit_cond;
 	}
-	tcb->stack = (char *)malloc(stack_size + 2*ESP_ALIGN - 1);
+	tcb->stack = (char *)malloc(alloc_stack_size);
 	assert(tcb->stack);
 	
-	/* Compute the base address of the child stack. */
-	char *stack_bottom = tcb->stack + stack_size + ESP_ALIGN - 1;
-	stack_bottom = (char *) (((unsigned int)stack_bottom) & ~(ESP_ALIGN - 1));
+	/* Compute the base address of the child stack and place a pointer to the tcb
+	 * above it. */
+	tcb_t **stack_bottom = (tcb_t **)TCB_ADDRESS(tcb->stack + user_stack_size);
+	*stack_bottom = tcb;
+	stack_bottom--;
 
-	/* Place the child in the stack_table so it can call thr_getid */
-	unsigned int key = prehash(tcb->stack);
-
-	list_insert(stack_list, key, tcb);
-
-	/*
-	assert(mutex_lock(&stack_table_lock) == 0);
-	HASHTABLE_PUT(hashtable_t, stack_table, key, tcb);
-	assert(mutex_unlock(&stack_table_lock) == 0);
-	*/
 	/* Update the max child stack address. */
 	assert(mutex_lock(&max_child_stack_addr_lock) == 0);
-	if (max_child_stack_addr < stack_bottom) {
-		max_child_stack_addr = stack_bottom;
+	if (max_child_stack_addr < (char *)stack_bottom) {
+		max_child_stack_addr = (char *)stack_bottom;
 	}
 	assert(mutex_unlock(&max_child_stack_addr_lock) == 0);
 	
 	/* Fork the new child thread. If we fail, undo all the initialization we've
 	 * done. */
-	ret = thread_fork(func, arg, stack_bottom, tcb);
+	ret = thread_fork(func, arg, (char *)stack_bottom, tcb);
 	lprintf("[%d] Got back %d from thread_fork.", thr_getid(), ret);
 	if (ret >= 0) {
 		return ret;
 	}
 	lprintf(" ******** Failed to create child thread ******** ");
 
-	list_delete(stack_list, key);
-	/*
-	assert(mutex_lock(&stack_table_lock) == 0);
-	HASHTABLE_REMOVE(hashtable_t, stack_table, key, tcb);
-	assert(mutex_unlock(&stack_table_lock) == 0);
-	*/
 	free(tcb->stack);
 	assert(cond_destroy(&tcb->exit_signal) == 0);
 fail_exit_cond:
@@ -373,13 +343,10 @@ int thr_join(int tid, void **statusp) {
 
 /** @brief Get our tcb from the stack_list
  *
- * @param remove_tcb True iff our tcb should be removed from the stack_list
- *
  * @return A pointer to our tcb
  */
-tcb_t *thr_gettcb(boolean_t remove_tcb) {
+tcb_t *thr_gettcb() {
 	assert(initialized);
-	tcb_t *tcb = NULL;
 	char *stack_addr = get_addr();
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -388,44 +355,7 @@ tcb_t *thr_gettcb(boolean_t remove_tcb) {
 		return &main_thread;
 	}
 
-	unsigned int key = prehash(stack_addr);
-
-	tcb = list_lookup(stack_list, key);
-	if (!tcb || tcb->stack > stack_addr) {
-		if (remove_tcb) {
-			tcb = list_delete(stack_list, key - 1);
-		}
-		else {
-			tcb = list_lookup(stack_list, key - 1);
-		}
-	}
-	else if (remove_tcb) {
-		tcb = list_delete(stack_list, key);
-	}
-	assert(tcb);
-	return tcb;
-
-	/* Our stack address will either use the same key as the top address of our
-	 * stack, or it will be one greater. */
-/*	assert(mutex_lock(&stack_table_lock) == 0);
-	HASHTABLE_GET(hashtable_t, stack_table, key, tcb);
-*/
-	/* If the top of the retrieved stack is above us, then we must be on the
-	 * stack below the retrieved one. */
-/*	if (!tcb || tcb->stack > stack_addr) {
-		if (remove_tcb) {
-			HASHTABLE_REMOVE(hashtable_t, stack_table, key - 1, tcb);
-		}
-		else {
-			HASHTABLE_GET(hashtable_t, stack_table, key - 1, tcb);
-		}
-	}
-	else if (remove_tcb) {
-		HASHTABLE_REMOVE(hashtable_t, stack_table, key, tcb);
-	}
-	assert(tcb);
-	assert(mutex_unlock(&stack_table_lock) == 0);
-	return tcb;*/
+	return TCB_ADDRESS(stack_addr);
 }
 
 /** @brief Free our own stack and vanish
@@ -456,7 +386,7 @@ void thr_exit(void *status) {
 	assert(initialized);
 	
 	/* Get tcb from stack table and remove it. */
-	tcb_t *tcb = thr_gettcb(TRUE /* remove_tcb */);
+	tcb_t *tcb = thr_gettcb();
 
 	/* Set our status. */
 	tcb->statusp = status;
@@ -487,8 +417,7 @@ void thr_exit(void *status) {
  * @return the current thread's ID
  */
 int thr_getid(void) {
-	tcb_t *tcb = thr_gettcb(FALSE /* don't remove_tcb */);
-	assert(tcb);
+	tcb_t *tcb = thr_gettcb();
 	return tcb->tid;
 }
 

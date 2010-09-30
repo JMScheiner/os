@@ -79,7 +79,7 @@ void clean_up_thread(tcb_t *tcb);
 unsigned int prehash(char *addr);
 int mutex_unlock_and_vanish(mutex_t* mp, char* int_stack);
 
-tcb_t *thr_gettcb(boolean_t remove_tcb);
+tcb_t *thr_gettcb();
 
 #endif /* THR_INTERNALS_H */
 
