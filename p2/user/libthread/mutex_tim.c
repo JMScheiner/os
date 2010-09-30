@@ -98,7 +98,7 @@ int mutex_lock(mutex_t *mp) {
 
 	/* If we are not at the head of the list and the mutex is not being 
 	 * released, then deschedule ourselves. */
-	while (!mp->free && node.tid != mp->head->tid) {
+	while (!mp->free || node.tid != mp->head->tid) {
 		deschedule((int *)&mp->free);
 	}
 
