@@ -5,6 +5,7 @@
 */
 
 #include <mutex.h>
+#include <mutex_type.h>
 #include <thread.h>
 #include <thr_internals.h>
 #include <syscall.h>
@@ -23,20 +24,17 @@ static int mutex_id = 0;
 * @param mp The mutex to initialize.
 * 
 * @return 0 on success, 
-* 			-1 if the mutex is invalid.
-* 			-2 if the mutex is already initialized.
+*         MUTEX_NULL if mp is NULL.
+*         MUTEX_INIT if mp is already initialized.
 */
 int mutex_init(mutex_t *mp)
 {
-	int id = 1;
-	
-	if(!mp) return -1;
-	if(mp->initialized == TRUE) return -2;
+	if(!mp) return MUTEX_NULL;
+	if(mp->initialized == TRUE) return MUTEX_INIT;
 
-	atomic_xadd(&id, &mutex_id);
-	mutex_debug_print("   .....Initialized %d", id);
-	mp->id = id;
-	mp->active_tid = -1;
+	mp->id = atomic_add(&mutex_id, 1);
+	mutex_debug_print("   .....Initialized mutex %d at address %p", mp->id, mp);
+	mp->active_tid = NULL_TID;
 	mp->ticket = 0;
 	mp->now_serving = 0;
 	mp->initialized = TRUE;
@@ -46,20 +44,20 @@ int mutex_init(mutex_t *mp)
 
 /** 
 * @brief Destroy a mutex, e.g. deactivate it.
-* 	Blame the user for race conditions.
+*        Blame the user for race conditions.
 * 
 * @param mp The mutex to destroy.
 * 
 * @return 0 on success, 
-* 	-1 if mp is NULL, 
-* 	-2 if the lock is in use.
-* 	-3 if the lock wasn't active to begin with.
+*         MUTEX_NULL if mp is NULL, 
+*         MUTEX_INIT if mp wasn't active to begin with.
+*         MUTEX_IN_USE if mp is locked.
 */
 int mutex_destroy(mutex_t *mp)
 {
-	if(!mp) return -1;
-	if(mp->ticket != mp->now_serving) return -2;
-	if(mp->initialized == FALSE) return -3;
+	if(!mp) return MUTEX_NULL;
+	if(mp->initialized == FALSE) return MUTEX_INIT;
+	if(mp->ticket != mp->now_serving) return MUTEX_IN_USE;
 	
 	mp->initialized = FALSE;
 	return 0;
@@ -67,28 +65,23 @@ int mutex_destroy(mutex_t *mp)
 
 /** 
 * @brief Straightforward implementation of the bakery algorithm. 
-* 	Atomically take a ticket (enforces bounded waiting), 
-* 	 then wait for "now_serving" to match your ticket. 
-*
-* 	Releasing the lock is equivalent to incrementing now_serving.
+*        Atomically take a ticket (enforces bounded waiting), 
+*        then wait for "now_serving" to match your ticket. 
 *
 * @param mp The mutex to lock.
 * 
 * @return 0 on success, 
-* 			-1 if the lock isn't valid, 
-* 			-2 if the lock isn't initialized.
+* 			  MUTEX_NULL if mp is NULL, 
+* 			  MUTEX_INIT if mp isn't initialized.
 */
 int mutex_lock( mutex_t *mp )
 {
-	int ticket, tid;
+	if(!mp) return MUTEX_NULL;
+	if(mp->initialized == FALSE) return MUTEX_INIT;
 	
-	if(!mp) return -1;
-	if(mp->initialized == FALSE) return -2;
-	
-	ticket = 1;
-	tid = thr_getid();
+	int tid = thr_getid();
+	int ticket = atomic_add(&mp->ticket, 1);
 
-	atomic_xadd(&ticket, &mp->ticket);
 	while(ticket != mp->now_serving)
 		thr_yield(mp->active_tid);
 	
@@ -97,12 +90,13 @@ int mutex_lock( mutex_t *mp )
 }
 
 /** 
-* @brief Increment now_serving, and leave.
+* @brief Increment now_serving to unlock the mutex, and leave.
 * 
-* @param mp 
+* @param mp The mutex to unlock
 * 
-* @return -1 if mp is invalid.
-* 			 -2 if mp is not initialized.
+* @return 0 on success
+*         MUTEX_NULL if mp is NULL.
+* 			  MUTEX_INIT if mp is not initialized.
 */
 int mutex_unlock( mutex_t *mp )
 {
@@ -110,7 +104,7 @@ int mutex_unlock( mutex_t *mp )
 	if(mp->initialized == FALSE) return -2;
 	
 	/* Make sure the scheduler yields to people other than me. */
-	mp->active_tid = -1;
+	mp->active_tid = NULL_TID;
 	mp->now_serving++;
 	return 0;
 }

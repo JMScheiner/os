@@ -8,6 +8,7 @@
 */
 
 #include <cond.h>
+#include <cond_type.h>
 #include <mutex.h>
 #include <thread.h>
 #include <syscall.h>
@@ -21,13 +22,13 @@
 * @param cv The condition variable to initialize.
 * 
 * @return 0 on success
-*        -1 if cv is NULL.
-* 		   -2 if it is already initialized.
+*         COND_NULL if cv is NULL.
+*         COND_INIT if cv is already initialized.
 */
 int cond_init( cond_t* cv)
 {
-	if(!cv) return -1;
-	if(cv->initialized) return -2;
+	if(!cv) return COND_NULL;
+	if(cv->initialized) return COND_INIT;
 
 	cv->initialized = TRUE;
 	
@@ -37,18 +38,18 @@ int cond_init( cond_t* cv)
 }
 
 /** 
-* @brief Destroys the associated mutex.
+* @brief Destroys the given condition variable.
 * 
 * @param cv The condition variable to destroy.
 * 
 * @return 0 on success.
-*        -1 if cv is NULL.
-* 		   -2 if cv isn't already active.
+*         COND_NULL if cv is NULL.
+*         COND_INIT if cv isn't already active.
 */
 int cond_destroy( cond_t* cv)
 {
-	if(!cv) return -1;
-	if(!cv->initialized) return -2;
+	if(!cv) return COND_NULL;
+	if(!cv->initialized) return COND_INIT;
 	
 	cv->initialized = FALSE;
 	mutex_destroy(&cv->qlock);
@@ -67,36 +68,44 @@ int cond_destroy( cond_t* cv)
 * @param mp The associated mutex.
 * 
 * @return 0 on success.
-*        -1 if cv is NULL.
-*        -2 if mp is NULL.
-*        -3 if cv is not initialized.
-*        -4 if mp is not initialized.
+*         COND_NULL if cv is NULL.
+*         MUTEX_NULL if mp is NULL.
+*         COND_INIT if cv is not initialized.
+*         MUTEX_INIT if mp is not initialized.
+*         COND_MUTEX_UNLOCK if mp fails to unlock.
+*         COND_MUTEX_LOCK if mp fails to re-lock.
 */
 int cond_wait( cond_t* cv, mutex_t* mp )
 {
-	if(!cv) return -1;
-	if(!mp) return -2;
+	if(!cv) return COND_NULL;
+	if(!mp) return MUTEX_NULL;
 	
-	if(!cv->initialized) return -3;
-	if(!mp->initialized) return -4;
+	if(!cv->initialized) return COND_INIT;
+	if(!mp->initialized) return MUTEX_INIT;
 		
 	cond_link_t link;
 	link.tid = thr_getid();
-	link.cancel_deschedule = FALSE;
+	link.ready = FALSE;
 	
+	/* Add ourself to the end of the waiting list. */
 	mutex_lock(&cv->qlock);
 	ENQUEUE_LAST(cv->q, &link);
 	mutex_unlock(&cv->qlock);
 	
-	if(mutex_unlock(mp) != 0) 
+	if(mutex_unlock(mp) != 0)
 	{
-		MAGIC_BREAK;
+		return COND_MUTEX_UNLOCK;
 	}
 
-	while (link.cancel_deschedule == FALSE) {
-		deschedule((int*)&link.cancel_deschedule);
+	/* Deschedule ourselves until we are woken up. */
+	while (link.ready == FALSE) {
+		deschedule((int*)&link.ready);
 	}
-	mutex_lock(mp);
+
+	if (mutex_lock(mp) != 0)
+	{
+		return COND_MUTEX_LOCK;
+	}
 
 	return 0;
 }
@@ -108,23 +117,24 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 * @param cv The condition variable to signal.
 * 
 * @return 0 on success. 
-*        -1 if cv is NULL.
-*        -2 if cv is not initialized.
+*         COND_NULL if cv is NULL.
+*         COND_INIT if cv is not initialized.
 */
 int cond_signal( cond_t* cv )
 {
-	if(!cv) return -1;
-	if(!cv->initialized) return -2;
+	if(!cv) return COND_NULL;
+	if(!cv->initialized) return COND_INIT;
 	
 	cond_link_t* link;
 	
+	/* Get the first waiting thread and wake them up. */
 	mutex_lock(&cv->qlock);
 	DEQUEUE_FIRST(cv->q, link);
 	mutex_unlock(&cv->qlock);
 	
 	if(link)
 	{
-		link->cancel_deschedule = TRUE;
+		link->ready = TRUE;
 		make_runnable(link->tid);
 	}
 	
@@ -138,20 +148,22 @@ int cond_signal( cond_t* cv )
 * @param cv The condition variable to broadcast for.
 * 
 * @return 0 on success.
-* 	      -1 if cv is NULL
-* 	      -2 if cv is not initialized
+*         COND_NULL if cv is NULL
+*         COND_INIT if cv is not initialized
 */
 int cond_broadcast( cond_t* cv)
 {
-	if(!cv) return -1;
-	if(!cv->initialized) return -2;
+	if(!cv) return COND_NULL;
+	if(!cv->initialized) return COND_INIT;
 
 	cond_link_t* link;
 
 	mutex_lock(&cv->qlock);
+
+	/* Iterate through all waiting threads and wake them up. */
 	FOREACH(cv->q, link)
 	{
-		link->cancel_deschedule = TRUE;
+		link->ready = TRUE;
 		make_runnable(link->tid);
 	}
 

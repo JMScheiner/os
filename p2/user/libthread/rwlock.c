@@ -80,8 +80,6 @@ int rwlock_destroy( rwlock_t *rwlock )
 */
 int rwlock_lock( rwlock_t *rwlock, int type )
 {
-	int writers, readers;
-	
 	if(!rwlock) return -1;
 	if(!rwlock->initialized) return -2;
 	
@@ -95,8 +93,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 				cond_wait(&rwlock->wait_read, &rwlock->clear_lock);
 			
 			//Atomically increment the number of readers.
-			readers = 1;
-			atomic_xadd(&readers, &rwlock->readers);
+			atomic_add(&rwlock->readers, 1);
 			
 			//Let other readers into the critical section if possible.
 			rwlock->clear = TRUE;
@@ -108,8 +105,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 		case RWLOCK_WRITE: 
 			
 			// Wait for clearance to write from the active writer / readers.
-			writers = 1;
-			atomic_xadd(&writers, &rwlock->writers);
+			atomic_add(&rwlock->writers, 1);
 			
 			mutex_lock(&rwlock->clear_lock);
 			while(!rwlock->clear)
@@ -143,8 +139,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 */
 int rwlock_unlock( rwlock_t *rwlock )
 {
-	int writers, readers;
-	
+	int readers;
 	if(!rwlock) return -1;
 	if(!rwlock->initialized) return -2;
 
@@ -153,8 +148,7 @@ int rwlock_unlock( rwlock_t *rwlock )
 		case RWLOCK_WRITE: 
 
 			//Decrement the number of writers.
-			writers = -1;
-			atomic_xadd(&writers, &rwlock->writers);
+			atomic_add(&rwlock->writers, 1);
 			
 			// If the next writer doesn't beat us here, he doesn't get to run 
 			// 	until the readers are done.
@@ -175,8 +169,7 @@ int rwlock_unlock( rwlock_t *rwlock )
 		case RWLOCK_READ:
 			
 			//Decrement the number of active readers.
-			readers = -1;
-			atomic_xadd(&readers, &rwlock->readers);
+			readers = atomic_add(&rwlock->readers, -1);
 
 			//If we were the last reader to decrement,
 			if(readers == 1)

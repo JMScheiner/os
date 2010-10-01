@@ -6,15 +6,14 @@ int dest;
 
 int main(int argc, const char *argv[])
 {
-	dest = 0;
+	dest = 1;
 	//Not much we can do to test just yet.
-	int source = 0;
+	int val;
 	while(1)
 	{
-		atomic_xchg(&source, &dest);
-		printf("source = %d\n", source);
+		val = atomic_add(&dest, 1);
+		printf("val = %d\n", val);
 		sleep(1000);
-		source++;	
 	}
 
 	return 0;

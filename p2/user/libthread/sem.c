@@ -27,16 +27,13 @@ static int sem_id = 0;
 */
 int sem_init(sem_t* sem, int count)
 {
-	int id;
-	
 	if(!sem) return -1;
 	if(sem->initialized) return -2;
 		
 	sem->count = count;
 	sem->initialized = TRUE;
 
-	atomic_xadd(&id, &sem_id);
-	sem->id = id;
+	sem->id = atomic_add(&sem_id, 1);
 	sem->waiting = 0;
 	
 	if(mutex_init(&sem->lock) != 0) return -3;

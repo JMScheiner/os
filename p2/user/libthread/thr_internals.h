@@ -12,7 +12,7 @@
 #include <queue.h>
 #include <mutex_type.h>
 
-#define MUTEX_DEBUG
+//#define MUTEX_DEBUG
 //#define THREAD_DEBUG
 
 #ifdef MUTEX_DEBUG
@@ -40,6 +40,10 @@
 	} while(0)
 
 #endif //THR_DEBUG
+
+/** @brief The tid of no thread. This should be yielded to if we need
+ * to yield, but don't know who to yield to. */
+#define NULL_TID -1
 
 /* Thread control block */
 
