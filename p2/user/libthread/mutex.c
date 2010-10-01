@@ -91,12 +91,7 @@ int mutex_lock( mutex_t *mp )
 	atomic_xadd(&ticket, &mp->ticket);
 	
 	while(ticket != mp->now_serving)
-	{
-		if(thr_yield(mp->active_tid) != 0)
-		{
-			MAGIC_BREAK;
-		}
-	}
+		thr_yield(mp->active_tid);
 	
 	mp->active_tid = tid;
 	return 0;

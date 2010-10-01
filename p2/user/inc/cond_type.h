@@ -12,9 +12,9 @@
 /** Structures for condition variables **/
 typedef struct cond_link
 {
+	int tid;
 	struct cond_link* next;
 	struct cond_link* prev;
-	int tid;
 	boolean_t cancel_deschedule;
 } cond_link_t;
 
@@ -22,6 +22,7 @@ DEFINE_QUEUE(cond_queue_t, cond_link_t*);
 
 typedef struct 
 {
+	boolean_t initialized;
 	cond_queue_t q;
 	mutex_t qlock;
 } cond_t;
