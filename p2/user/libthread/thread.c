@@ -55,7 +55,7 @@ static char* int_stack;
 /** @brief A lock on the kill stack. */
 static mutex_t kill_stack_lock;
 
-static tcb_t *kill_stack_tcb = NULL;
+static int kill_stack_tid = -1;
 
 /** @brief Define a hashtable type from int to tcb_t *. */
 DEFINE_HASHTABLE(hashtable_t, int, tcb_t *);
@@ -74,7 +74,7 @@ static char *max_child_stack_addr = NULL;
 static mutex_t max_child_stack_addr_lock;
 
 /** @brief The thread control block for the main parent thread. */
-static tcb_t main_thread;
+static tcb_t *main_thread;
 
 /** @brief Identity hash function
  *
@@ -112,28 +112,31 @@ int thr_init(unsigned int size) {
 	int ret = 0;
 	initialized = TRUE;
 
-	user_stack_size = size + sizeof(tcb_t *);
+	/* User stack is large enough to hold the stack, a pointer to the tcb
+	 * and a pointer to the stack. */
+	user_stack_size = size + sizeof(tcb_t *) + sizeof(char *);
 	alloc_stack_size = ALIGN_UP(2 * user_stack_size);
 
+
 	/* Initialize the main_thread block. */
-	main_thread.stack = NULL;
-	main_thread.tid = gettid();
+	main_thread = (tcb_t *)calloc(1, sizeof(tcb_t));
+	main_thread->tid = gettid();
 
 	mutex_debug_print("Initializing main thread lock...");
-	ret |= mutex_init(&(main_thread.lock));
+	ret |= mutex_init(&(main_thread->lock));
 
 	mutex_debug_print("Initializing main thread condition variables...");
-	ret |= cond_init(&(main_thread.init_signal));
-	ret |= cond_init(&(main_thread.exit_signal));
+	ret |= cond_init(&(main_thread->init_signal));
+	ret |= cond_init(&(main_thread->exit_signal));
 
-	main_thread.initialized = TRUE;
-	main_thread.exited = FALSE;
+	main_thread->initialized = TRUE;
+	main_thread->exited = FALSE;
 
 	/* Initialize the tid table and its lock. */
 	STATIC_INIT_HASHTABLE(hashtable_t, tid_table, hash);
 
-	thread_debug_print("Main: inserting %d -> %p into tid table.", main_thread.tid, &main_thread);
-	HASHTABLE_PUT(hashtable_t, tid_table, main_thread.tid, &main_thread);
+	thread_debug_print("Main: inserting %d -> %p into tid table.", main_thread->tid, main_thread);
+	HASHTABLE_PUT(hashtable_t, tid_table, main_thread->tid, main_thread);
 	
 	mutex_debug_print("Initializing tid table lock...");
 	ret |= mutex_init(&tid_table_lock);
@@ -209,14 +212,16 @@ int thr_create(void *(*func)(void *), void *arg)
 	if (cond_init(&tcb->exit_signal)) {
 		goto fail_exit_cond;
 	}
-	tcb->stack = (char *)malloc(alloc_stack_size);
-	assert(tcb->stack);
+	char *stack = (char *)malloc(alloc_stack_size);
+	assert(stack);
 
 	/* Compute the base address of the child stack and place a pointer to the tcb
 	 * above it. */
-	char *stack_base = tcb->stack + alloc_stack_size - 4;
+	char *stack_base = stack + alloc_stack_size - 4;
 	stack_base = (char *)ALIGN_DOWN_TCB(stack_base);
 	*(tcb_t **)stack_base = tcb;
+	stack_base -= 4;
+	*(char **)stack_base = stack;
 /*	lprintf("New tcb at %p in [%p, %p]", stack_base, tcb->stack, tcb->stack + alloc_stack_size);*/
 	stack_base -= 4;
 	
@@ -236,7 +241,7 @@ int thr_create(void *(*func)(void *), void *arg)
 	}
 	lprintf(" ******** Failed to create child thread ******** ");
 
-	free(tcb->stack);
+	free(stack);
 	assert(cond_destroy(&tcb->exit_signal) == 0);
 fail_exit_cond:
 	lprintf(" ******** Failed to initialized condition variable ******* ");
@@ -265,7 +270,7 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	tcb->tid = gettid();
 	
 	assert(mutex_lock(&tid_table_lock) == 0);
-	thread_debug_print("Thread: inserting %d -> %p into tid table.", tcb->tid, tcb);
+	/*thread_debug_print("Thread: inserting %d -> %p into tid table.", tcb->tid, tcb);*/
 	HASHTABLE_PUT(hashtable_t, tid_table, tcb->tid, tcb);
 	assert(mutex_unlock(&tid_table_lock) == 0);
 	
@@ -274,7 +279,7 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
 	tcb->initialized = TRUE;
 	assert(mutex_unlock(&tcb->lock) == 0);
 	assert(cond_signal(&tcb->init_signal) == 0);
-	thread_debug_print("[%d] About to enter \"func\".", thr_getid());
+	/*thread_debug_print("[%d] About to enter \"func\".", thr_getid());*/
 	thr_exit(func(arg));
 }
 
@@ -359,14 +364,14 @@ int thr_join(int tid, void **statusp) {
  *
  * @return A pointer to our tcb
  */
-tcb_t *thr_gettcb() {
+tcb_t **thr_gettcb() {
 	assert(initialized);
 	char *stack_addr = get_addr();
 
 	/* If this is being called from the kill stack, return the tcb of the
 	 * thread using the kill stack. */
 	if (kill_stack_top <= stack_addr && stack_addr <= kill_stack) {
-		return kill_stack_tcb;
+		return NULL;
 	}
 
 	/* If our address is higher than the address of any child stack, then we must
@@ -376,21 +381,17 @@ tcb_t *thr_gettcb() {
 	}
 
 	tcb_t **tcb_addr = (tcb_t **)ALIGN_UP_TCB(stack_addr);
-	return *tcb_addr;
+	return tcb_addr;
 }
 
 /** @brief Free our own stack and vanish
  *
  * @param tcb Our thread control block
  */
-void clean_up_thread(tcb_t *tcb) 
+void clean_up_thread(int tid, char *old_stack) 
 {
-	kill_stack_tcb = tcb;
-	free(tcb->stack);
-	assert(mutex_lock(&tcb->lock) == 0);
-	tcb->exited = TRUE;
-	assert(mutex_unlock(&tcb->lock) == 0);
-	assert(cond_signal(&tcb->exit_signal) == 0);
+	kill_stack_tid = tid;
+	free(old_stack);
 
 	/* After unlocking the kill_stack mutex, we must vanish immediately without
 	 * touching the stack again. This means we can't even try to return from
@@ -408,17 +409,20 @@ void thr_exit(void *status) {
 	assert(initialized);
 	
 	/* Get tcb from stack table and remove it. */
-	tcb_t *tcb = thr_gettcb();
+	tcb_t **tcb_addr = thr_gettcb();
+	tcb_t *tcb = *tcb_addr;
+	int tid = tcb->tid;
+	char **stack_addr = (char **)(tcb_addr - 1);
 
 	/* Set our status. */
 	tcb->statusp = status;
+	assert(mutex_lock(&tcb->lock) == 0);
+	tcb->exited = TRUE;
+	assert(mutex_unlock(&tcb->lock) == 0);
+	assert(cond_signal(&tcb->exit_signal) == 0);
 
-	if (tcb == &main_thread) {
+	if (tcb == main_thread) {
 		/* If we're the main thread, we can simply disappear. */
-		assert(mutex_lock(&tcb->lock) == 0);
-		tcb->exited = TRUE;
-		assert(mutex_unlock(&tcb->lock) == 0);
-		assert(cond_signal(&tcb->exit_signal) == 0);
 		vanish();
 	}
 	else 
@@ -429,7 +433,7 @@ void thr_exit(void *status) {
 		/*lprintf("Before kill stack lock\n");*/
 		mutex_lock(&kill_stack_lock);
 		/*lprintf("After kill stack lock\n");*/
-		switch_stacks_and_vanish(tcb, kill_stack);
+		switch_stacks_and_vanish(tid, *stack_addr, kill_stack);
 	}
 	// Shouldn't reach here
 	assert(FALSE);
@@ -440,8 +444,13 @@ void thr_exit(void *status) {
  * @return the current thread's ID
  */
 int thr_getid(void) {
-	tcb_t *tcb = thr_gettcb();
-	return tcb->tid;
+	tcb_t **tcb_addr = thr_gettcb();
+	if (tcb_addr && *tcb_addr) {
+		return (*tcb_addr)->tid;
+	}
+	else {
+		return kill_stack_tid;
+	}
 }
 
 /** @brief Defer execution of this thread in favor of another

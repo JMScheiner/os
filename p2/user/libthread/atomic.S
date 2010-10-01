@@ -4,6 +4,7 @@
 .globl atomic_xadd
 .globl atomic_add
 .globl atomic_cmpset
+.globl atomix_cmpxchg8b
 
 atomic_xchg: 
 	movl 	4(%esp), 	%eax		//Load &source into %eax

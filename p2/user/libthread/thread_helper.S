@@ -13,7 +13,7 @@ get_addr:
 
 .globl switch_stacks_and_vanish
 
-/** @def switch_stacks_and_vanish(tcb_t *tcb, char *stack_addr)
+/** @def switch_stacks_and_vanish(int tid, char *old_stack, char *new_stack)
  *
  * @brief Replace the current stack with a new stack beginning at the specified
  *        address and dispose of ourself.
@@ -24,7 +24,8 @@ get_addr:
  */
 switch_stacks_and_vanish:
 	movl   %esp, %ebp       // Save the stack pointer
-	movl   8(%ebp), %esp    // Move the new stack pointer into esp
-	pushl  4(%ebp)          // Push the tcb as an argument
+	movl   12(%ebp), %esp    // Move the new stack pointer into esp
+	pushl  8(%ebp)          // Push the old_stack as an argument
+	pushl  4(%ebp)          // Push the tid as an argument
 	call   clean_up_thread  // Clean up our stack frame and vanish
 

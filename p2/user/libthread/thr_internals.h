@@ -46,10 +46,6 @@
 /** @brief Thread control block. Stores information about a thread. */
 typedef struct tcb {
 
-	/** @brief The stack this thread is executing on. This will be NULL for the
-	 * main thread. */
-	char *stack;
-
 	/** @brief The tid of this thread. */
 	int tid;
 
@@ -75,11 +71,10 @@ typedef struct tcb {
 
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
-void clean_up_thread(tcb_t *tcb);
-unsigned int prehash(char *addr);
+void clean_up_thread(int tid, char *old_stack);
 int mutex_unlock_and_vanish(mutex_t* mp, char* int_stack);
 
-tcb_t *thr_gettcb();
+tcb_t **thr_gettcb();
 
 #endif /* THR_INTERNALS_H */
 

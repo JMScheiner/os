@@ -19,7 +19,7 @@ char *get_addr(void);
  *
  * @param stack_addr The address of the stack to switch to.
  */
-void switch_stacks_and_vanish(tcb_t *tcb, char *stack_addr);
+void switch_stacks_and_vanish(int tid, char *old_stack, char *new_stack);
 
 #endif
 

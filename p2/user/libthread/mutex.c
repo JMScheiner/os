@@ -71,9 +71,6 @@ int mutex_destroy(mutex_t *mp)
 *
 * 	Releasing the lock is equivalent to incrementing now_serving.
 *
-*  Relies on a fair scheduler, since we don't know the tid (to avoid 
-*   making an expensive system call).
-* 
 * @param mp The mutex to lock.
 * 
 * @return 0 on success, 
