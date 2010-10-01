@@ -18,14 +18,24 @@ void* sem_test(void* arg)
 
 	while(1)
 	{
+		// Try to acquire a write spot.
+		sem_wait(&semaphore);
+		
 		len = genrand() % 10;
 		color = (genrand() % 8) << 4;
 		for(row = 0; row < len; row++)
 		{
+			mutex_lock(&console_lock);
 			set_cursor_pos(row, col);
 			set_term_color(color);
 			printf(" ");
+			mutex_unlock(&console_lock);
 		}
+		
+		//Release the write spot, 
+		sem_signal(&semaphore);
+		
+		//And sleep.
 		sleep(1);
 	}
 }
@@ -33,8 +43,10 @@ void* sem_test(void* arg)
 int main(int argc, const char *argv[])
 {
 	int i;
-	sem_init(&semaphore, 8);
+	
 	thr_init(4096);
+	mutex_init(&console_lock);
+	sem_init(&semaphore, 8);
 	
 	for(i = 0; i < 30; i++)
 	{

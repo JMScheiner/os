@@ -28,6 +28,8 @@ int cond_init( cond_t* cv)
 {
 	if(!cv) return -1;
 	if(cv->initialized) return -2;
+
+	cv->initialized = TRUE;
 	
 	mutex_init(&cv->qlock);
 	STATIC_INIT_QUEUE(cv->q);
@@ -48,6 +50,7 @@ int cond_destroy( cond_t* cv)
 	if(!cv) return -1;
 	if(!cv->initialized) return -2;
 	
+	cv->initialized = FALSE;
 	mutex_destroy(&cv->qlock);
 	
 	return 0;
@@ -73,9 +76,10 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 {
 	if(!cv) return -1;
 	if(!mp) return -2;
+	
 	if(!cv->initialized) return -3;
 	if(!mp->initialized) return -4;
-
+		
 	cond_link_t link;
 	link.tid = thr_getid();
 	link.cancel_deschedule = FALSE;
