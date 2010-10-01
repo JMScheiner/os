@@ -10,10 +10,22 @@
 #include <atomic.h>
 #include <thr_internals.h>
 
-/* readers/writers lock functions */
+/** 
+* @brief Initializes a reader-writer lock.
+* 	Specifically initializes the internal condition variables 
+* 	associated with readers and writers, as well as a mutex 
+* 	for those condition variables.
+* 
+* @param rwlock The reader-writer lock to initialize.
+* 
+* @return 0 on success. 
+*        -1 if rwlock is NULL.
+*        -2 if rwlock is already initialized.
+*/
 int rwlock_init( rwlock_t *rwlock )
 {
 	if(!rwlock) return -1;
+	if(rwlock->initialized) return -2;
 	
 	// This value doesn't matter, since clear will be true.
 	rwlock->mode = RWLOCK_READ;
@@ -31,8 +43,20 @@ int rwlock_init( rwlock_t *rwlock )
 	return 0;
 }
 
+/** 
+* @brief Deactivates a reader-writer lock.
+* 
+* @param rwlock The reader-writer lock to deactivate.
+* 
+* @return 0 on success.
+*        -1 if rwlock is NULL.
+*        -2 if rwlock isn't initialized.
+*/
 int rwlock_destroy( rwlock_t *rwlock )
 {
+	if(!rwlock) return -1;
+	if(!rwlock->initialized) return -2;
+
 	mutex_destroy(&rwlock->clear_lock);
 	cond_destroy(&rwlock->wait_write);	
 	cond_destroy(&rwlock->wait_read);	
@@ -40,10 +64,26 @@ int rwlock_destroy( rwlock_t *rwlock )
 }
 
 
+/** 
+* @brief Attempts to lock a reader writer lock for reading or writing.
+*
+* Writers block readers, unless a read is already happening. 
+* Both types wait on a condition variable that can be signalled when appropriate.
+* There is also an atomic "reader" count that will signal writers when it drops to zero.
+* 
+* @param rwlock The reader writer lock.
+* @param type RWLOCK_READ for reading, RWLOCK_WRITE for writing.
+* 
+* @return 0 on success.
+*        -1 if the lock is NULL.
+*        -2 if the lock is not initialized.
+*/
 int rwlock_lock( rwlock_t *rwlock, int type )
 {
 	int writers, readers;
+	
 	if(!rwlock) return -1;
+	if(!rwlock->initialized) return -2;
 	
 	switch(type)
 	{
@@ -86,11 +126,27 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 	return 0;
 }
 
+/** 
+* @brief Unlocks a reader writer lock.
+*  If we are in read mode, 
+*   Decrement the number of readers and signal a writer if there is one.
+*
+*  If we are in write mode, 
+*   Signal a waiting writer if there is one, otherwise broadcast to readers
+*   that the lock is available.
+* 
+* @param rwlock The lock to release.
+* 
+* @return 0 on success.
+* 			-1 if the lock is NULL.
+* 			-2 if the lock isn't initialized.
+*/
 int rwlock_unlock( rwlock_t *rwlock )
 {
 	int writers, readers;
 	
 	if(!rwlock) return -1;
+	if(!rwlock->initialized) return -2;
 
 	switch(rwlock->mode)
 	{
