@@ -12,6 +12,7 @@ typedef struct sem {
 	int count;
 	mutex_t lock;
 	cond_t nonzero;
+	int waiting;
 	
 	int id;
 	boolean_t initialized;

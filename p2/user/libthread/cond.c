@@ -92,8 +92,10 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 	{
 		MAGIC_BREAK;
 	}
-	
-	deschedule((int*)&link.cancel_deschedule);
+
+	while (link.cancel_deschedule == FALSE) {
+		deschedule((int*)&link.cancel_deschedule);
+	}
 	mutex_lock(mp);
 
 	return 0;

@@ -89,7 +89,6 @@ int mutex_lock( mutex_t *mp )
 	tid = thr_getid();
 
 	atomic_xadd(&ticket, &mp->ticket);
-	
 	while(ticket != mp->now_serving)
 		thr_yield(mp->active_tid);
 	

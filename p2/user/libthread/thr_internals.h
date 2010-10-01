@@ -12,8 +12,8 @@
 #include <queue.h>
 #include <mutex_type.h>
 
-//#define MUTEX_DEBUG
-#define THREAD_DEBUG
+#define MUTEX_DEBUG
+//#define THREAD_DEBUG
 
 #ifdef MUTEX_DEBUG
 	#include <stdio.h>

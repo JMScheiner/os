@@ -37,6 +37,7 @@ int sem_init(sem_t* sem, int count)
 
 	atomic_xadd(&id, &sem_id);
 	sem->id = id;
+	sem->waiting = 0;
 	
 	if(mutex_init(&sem->lock) != 0) return -3;
 	if(cond_init(&sem->nonzero) != 0) return -4;
@@ -79,10 +80,13 @@ int sem_destroy( sem_t* sem )
 int sem_wait(sem_t* sem)
 {
 	mutex_lock(&sem->lock);
-	while(sem->count == 0)
+	if (sem->waiting > 0 || sem->count == 0) {
+		sem->waiting++;
 		cond_wait(&sem->nonzero, &sem->lock);
-	
-	sem->count--;
+		sem->waiting--;
+		assert (sem->count > 0);
+	}
+	atomic_add(&sem->count, -1);
 	mutex_unlock(&sem->lock);
 	return 0;
 }
@@ -96,9 +100,7 @@ int sem_wait(sem_t* sem)
 */
 int sem_signal(sem_t* sem)
 {
-	mutex_lock(&sem->lock);
-	sem->count++;
-	mutex_unlock(&sem->lock);
+	atomic_add(&sem->count, 1);
 	cond_signal(&sem->nonzero);
 	return 0;
 }
