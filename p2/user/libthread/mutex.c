@@ -36,6 +36,7 @@ int mutex_init(mutex_t *mp)
 	atomic_xadd(&id, &mutex_id);
 	mutex_debug_print("   .....Initialized %d", id);
 	mp->id = id;
+	mp->active_tid = -1;
 	mp->ticket = 0;
 	mp->now_serving = 0;
 	mp->initialized = TRUE;
@@ -90,7 +91,12 @@ int mutex_lock( mutex_t *mp )
 	atomic_xadd(&ticket, &mp->ticket);
 	
 	while(ticket != mp->now_serving)
-		thr_yield(mp->active_tid);
+	{
+		if(thr_yield(mp->active_tid) != 0)
+		{
+			MAGIC_BREAK;
+		}
+	}
 	
 	mp->active_tid = tid;
 	return 0;
