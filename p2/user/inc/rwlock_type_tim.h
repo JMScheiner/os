@@ -26,6 +26,9 @@ typedef struct rwlock
 	/* @brief The number of active readers in the critical section*/
 	int readers;
 	
+	/** @brief Tid of the next waiting writer. */
+	int writer_tid;
+
 	/* @brief A flag indicating that this struct is initialized. */
 	boolean_t initialized;
 

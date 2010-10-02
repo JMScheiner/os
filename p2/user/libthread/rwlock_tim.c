@@ -33,6 +33,7 @@ int rwlock_init( rwlock_t *rwlock )
 	rwlock->mode = RWLOCK_READ;
 	
 	rwlock->readers = 0;
+	rwlock->writer_tid = NULL_TID;
 	rwlock->initialized = TRUE;
 	
 	return 0;
@@ -79,7 +80,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 	int ticket = atomic_add(&rwlock->ticket, 1);
 
 	while(ticket != rwlock->now_serving)
-		thr_yield(rwlock->active_tid);
+		thr_yield(rwlock->writer_tid);
 	
 	rwlock->mode = type;
 	switch (type) {
@@ -91,7 +92,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 		case RWLOCK_WRITE:
 			rwlock->writer_tid = tid;
 			while (rwlock->readers > 0)
-				thr_yield(-1);
+				thr_yield(NULL_TID);
 			rwlock->mode = type;
 			break;
 		default:
@@ -124,6 +125,7 @@ int rwlock_unlock( rwlock_t *rwlock )
 			break;
 		case RWLOCK_WRITE:
 			rwlock->now_serving++;
+			rwlock->writer_tid = NULL_TID;
 	return 0;
 }
 
