@@ -75,10 +75,9 @@ typedef struct tcb {
 
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb);
 void wait_for_child(tcb_t *tcb);
-void clean_up_thread(int tid, char *old_stack);
-int mutex_unlock_and_vanish(mutex_t* mp, char* int_stack);
-
 tcb_t **thr_gettcb();
+int mutex_unlock_and_vanish(mutex_t* mp, char* int_stack);
+void clean_up_thread(int tid, char *old_stack);
 
 #endif /* THR_INTERNALS_H */
 

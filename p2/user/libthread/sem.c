@@ -11,6 +11,7 @@
 #include <mutex.h>
 #include <types.h>
 
+/** @brief An id counter. */
 static int sem_id = 0;
 
 /** 

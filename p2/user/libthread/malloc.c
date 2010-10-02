@@ -71,7 +71,7 @@ void *calloc(size_t __nelt, size_t __eltsize)
 /** @brief Thread safe wrapper for realloc.
  *
  * @param __buf The memory region to reallocate.
- * @param __size The new size of the memory region.
+ * @param __new_size The new size of the memory region.
  *
  * @return a pointer to the memory allocated. NULL if allocation failed.
  */

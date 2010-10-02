@@ -21,19 +21,35 @@
 /** Structures for condition variables **/
 typedef struct cond_link
 {
+	/** @brief Tid of the thread that created this link. */
 	int tid;
-	struct cond_link* next;
-	struct cond_link* prev;
+
+	/** @brief True iff the this link has been signaled. */
 	boolean_t ready;
+
+	/** @brief The next cond_link. */
+	struct cond_link* next;
+
+	/** @brief The previous cond_link. */
+	struct cond_link* prev;
 } cond_link_t;
 
+/* A queue of links waiting to be signaled. */
 DEFINE_QUEUE(cond_queue_t, cond_link_t*);
 
+/** @brief A condition variable structure. */
 typedef struct 
 {
+	/** @brief True iff the condition variable has been initialized. */
 	boolean_t initialized;
+
+	/** @brief A queue of waiting threads. */
 	cond_queue_t q;
+
+	/** @brief A mutual exclusion lock. */
 	mutex_t qlock;
+
 } cond_t;
 
 #endif /* _COND_TYPE_H */
+

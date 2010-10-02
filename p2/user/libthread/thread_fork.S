@@ -25,10 +25,9 @@ thread_fork:
 	testl  %eax, %eax        // Check the return value, we are the parent if non-zero
 	jnz    PARENT            // Jump to the end if we are the parent thread
 	movl   16(%ebp), %esp    // Move to the base of the child's stack frame
-	pushl  %eax              // Save the return of THREAD_FORK_INT
 	pushl  20(%ebp)          // Push the tcb of the child as an argument
-	pushl  12(%ebp)          // Save arg on new stack.
-	pushl  8(%ebp)           // Save func on new stack.
+	pushl  12(%ebp)          // Push arg as an argument
+	pushl  8(%ebp)           // Push func as an argument
 	call   thr_child_init    // Initialize and run the child
 	// We should never reach here
 PARENT:

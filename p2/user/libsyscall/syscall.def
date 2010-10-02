@@ -1,5 +1,5 @@
 
-// Check that each argument has been defined
+/* Check that each argument has been defined */
 
 #ifndef PARAM_COUNT
 #error Must define number of parameters

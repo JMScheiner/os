@@ -22,20 +22,20 @@
 /** @brief A mutex structure */
 typedef struct mutex {
 
-	/* @brief The ticket counter, each thread is guaranteed a unique ticket. */
+	/** @brief The ticket counter, each thread is guaranteed a unique ticket. */
 	int ticket;
 	
-	/* @brief The ticket of the thread that owns the mutex. */
+	/** @brief The ticket of the thread that owns the mutex. */
 	int now_serving;
 	
-	/* @brief The tid of the mutex owner, or NULL_TID if no one holds the 
+	/** @brief The tid of the mutex owner, or NULL_TID if no one holds the 
 	 * mutex. */
 	int active_tid;
 	
-	/* @brief Unique identifier for this mutex. */
+	/** @brief Unique identifier for this mutex. */
 	int id;
 	
-	/* @brief Flag indicating whether this mutex is initialized.*/
+	/** @brief Flag indicating whether this mutex is initialized.*/
 	boolean_t initialized;
 	
 } mutex_t;

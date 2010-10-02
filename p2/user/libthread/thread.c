@@ -1,4 +1,4 @@
-/** @file threads.c
+/** @file thread.c
  *
  * @brief Thread management API for user programs
  *
@@ -75,15 +75,7 @@ static mutex_t max_child_stack_addr_lock;
 /** @brief The thread control block for the main parent thread. */
 static tcb_t *main_thread;
 
-/** @brief Identity hash function
- *
- * @param key The key to hash
- *
- * @return The hash value
- */
-static unsigned int hash(int key) {
-	return (unsigned int)key;
-}
+static unsigned int hash(int key);
 
 #define ALIGN_DOWN_TCB(address) \
 	(user_stack_size * ((unsigned int)(address) / user_stack_size))
@@ -257,6 +249,8 @@ fail_mutex:
  * The tid still needs to be fetched, and the child needs to add its tcb to the
  * tid table.
  *
+ * @param func The function this child should execute.
+ * @param arg The argument to the function the child will execute.
  * @param tcb The partial thread control block of the thread. 
  */
 void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
@@ -354,48 +348,6 @@ int thr_join(int tid, void **statusp) {
 	return -1;
 }
 
-/** @brief Get our tcb from the stack_list
- *
- * @return A pointer to our tcb
- */
-tcb_t **thr_gettcb() {
-	assert(initialized);
-	char *stack_addr = get_addr();
-
-	/* If this is being called from the kill stack, return the tcb of the
-	 * thread using the kill stack. */
-	if (kill_stack_top <= stack_addr && stack_addr <= kill_stack) {
-		return NULL;
-	}
-
-	/* If our address is higher than the address of any child stack, then we must
-	 * be the parent thread. */
-	if (stack_addr > max_child_stack_addr) {
-		return &main_thread;
-	}
-
-	tcb_t **tcb_addr = (tcb_t **)ALIGN_UP_TCB(stack_addr);
-	return tcb_addr;
-}
-
-/** @brief Free our own stack and vanish
- *
- * @param tcb Our thread control block
- */
-void clean_up_thread(int tid, char *old_stack) 
-{
-	kill_stack_tid = tid;
-	free(old_stack);
-
-	/* After unlocking the kill_stack mutex, we must vanish immediately without
-	 * touching the stack again. This means we can't even try to return from
-	 * mutex_unlock. Use the int_stack to handle information put on the user stack 
-	 * by INT */
-	thread_debug_print("[%d] Has freed his stack, and is releasing the kill stack lock.", 
-		kill_stack_tid);
-	mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
-}
-
 /** @brief Exit this thread with the given status
  *
  * @param status An opaque packet to pass to a waiting thread that called 
@@ -461,3 +413,55 @@ int thr_yield(int tid) {
 	return yield(tid);
 }
 
+/** @brief Get our tcb from the stack_list
+ *
+ * @return A pointer to our tcb
+ */
+tcb_t **thr_gettcb() {
+	assert(initialized);
+	char *stack_addr = get_addr();
+
+	/* If this is being called from the kill stack, return the tcb of the
+	 * thread using the kill stack. */
+	if (kill_stack_top <= stack_addr && stack_addr <= kill_stack) {
+		return NULL;
+	}
+
+	/* If our address is higher than the address of any child stack, then we must
+	 * be the parent thread. */
+	if (stack_addr > max_child_stack_addr) {
+		return &main_thread;
+	}
+
+	tcb_t **tcb_addr = (tcb_t **)ALIGN_UP_TCB(stack_addr);
+	return tcb_addr;
+}
+
+/** @brief Identity hash function
+ *
+ * @param key The key to hash
+ *
+ * @return The hash value
+ */
+static unsigned int hash(int key) {
+	return (unsigned int)key;
+}
+
+/** @brief Free our own stack and vanish
+ *
+ * @param tid Our tid.
+ * @param old_stack The stack we used to be executing on.
+ */
+void clean_up_thread(int tid, char *old_stack) 
+{
+	kill_stack_tid = tid;
+	free(old_stack);
+
+	/* After unlocking the kill_stack mutex, we must vanish immediately without
+	 * touching the stack again. This means we can't even try to return from
+	 * mutex_unlock. Use the int_stack to handle information put on the user stack 
+	 * by INT */
+	thread_debug_print("[%d] Has freed his stack, and is releasing the kill stack lock.", 
+		kill_stack_tid);
+	mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
+}

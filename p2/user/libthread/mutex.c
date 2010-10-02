@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <simics.h>
 
+/** @brief An id counter. */
 static int mutex_id = 0;
 
 /** 
