@@ -9,7 +9,6 @@
 
 #include <mutex.h>
 #include <cond.h>
-#include <list.h>
 #include <thr_internals.h>
 #include <thread_helper.h>
 #include <thread_fork.h>

@@ -72,11 +72,12 @@ int cond_destroy( cond_t* cv)
 *         MUTEX_NULL if mp is NULL.
 *         COND_INIT if cv is not initialized.
 *         MUTEX_INIT if mp is not initialized.
-*         COND_MUTEX_UNLOCK if mp fails to unlock.
-*         COND_MUTEX_LOCK if mp fails to re-lock.
+*         < 0 if mp does not lock or unlock successfully.
 */
 int cond_wait( cond_t* cv, mutex_t* mp )
 {
+	int ret;
+
 	if(!cv) return COND_NULL;
 	if(!mp) return MUTEX_NULL;
 	
@@ -92,9 +93,9 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 	ENQUEUE_LAST(cv->q, &link);
 	mutex_unlock(&cv->qlock);
 	
-	if(mutex_unlock(mp) != 0)
+	if((ret = mutex_unlock(mp)) != 0)
 	{
-		return COND_MUTEX_UNLOCK;
+		return ret;
 	}
 
 	/* Deschedule ourselves until we are woken up. */
@@ -102,9 +103,9 @@ int cond_wait( cond_t* cv, mutex_t* mp )
 		deschedule((int*)&link.ready);
 	}
 
-	if (mutex_lock(mp) != 0)
+	if ((ret = mutex_lock(mp)) != 0)
 	{
-		return COND_MUTEX_LOCK;
+		return ret;
 	}
 
 	return 0;

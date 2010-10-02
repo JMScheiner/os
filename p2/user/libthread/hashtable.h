@@ -89,7 +89,7 @@ unsigned int prime_hashtable_sizes[] =
 		(hashtable_name).table_index = 0; \
 		(hashtable_name).hash = (hash_function); \
 		(hashtable_name).table = (struct hashtable_type##_link_struct **)calloc( \
-				sizeof(struct hashtable_type##_link_struct *), prime_hashtable_sizes[0]); \
+				prime_hashtable_sizes[0], sizeof(struct hashtable_type##_link_struct *)); \
 		assert((hashtable_name).table); \
 	} while (0)
 
@@ -149,10 +149,10 @@ unsigned int prime_hashtable_sizes[] =
 #endif
 
 /* Generate (hopefully) unique identifers. */
-#define _INDEX_ hashtable_index_##__LINE__
-#define _TABLE_ hashtable_table_##__LINE__
-#define _LINK_ hashtable_link_##__LINE__
-#define _HASH_ hashtable_hash_##__LINE__
+#define _INDEX_ _hashtable_index_
+#define _TABLE_ _hashtable_table_
+#define _LINK_ _hashtable_link_
+#define _HASH_ _hashtable_hash_
 
 /** @def HASHTABLE_PUT(hashtable_type, hashtable_name, key_name, val_name)
  *
@@ -168,15 +168,19 @@ unsigned int prime_hashtable_sizes[] =
 	do { \
 		size_t _HASH_; \
 		struct hashtable_type##_link_struct *_LINK_ = NULL; \
+		/* If the hash table has reached load factor 1, double the size of the
+		 * table. */ \
 		if ((hashtable_name).size == prime_hashtable_sizes[(hashtable_name).table_index]) { \
+			/* Allocate a new table. */ \
 			struct hashtable_type##_link_struct **_TABLE_ = \
 				(struct hashtable_type##_link_struct **)calloc( \
-						sizeof(struct hashtable_type##_link_struct *), \
-						prime_hashtable_sizes[(hashtable_name).table_index + 1]); \
+						prime_hashtable_sizes[(hashtable_name).table_index + 1], \
+						sizeof(struct hashtable_type##_link_struct *)); \
 			size_t _INDEX_; \
 			for (_INDEX_ = 0; \
 						_INDEX_ < prime_hashtable_sizes[(hashtable_name).table_index]; \
 						_INDEX_++) { \
+				/* Copy every list in the table. */ \
 				while ((hashtable_name).table[_INDEX_] != NULL) { \
 					_LINK_ = (hashtable_name).table[_INDEX_]->next; \
 					_HASH_ = (hashtable_name).hash( \
@@ -187,12 +191,14 @@ unsigned int prime_hashtable_sizes[] =
 					(hashtable_name).table[_INDEX_] = _LINK_; \
 				} \
 			} \
+			/* Free the old table. */ \
 			free((hashtable_name).table); \
 			(hashtable_name).table = _TABLE_; \
 			(hashtable_name).table_index++; \
 		} \
 		_HASH_ = (hashtable_name).hash(key_name) % \
 				prime_hashtable_sizes[(hashtable_name).table_index]; \
+		/* Search for the key and update its value if already in the table. */ \
 		for (_LINK_ = (hashtable_name).table[_HASH_]; \
 					_LINK_ != NULL; \
 					_LINK_ = _LINK_->next) { \
@@ -201,6 +207,7 @@ unsigned int prime_hashtable_sizes[] =
 				break; \
 			} \
 		} \
+		/* Add the key, value to the table if the key is not in the table. */ \
 		if (_LINK_ == NULL) { \
 			_LINK_ = (struct hashtable_type##_link_struct *)malloc( \
 					sizeof(struct hashtable_type##_link_struct)); \
@@ -227,6 +234,7 @@ unsigned int prime_hashtable_sizes[] =
 		size_t _HASH_ = (hashtable_name).hash(key_name) % \
 				prime_hashtable_sizes[(hashtable_name).table_index]; \
 		struct hashtable_type##_link_struct *_LINK_; \
+		/* Search for key in the bucket that was hashed to. */ \
 		for (_LINK_ = (hashtable_name).table[_HASH_]; \
 					_LINK_ != NULL; \
 					_LINK_ = _LINK_->next) { \
@@ -252,12 +260,15 @@ unsigned int prime_hashtable_sizes[] =
 		size_t _HASH_ = (hashtable_name).hash(key_name) % \
 				prime_hashtable_sizes[(hashtable_name).table_index]; \
 		struct hashtable_type##_link_struct *_LINK_ = (hashtable_name).table[_HASH_]; \
+		/* If key is the first element in the bucket, remove it and update the
+		 * bucket. */ \
 		if (_LINK_ != NULL && _LINK_->key == (key_name)) { \
 			(val_name) = _LINK_->val; \
 			(hashtable_name).table[_HASH_] = (hashtable_name).table[_HASH_]->next; \
 			free(_LINK_); \
 		} \
 		else { \
+			/* Otherwise search the bucket for the key and remove it. */ \
 			for ( ; _LINK_ != NULL; _LINK_ = _LINK_->next) { \
 				if (_LINK_->next != NULL && _LINK_->next->key == (key_name)) { \
 					(val_name) = _LINK_->next->val; \

@@ -10,10 +10,13 @@
 #include <types.h>
 
 /* Condition variable error codes */
-#define COND_NULL -10
-#define COND_INIT -11
-#define COND_MUTEX_UNLOCK -12
-#define COND_MUTEX_LOCK -13
+
+/** @brief Indicates a null condition variable was passed to a function. */
+#define COND_NULL -11
+
+/** @brief Indicates the condition variable was not in the proper state of
+ * initialization. */
+#define COND_INIT -12
 
 /** Structures for condition variables **/
 typedef struct cond_link
