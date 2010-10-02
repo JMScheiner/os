@@ -9,6 +9,8 @@
 #include <rwlock.h>
 #include <atomic.h>
 #include <thr_internals.h>
+#include <simics.h>
+#include <thread.h>
 
 /** 
 * @brief Initializes a reader-writer lock.
@@ -89,7 +91,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 			
 			// Wait for clearance to read from the active readers / writer
 			mutex_lock(&rwlock->clear_lock);
-			while(!rwlock->clear)
+			while(!rwlock->clear || rwlock->writers > 0)
 				cond_wait(&rwlock->wait_read, &rwlock->clear_lock);
 			
 			//Atomically increment the number of readers.
@@ -108,7 +110,7 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 			atomic_add(&rwlock->writers, 1);
 			
 			mutex_lock(&rwlock->clear_lock);
-			while(!rwlock->clear)
+			while(!rwlock->clear || rwlock->readers > 0)
 				cond_wait(&rwlock->wait_write, &rwlock->clear_lock);
 
 			//Writers hold onto the clear lock until they exit.
@@ -148,10 +150,11 @@ int rwlock_unlock( rwlock_t *rwlock )
 		case RWLOCK_WRITE: 
 
 			//Decrement the number of writers.
-			atomic_add(&rwlock->writers, 1);
+			atomic_add(&rwlock->writers, -1);
 			
 			// If the next writer doesn't beat us here, he doesn't get to run 
 			// 	until the readers are done.
+			rwlock->clear = TRUE;
 			if(rwlock->writers > 1)
 			{
 				cond_signal(&rwlock->wait_write);
@@ -161,7 +164,6 @@ int rwlock_unlock( rwlock_t *rwlock )
 				cond_broadcast(&rwlock->wait_read);
 			}
 			//We still own the "clear" lock.
-			rwlock->clear = TRUE;
 			mutex_unlock(&rwlock->clear_lock);
 
 			break;
@@ -178,10 +180,11 @@ int rwlock_unlock( rwlock_t *rwlock )
 				mutex_lock(&rwlock->clear_lock);
 
 				//Let the first writer go if one is ready.
-				cond_signal(&rwlock->wait_write);
 				rwlock->clear = TRUE;
+				cond_signal(&rwlock->wait_write);
 				mutex_unlock(&rwlock->clear_lock);
-			}
+			} 
+
 			break;
 
 		default: return -2;
