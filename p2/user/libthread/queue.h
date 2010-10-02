@@ -241,7 +241,7 @@
  *
  * @param node The variable to place the last node in.
  */
-#define PEEK_LAST(queue) \
+#define PEEK_LAST(queue, node) \
 	node = (queue).last
 
 /** @def FOREACH(queue, node) \

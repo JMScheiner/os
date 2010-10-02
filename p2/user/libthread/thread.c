@@ -27,13 +27,15 @@
  * free. */
 #define KILL_STACK_SIZE 1024
 
-/* @brief Really this needs to be 24 for the 6 words that get put on the user stack 
- * 	before being copied to the kernel stack by INT. */
+/** @brief The size of the int stack. Must be large enough to hold the saved
+ * registers from an INT call. */
 #define INT_STACK_SIZE 32
 
 /** @brief The size of a child stack. Initialized in thr_init. */
 static unsigned int user_stack_size;
 
+/** @brief The size we need to allocate for a child's stack to assure the stack
+ * can be properly aligned. */
 static unsigned int alloc_stack_size;
 
 /** @brief Has thr_init been called? */
@@ -46,15 +48,18 @@ static char kill_stack_top[KILL_STACK_SIZE + 2*ESP_ALIGN - 1];
  * before it exits so it can free its own stack. */
 static char *kill_stack;
 
-/* @brief A safe place for traps to execute, so we don't overwrite part of 
+/** @brief A safe place for traps to execute, so we don't overwrite part of 
  * the kill stack. */
 static char int_stack_top[INT_STACK_SIZE + 2*ESP_ALIGN - 1];
+
+/** @brief A pointer to the base of the kill_stack. */
 static char* int_stack;
 
 /** @brief A lock on the kill stack. */
 static mutex_t kill_stack_lock;
 
-static int kill_stack_tid = -1;
+/** @brief The tid of the thread currently on the kill stack. */
+static int kill_stack_tid = NULL_TID;
 
 /** @brief Define a hashtable type from int to tcb_t *. */
 DEFINE_HASHTABLE(hashtable_t, int, tcb_t *);
@@ -77,15 +82,23 @@ static tcb_t *main_thread;
 
 static unsigned int hash(int key);
 
+/** @brief Align an address by rounding down to the nearest address containing
+ * a tcb pointer. */
 #define ALIGN_DOWN_TCB(address) \
 	(user_stack_size * ((unsigned int)(address) / user_stack_size))
 
+/** @brief Align an address by rounding up to the nearest address containing
+ * a tcb pointer. */
 #define ALIGN_UP_TCB(address) \
 	(user_stack_size * (((unsigned int)(address) + user_stack_size - 1) / user_stack_size))
 
+/** @brief Align an address down to satisfy the word alignment requirements of
+ * %esp. */
 #define ALIGN_DOWN(address) \
 	(((unsigned int)(address)) & ~(ESP_ALIGN - 1))
 
+/** @brief Align an address up to satisfy the word alignment requirements of
+ * %esp. */
 #define ALIGN_UP(address) \
 	((((unsigned int)(address) - 1) | (ESP_ALIGN - 1)) + 1)
 

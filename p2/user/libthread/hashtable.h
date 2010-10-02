@@ -149,9 +149,17 @@ unsigned int prime_hashtable_sizes[] =
 #endif
 
 /* Generate (hopefully) unique identifers. */
+
+/** @brief An index into the hashtable. */
 #define _INDEX_ _hashtable_index_
+
+/** @brief The table in a hashtable. */
 #define _TABLE_ _hashtable_table_
+
+/** @brief An entry in the hashtable. */
 #define _LINK_ _hashtable_link_
+
+/** @brief The hash value of an entry in the hash table. */
 #define _HASH_ _hashtable_hash_
 
 /** @def HASHTABLE_PUT(hashtable_type, hashtable_name, key_name, val_name)
