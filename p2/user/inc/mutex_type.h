@@ -8,8 +8,15 @@
 #include <types.h>
 
 /* Mutex error codes */
+
+/** @brief Indicates a null mutex was passed to a function. */
 #define MUTEX_NULL -1
+
+/** @brief Indicates the mutex was not in the proper state of initialization. */
 #define MUTEX_INIT -2
+
+/** @brief Indicates an illegal operation was performed while the mutex was
+ * locked (like trying to destroy it). */
 #define MUTEX_IN_USE -3
 
 /** @brief A mutex structure */

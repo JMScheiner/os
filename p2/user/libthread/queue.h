@@ -52,7 +52,7 @@
  */
 #define DYNAMIC_INIT_QUEUE(queue_type, queue_name) \
 	do { \
-		queue_name = (queue_type)calloc(sizeof(struct queue_type##_queue_struct)); \
+		queue_name = (queue_type)calloc(1, sizeof(struct queue_type##_queue_struct)); \
 		assert(queue_name) \
 	} \
 	while (0)
