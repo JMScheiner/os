@@ -5,6 +5,18 @@
 @author Justin Scheiner (jscheine)
 @author Tim Wilson (tjwilson)
 
-Same drill as last time.
+Implemented mutexes using bakery algorithm generalized to get tickets from an
+atomic add instruction.
+
+Several attempts were made to implement other mutexes, including an attempt at
+lock free lists. None were successful and had bounded waiting though.
+
+Most interesting design choice was to use two shared stacks to allow children
+to free their own stacks when they exit. The idea is a child thread locks the
+first of these stacks, jumps to it and frees its old stack. It then unlocks the
+stack its on and jumps to the second stack. This second stack is completely
+unprotected by locks. Here the child thread just calls vanish. The second stack
+is used so that the call to vanish doesn't clobber another child using the
+first shared stack.
 
 */
