@@ -37,7 +37,7 @@ typedef struct rwlock
 	cond_t wait_write; 
 	
 	/* @brief Protects access to the number of readers and writers. */
-	mutex_t clear_lock;
+	mutex_t rw_count_lock;
 	
 	/* @brief A flag indicating that this struct is initialized. */
 	boolean_t initialized;
