@@ -32,12 +32,8 @@ int rwlock_init( rwlock_t *rwlock )
 	// This value doesn't matter, since clear will be true.
 	rwlock->mode = RWLOCK_READ;
 	
-	rwlock->writers = 0;
 	rwlock->readers = 0;
 	rwlock->initialized = TRUE;
-	mutex_init(&rwlock->rw_count_lock);
-	cond_init(&rwlock->wait_write);	
-	cond_init(&rwlock->wait_read);	
 	
 	return 0;
 }
@@ -130,5 +126,4 @@ int rwlock_unlock( rwlock_t *rwlock )
 			rwlock->now_serving++;
 	return 0;
 }
-
 
