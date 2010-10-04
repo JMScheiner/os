@@ -37,7 +37,7 @@ void* write(void* arg)
 			shared_buf[i] = 'A' + i + n;
 		}
 		rwlock_unlock(&rwlock);
-		sleep(2);
+		sleep(1);
 	}
 }
 

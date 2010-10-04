@@ -25,6 +25,9 @@ typedef struct rwlock
 
 	/* @brief The number of waiting writers */
 	int writers;
+	
+	/* @brief The number of writers cond_waiting, to ensure the right person acquires the lock.*/
+	int waiting_writers;
 
 	/* @brief The number of active readers in the critical section*/
 	int readers;

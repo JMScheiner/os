@@ -33,6 +33,7 @@ int rwlock_init( rwlock_t *rwlock )
 	rwlock->mode = RWLOCK_READ;
 	
 	rwlock->writers = 0;
+	rwlock->waiting_writers = 0;
 	rwlock->readers = 0;
 	rwlock->initialized = TRUE;
 	mutex_init(&rwlock->rw_count_lock);
@@ -79,6 +80,7 @@ int rwlock_destroy( rwlock_t *rwlock )
 */
 int rwlock_lock( rwlock_t *rwlock, int type )
 {
+	int ret;
 	if(!rwlock) return RWLOCK_NULL;
 	if(!rwlock->initialized) return RWLOCK_INIT;
 	
@@ -108,8 +110,13 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 			atomic_add(&rwlock->writers, 1);
 			
 			mutex_lock(&rwlock->rw_count_lock);
-			while(rwlock->readers > 0)
-				cond_wait(&rwlock->wait_write, &rwlock->rw_count_lock);
+			if(rwlock->waiting_writers > 0 || rwlock->readers > 0)
+			{
+				rwlock->waiting_writers++;
+				if((ret = cond_wait(&rwlock->wait_write, &rwlock->rw_count_lock)) != 0)
+					return ret;
+				rwlock->waiting_writers--;
+			}
 
 			//Writers hold onto the clear lock until they exit.
 			rwlock->mode = RWLOCK_WRITE;
@@ -155,14 +162,11 @@ int rwlock_unlock( rwlock_t *rwlock )
 			if(writers > 1)
 			{
 				lprintf("[%d] Releasing writer lock to next writer.", thr_getid());
-				rwlock->mode = RWLOCK_WRITE;
 				cond_signal(&rwlock->wait_write);
 			}
 			else
 			{
 				lprintf("[%d] Releasing writer lock to all readers.", thr_getid());
-				MAGIC_BREAK;
-				rwlock->mode = RWLOCK_READ;
 				cond_broadcast(&rwlock->wait_read);
 			}
 			
@@ -179,17 +183,17 @@ int rwlock_unlock( rwlock_t *rwlock )
 			//Decrement the number of active readers.
 			readers = atomic_add(&rwlock->readers, -1);
 
-			//If we were the last reader to decrement,
+			//If we are the last reader to decrement,
 			if(readers == 1 && rwlock->writers)
 			{
 				lprintf("[%d] Releasing reader lock to next writer.", thr_getid());
 				//Let the first writer go if one is ready.
-				rwlock->mode = RWLOCK_WRITE;
 				cond_signal(&rwlock->wait_write);
 			} 
 			else
 			{
-				lprintf("[%d] Decrementing readers to %d.", thr_getid(), readers - 1);
+				lprintf("[%d] Decrementing readers to %d - writers = %d.", 
+					thr_getid(), readers - 1, rwlock->writers);
 			}
 			mutex_unlock(&rwlock->rw_count_lock);
 

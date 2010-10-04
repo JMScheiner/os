@@ -80,6 +80,7 @@ int sem_wait(sem_t* sem)
 	int ret;
 	if ((ret = mutex_lock(&sem->lock)) != 0)
 		return ret;
+	
 	if (sem->waiting > 0 || sem->open_slots == 0) {
 		sem->waiting++;
 		if ((ret = cond_wait(&sem->nonzero, &sem->lock)) != 0)

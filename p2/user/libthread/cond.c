@@ -164,6 +164,7 @@ int cond_broadcast( cond_t* cv)
 	/* Iterate through all waiting threads and wake them up. */
 	FOREACH(cv->q, link)
 	{
+		lprintf("Releasing %d", link->tid);
 		link->ready = TRUE;
 		make_runnable(link->tid);
 	}
