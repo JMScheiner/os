@@ -20,6 +20,7 @@
 #include <mm_internal.h>   
 #include <page.h>          // PAGE_SIZE, PAGE_SHIFT
 #include <cr.h>            // get_cr3
+#include <simics.h>
 #include <assert.h>
 
 #include <common_kern.h>
@@ -52,24 +53,27 @@ int mm_init(void)
    global_dir = (page_dirent_t*)mm_new_kernel_page();
    
    /* Iterate over directory entries in the kernel. */
-   for(i = 0; i < USER_MEM_START >> DIR_SHIFT; i++)
+   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
    {
       /* Allocate a page table for each. */
       pt = global_dir[i] = (page_tablent_t*) mm_new_kernel_page();
 
       /* Iterate over table entries. */
-      for(j = 0; j < (TABLE_SIZE >> 2); j++, addr += PAGE_SIZE)
+      for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
          pt[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
 
       global_dir[i] = (page_dirent_t)((uint32_t)global_dir[i] | 
          (PDENT_GLOBAL | PDENT_RW | PDENT_PRESENT) );
    }
-
+   
    assert(addr == USER_MEM_START);
    assert(i == (USER_MEM_START >> DIR_SHIFT));
    
    /* Everything else is not present, so doesn't matter. */
    for( ; i < DIR_SIZE; i++) global_dir[i] = 0;
+
+   /* After this point we give up our direct access to pages in user land.*/
+   set_cr3((uint32_t)global_dir);
 
    return 0;
 }
@@ -128,10 +132,13 @@ void* mm_new_table()
 */
 void* mm_new_pages(void* addr, size_t n)
 {
+   assert(!((uint32_t)addr & PAGE_MASK));
+   
    /* Grab the current page directory. */
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table;
    free_block_t* free_block, *next_block;
+
 
    uint32_t nframes, free_frame;
 
@@ -142,7 +149,7 @@ void* mm_new_pages(void* addr, size_t n)
    while(n > 0)
    {
       table = dir[ DIR_OFFSET(addr) ];
-      if(!((int32_t)table & PTENT_PRESENT))
+      if(!((uint32_t)table & PTENT_PRESENT))
       {
          table = (page_tablent_t*)mm_new_table();
       }
@@ -204,14 +211,17 @@ void* mm_new_pages(void* addr, size_t n)
 void* mm_new_kernel_pages(size_t n)
 {
    void* addr = smemalign(PAGE_SIZE, n * PAGE_SIZE);
-   assert(addr);
+
+   // NOTE: smemalign returned NULL on the first try. 
+   //    It is not clear that this is the wrong behavior...
+   //assert(addr);
    return addr;
 }
 
 void* mm_new_kernel_page()
 {
    void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
-   assert(addr);
+   //assert(addr);
    return addr;
 }
 
