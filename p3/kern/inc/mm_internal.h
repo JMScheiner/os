@@ -8,6 +8,7 @@
 #define TABLE_SIZE 1024
 #define DIR_SHIFT 22
 #define TABLE_SHIFT 12
+#define PAGE_MASK 0xfff
 #define OFFSET_MASK (DIR_SIZE - 1)
 
 // Page directory entry flags.
@@ -32,18 +33,17 @@
 #define PTENT_ATTR            0x80
 #define PTENT_GLOBAL          0x100
 
-
-
-#define DIR_OFFSET(addr) (((addr) >> DIR_SHIFT) & OFFSET_MASK)
-#define TABLE_OFFSET(addr) (((addr) >> TABLE_SHIFT) & OFFSET_MASK);
-#define PAGE_OFFSET(addr) ((addr) & (PAGE_SIZE - 1))
-#define PAGE_OF(addr) ((addr) & (~(PAGE_SIZE - 1)))
+#define DIR_OFFSET(addr) ((((uint32_t)addr) >> DIR_SHIFT) & OFFSET_MASK)
+#define TABLE_OFFSET(addr) ((((uint32_t)addr) >> TABLE_SHIFT) & OFFSET_MASK)
+#define PAGE_OFFSET(addr) (((uint32_t)addr) & (PAGE_SIZE - 1))
+#define PAGE_OF(addr) (((uint32_t)addr) & (~(PAGE_SIZE - 1)))
 
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
 int n_phys_frames;
+int n_free_user_frames;
 
-typedef int32_t page_tablent_t;
+typedef uint32_t page_tablent_t;
 typedef page_tablent_t* page_dirent_t;
 
 /** 
@@ -62,7 +62,7 @@ typedef struct _FREE_BLOCK_T
 free_block_t* user_free_list; 
 page_dirent_t* global_dir;
 
-void* mm_alloc_kernel_page(void);
+void* mm_new_kernel_page(void);
 
 #endif /* end of include guard: MM_INTERNAL_DR6WBXWC */
 

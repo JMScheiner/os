@@ -26,8 +26,6 @@
 #include <string.h>        // memcpy
 
 
-
-
 /** 
 * @brief Initialize the user frame list. 
 *  This function should only be called from kernel_main,
@@ -38,7 +36,7 @@
 int mm_init(void)
 {
    int i, j;
-   int32_t addr = 0;
+   uint32_t addr = 0;
    
    page_tablent_t* pt;
    n_phys_frames = machine_phys_frames();
@@ -47,23 +45,23 @@ int mm_init(void)
    user_free_list = (free_block_t*)USER_MEM_START;
 
    /* This makes an assumption that initially memory is contiguous. */
-   user_free_list->nframes = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
+   n_free_user_frames = user_free_list->nframes = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
    user_free_list->next = NULL;
    
    /* Initialize global page directory. */
-   global_dir = (page_dirent_t*)mm_alloc_kernel_page();
+   global_dir = (page_dirent_t*)mm_new_kernel_page();
    
    /* Iterate over directory entries in the kernel. */
    for(i = 0; i < USER_MEM_START >> DIR_SHIFT; i++)
    {
       /* Allocate a page table for each. */
-      pt = global_dir[i] = (page_tablent_t*) mm_alloc_kernel_page();
+      pt = global_dir[i] = (page_tablent_t*) mm_new_kernel_page();
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE >> 2); j++, addr += PAGE_SIZE)
          pt[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
 
-      global_dir[i] = (page_dirent_t)((int32_t)global_dir[i] | 
+      global_dir[i] = (page_dirent_t)((uint32_t)global_dir[i] | 
          (PDENT_GLOBAL | PDENT_RW | PDENT_PRESENT) );
    }
 
@@ -86,12 +84,12 @@ int mm_init(void)
 * 
 * @return The address of the new directory in kernel space.
 */
-void* mm_alloc_directory()
+void* mm_new_directory()
 {
    int i;
    
    /* Allocate the new page directory. */
-   page_dirent_t* dir = (page_dirent_t*) mm_alloc_kernel_page();
+   page_dirent_t* dir = (page_dirent_t*) mm_new_kernel_page();
 
    /* The kernel part of every directory should be the same. */
    memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
@@ -109,9 +107,9 @@ void* mm_alloc_directory()
 *  
 * @return the newly allocated table. 
 */
-void* mm_alloc_table()
+void* mm_new_table()
 {
-   page_tablent_t* table = (page_tablent_t*)mm_alloc_kernel_page();
+   page_tablent_t* table = (page_tablent_t*)mm_new_kernel_page();
    
    //TODO What else needs to be done? 
    
@@ -121,30 +119,92 @@ void* mm_alloc_table()
 /** 
 * @brief Allocates some number of physical pages at the given 
 *  virtual address, in the current page table. 
+*
+*  TODO Need to be able to specify RW and user/supervisor.
 * 
 * @param n The number of pages to allocate.
 * 
-* @return 
+* @return 0 on success. 
 */
 void* mm_new_pages(void* addr, size_t n)
 {
    /* Grab the current page directory. */
-   //page_dirent_t* dir = (page_dirent_t*) get_cr3();
-   
-   //TODO 
-   
-   return NULL;
+   page_dirent_t* dir = (page_dirent_t*) get_cr3();
+   page_tablent_t* table;
+   free_block_t* free_block, *next_block;
+
+   uint32_t nframes, free_frame;
+
+   assert((uint32_t)addr > USER_MEM_START);
+   assert(n > 0);
+   assert(n_free_user_frames > n);
+
+   while(n > 0)
+   {
+      table = dir[ DIR_OFFSET(addr) ];
+      if(!((int32_t)table & PTENT_PRESENT))
+      {
+         table = (page_tablent_t*)mm_new_table();
+      }
+      else 
+      {
+         table = (page_tablent_t*)PAGE_OF(table);
+      }
+      
+      /* We can't allocate a page that is already mapped */
+      assert(! (table[ TABLE_OFFSET(addr) ] & PTENT_PRESENT) ); 
+      
+      table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | PTENT_RW);
+
+      /* If things work the way I think they do, we should be able to use *addr to access
+       *    the node now. 
+       */
+      free_block = (free_block_t*)addr;
+      if(free_block->nframes == 1)
+      {
+         user_free_list = free_block->next;
+      }
+      else
+      {
+         free_frame = (uint32_t) user_free_list;
+         nframes = free_block->nframes;
+         next_block = free_block->next;
+         
+         user_free_list = user_free_list + (PAGE_SIZE / sizeof(free_block_t*));
+         
+         /* We need to remap the frame to the new block in order to modify it. */
+         table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | 
+            (PTENT_PRESENT | PTENT_RW);
+         
+         free_block->nframes = nframes - 1;
+         free_block->next = next_block;
+         
+         /* And then map it back to the correct frame. */
+         table[ TABLE_OFFSET(addr) ] = (uint32_t) free_frame | 
+            (PTENT_PRESENT | PTENT_RW | PTENT_USER);
+      }
+      
+      /* Move onto the next page. */
+      n--; 
+      addr += (PAGE_SIZE / sizeof(void*));
+   }
+
+   return 0;
 }
 
 /* TODO This definitely isn't the best way of allocating kernel pages. */
 
-void* mm_alloc_kernel_pages(size_t n)
+void* mm_new_kernel_pages(size_t n)
 {
-   return smemalign(PAGE_SIZE, n * PAGE_SIZE);
+   void* addr = smemalign(PAGE_SIZE, n * PAGE_SIZE);
+   assert(addr);
+   return addr;
 }
 
-void* mm_alloc_kernel_page()
+void* mm_new_kernel_page()
 {
-   return smemalign(PAGE_SIZE, PAGE_SIZE);
+   void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
+   assert(addr);
+   return addr;
 }
 
