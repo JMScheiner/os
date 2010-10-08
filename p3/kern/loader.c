@@ -31,14 +31,21 @@
  * @param size       the number of bytes to be copied
  * @param buf        the buffer to copy the data into
  *
- * @return returns the number of bytes copied on succes; -1 on failure
+ * @return returns the number of bytes copied on success; -1 on failure
  */
-int getbytes( const char *filename, int offset, int size, char *buf )
-{
-
-    /*
-     * You fill in this function.
-     */
+int getbytes( const char *filename, int offset, int size, char *buf ) {
+	int i;
+	int bytes;
+	for (i = 0; i < exec2obj_userapp_count; i++) {
+		exec2obj_userapp_TOC_entry file_entry = exec2obj_userapp_TOC[i];
+		if (strcmp(file_entry.execname, filename) == 0) {
+			bytes = (size < file_entry.execlen - offset) 
+				? size 
+				: file_entry.execlen - offset;
+			memcpy(buf, file_entry.execbytes + offset, bytes);
+			return bytes;
+		}
+	}
 
   return -1;
 }

@@ -1,0 +1,20 @@
+
+#ifndef NAME
+#error NAME undefined
+#endif
+
+#define ASM_NAME asm_##NAME
+
+.globl NAME
+
+/* Generate assembly wrapper for an interrupt or exception handler. 
+ * TODO: What segment registers do we need to save? */
+ASM_NAME:
+	pusha       /* Save user registers */
+	call NAME   /* Call handler function */
+	popa        /* Restore user registers */
+	iret        /* Return from interrupt */
+
+#undef ASM_NAME
+#undef NAME
+
