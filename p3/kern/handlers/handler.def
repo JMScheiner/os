@@ -3,9 +3,11 @@
 #error NAME undefined
 #endif
 
-#define ASM_NAME asm_##NAME
+#define PASTER(x, y) x ## _ ## y
+#define EVALUATOR(x, y) PASTER(x, y)
+#define ASM_NAME EVALUATOR(asm, NAME)
 
-.globl NAME
+.globl ASM_NAME
 
 /* Generate assembly wrapper for an interrupt or exception handler. 
  * TODO: What segment registers do we need to save? */

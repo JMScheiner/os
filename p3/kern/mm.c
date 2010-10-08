@@ -57,6 +57,7 @@ int mm_init(void)
    {
       /* Allocate a page table for each. */
       pt = global_dir[i] = (page_tablent_t*) mm_new_kernel_page();
+      lprintf("New kernel page at %p", pt);
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
@@ -74,6 +75,9 @@ int mm_init(void)
 
    /* After this point we give up our direct access to pages in user land.*/
    set_cr3((uint32_t)global_dir);
+   lprintf("Here we go....");
+   set_cr0(get_cr0() | CR0_PG);
+   lprintf("OKAY! VM is enabled!");
 
    return 0;
 }
@@ -113,7 +117,10 @@ void* mm_new_directory()
 */
 void* mm_new_table()
 {
+   int i;
    page_tablent_t* table = (page_tablent_t*)mm_new_kernel_page();
+   for(i = 0; i < TABLE_SIZE; i++)
+      table[i] = 0;
    
    //TODO What else needs to be done? 
    

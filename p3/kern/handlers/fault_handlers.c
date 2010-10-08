@@ -1,5 +1,5 @@
 
-#include <hadler_wrappers.h>
+#include <handlers/handler_wrappers.h>
 #include <simics.h>
 
 void divide_error_handler(void) {
@@ -61,6 +61,4 @@ void alignment_check_handler(void) {
 void machine_check_handler(void) {
 
 }
-
-#endif
 

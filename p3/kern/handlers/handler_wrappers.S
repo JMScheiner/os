@@ -1,9 +1,9 @@
 
 #define NAME divide_error_handler
-#include "handler.def"
+#include "handlers/handler.def"
 
 #define NAME debug_handler
-#include "handler.def"
+#include "handlers/handler.def"
 
 #define NAME breakpoint_handler
 #include "handler.def"

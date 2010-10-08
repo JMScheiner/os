@@ -22,6 +22,7 @@
 /* memory includes. */
 #include <lmm.h>                    /* lmm_remove_free() */
 #include <mm.h>
+#include <handler.h>
 
 /* x86 specific includes */
 #include <x86/seg.h>                /* install_user_segs() */
@@ -71,6 +72,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     * when you are ready.
     */
    
+   handler_install();
    mm_init();
    lprintf( "Hello from a brand new kernel!" );
    lprintf( "A stack variable : %p. A global variable : %p.", &a, &malloc_lmm);
