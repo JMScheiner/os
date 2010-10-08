@@ -21,6 +21,7 @@
 
 /* memory includes. */
 #include <lmm.h>                    /* lmm_remove_free() */
+#include <mm.h>
 
 /* x86 specific includes */
 #include <x86/seg.h>                /* install_user_segs() */
@@ -46,37 +47,38 @@ extern struct multiboot_info boot_info;
  */
 int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 {
-	int a;
-    /*
-     * Tell the kernel memory allocator which memory it can't use.
-     * It already knows not to touch kernel image.
-     */
+   int a;
+   /*
+    * Tell the kernel memory allocator which memory it can't use.
+    * It already knows not to touch kernel image.
+    */
 
-    /* Everything above 16M */
-    lmm_remove_free( &malloc_lmm, (void*)USER_MEM_START, -8 - USER_MEM_START );
-    
-    /* Everything below 1M  */
-    lmm_remove_free( &malloc_lmm, (void*)0, 0x100000 );
+   /* Everything above 16M */
+   lmm_remove_free( &malloc_lmm, (void*)USER_MEM_START, -8 - USER_MEM_START );
 
-    /*
-     * initialize the PIC so that IRQs and
-     * exception handlers don't overlap in the IDT.
-     */
-    interrupt_setup();
+   /* Everything below 1M  */
+   lmm_remove_free( &malloc_lmm, (void*)0, 0x100000 );
 
-    /*
-     * When kernel_main() begins, interrupts are DISABLED.
-     * You should delete this comment, and enable them --
-     * when you are ready.
-     */
+   /*
+    * initialize the PIC so that IRQs and
+    * exception handlers don't overlap in the IDT.
+    */
+   interrupt_setup();
 
-    lprintf( "Hello from a brand new kernel!" );
-	 lprintf( "A stack variable : %p. A global variable : %p.", &a, &malloc_lmm);
-	 lprintf( "etext = %p edata = %p end = %p", etext, edata, end);
+   /*
+    * When kernel_main() begins, interrupts are DISABLED.
+    * You should delete this comment, and enable them --
+    * when you are ready.
+    */
+   
+   mm_init();
+   lprintf( "Hello from a brand new kernel!" );
+   lprintf( "A stack variable : %p. A global variable : %p.", &a, &malloc_lmm);
+   MAGIC_BREAK;
 
-    while (1) {
-        continue;
-    }
+   while (1) {
+      continue;
+   }
 
-    return 0;
+   return 0;
 }
