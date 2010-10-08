@@ -64,7 +64,7 @@ SYSCALL_OBJS = syscall.o
 #
 # Kernel object files you provide in from kern/
 #
-KERNEL_OBJS = fake_console.o kernel.o loader.o malloc_wrappers.o mm.o
+KERNEL_OBJS = fake_console.o kernel.o loader.o malloc_wrappers.o mm.o mm_asm.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your

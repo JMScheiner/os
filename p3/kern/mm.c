@@ -155,6 +155,7 @@ void* mm_new_pages(void* addr, size_t n)
       assert(! (table[ TABLE_OFFSET(addr) ] & PTENT_PRESENT) ); 
       
       table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | PTENT_RW);
+      invalidate_page(addr);
 
       /* If things work the way I think they do, we should be able to use *addr to access
        *    the node now. 
@@ -162,10 +163,12 @@ void* mm_new_pages(void* addr, size_t n)
       free_block = (free_block_t*)addr;
       if(free_block->nframes == 1)
       {
+         /* Just point user_free_list at the next free frame. */
          user_free_list = free_block->next;
       }
       else
       {
+         /* Copy the information from this page to the next free page. */
          free_frame = (uint32_t) user_free_list;
          nframes = free_block->nframes;
          next_block = free_block->next;
@@ -176,15 +179,19 @@ void* mm_new_pages(void* addr, size_t n)
          table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | 
             (PTENT_PRESENT | PTENT_RW);
          
+         invalidate_page(addr);
+         
          free_block->nframes = nframes - 1;
          free_block->next = next_block;
          
          /* And then map it back to the correct frame. */
          table[ TABLE_OFFSET(addr) ] = (uint32_t) free_frame | 
             (PTENT_PRESENT | PTENT_RW | PTENT_USER);
+         
+         invalidate_page(addr);
       }
       
-      /* Move onto the next page. */
+      /* Move on to the next page. */
       n--; 
       addr += (PAGE_SIZE / sizeof(void*));
    }

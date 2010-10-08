@@ -63,6 +63,7 @@ free_block_t* user_free_list;
 page_dirent_t* global_dir;
 
 void* mm_new_kernel_page(void);
+void invalidate_page(void* addr);
 
 #endif /* end of include guard: MM_INTERNAL_DR6WBXWC */
 
