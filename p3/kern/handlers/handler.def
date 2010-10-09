@@ -12,9 +12,11 @@
 /* Generate assembly wrapper for an interrupt or exception handler. 
  * TODO: What segment registers do we need to save? */
 ASM_NAME:
+	pushf       /* Save eflags */
 	pusha       /* Save user registers */
 	call NAME   /* Call handler function */
 	popa        /* Restore user registers */
+	popf        /* Restore eflags */
 	iret        /* Return from interrupt */
 
 #undef ASM_NAME

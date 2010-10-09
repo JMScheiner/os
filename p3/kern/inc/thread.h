@@ -14,6 +14,9 @@ typedef struct {
 	/** @brief Process id. */
 	pid_t pid;
 
+	/** @brief Address to return to after a kernel to user mode switch. */
+	void *ret_addr
+
 	/** @brief Next thread in the same process. */
 	tcb_t *next;
 

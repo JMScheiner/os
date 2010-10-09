@@ -75,6 +75,6 @@ int load_new_task(const char *file) {
 		return err;
 	}
 
-	
+	context_switch(tcb);
 
 /*@}*/

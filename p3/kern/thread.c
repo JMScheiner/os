@@ -22,3 +22,7 @@ int initialize_thread(pcb_t *pcb, tcb_t *tcb) {
 	mutex_unlock(&pcb->lock);
 }
 
+void thr_start(tcb_t *tcb, regstate_t registers) {
+	mode_switch(tcb->ret_addr);
+}
+
