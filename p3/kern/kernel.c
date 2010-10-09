@@ -48,7 +48,6 @@ extern struct multiboot_info boot_info;
  */
 int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 {
-   int a;
    /*
     * Tell the kernel memory allocator which memory it can't use.
     * It already knows not to touch kernel image.
@@ -75,7 +74,9 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    handler_install();
    mm_init();
    lprintf( "Hello from a brand new kernel!" );
-   lprintf( "A stack variable : %p. A global variable : %p.", &a, &malloc_lmm);
+   int b = 0;
+   int a = 3 / b;
+   lprintf("%d", a);
    MAGIC_BREAK;
 
    while (1) {
