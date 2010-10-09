@@ -42,8 +42,6 @@ typedef uint8_t trap_gate_t[8];
    memcpy(idt_base() + offset * sizeof(trap_gate_t),  \
       tg, sizeof(trap_gate_t));                        
    
-
-
 int handler_install();
 
 #endif /* end of include guard: HANDLER_W0H6K1DA */

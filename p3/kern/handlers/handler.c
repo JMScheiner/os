@@ -27,9 +27,13 @@ int handler_install()
 {
 	trap_gate_t tg;
 	
-	/******** Timer handler ********/
-   INSTALL_HANDLER(tg, asm_double_fault_handler, IDT_DF);
-   INSTALL_HANDLER(tg, asm_invalid_tss_handler, IDT_TS);
+   INSTALL_HANDLER(tg, asm_divide_error_handler, IDT_DE);
+   INSTALL_HANDLER(tg, asm_debug_handler, IDT_DB);
+   INSTALL_HANDLER(tg, asm_breakpoint_handler, IDT_BP);
+   INSTALL_HANDLER(tg, asm_overflow_handler, IDT_OF);
+   INSTALL_HANDLER(tg, asm_bound_range_exceeded_handler, IDT_BR);
+   INSTALL_HANDLER(tg, asm_invalid_opcode_handler, IDT_UD);
+   INSTALL_HANDLER(tg, asm_device_not_available_handler, IDT_NM);
 	
 	return 0;
 }

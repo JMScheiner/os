@@ -218,17 +218,14 @@ void* mm_new_pages(void* addr, size_t n)
 void* mm_new_kernel_pages(size_t n)
 {
    void* addr = smemalign(PAGE_SIZE, n * PAGE_SIZE);
-
-   // NOTE: smemalign returned NULL on the first try. 
-   //    It is not clear that this is the wrong behavior...
-   //assert(addr);
+   assert(addr);
    return addr;
 }
 
 void* mm_new_kernel_page()
 {
    void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
-   //assert(addr);
+   assert(addr);
    return addr;
 }
 
