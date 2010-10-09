@@ -66,7 +66,7 @@ int load_new_task(const char *file) {
 		return err;
 	}
 
-	if ((err = initialize_memory(elf_hdr)) != 0) {
+	if ((err = initialize_memory(file, elf_hdr)) != 0) {
 		return err;
 	}
 

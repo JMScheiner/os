@@ -22,3 +22,34 @@ int initialize_process(pcb_t *pcb) {
 	mutex_init(&pcb->lock);
 	return 0;
 }
+
+static int allocate_region(char *start, char *end, int access_level) {
+	int err;
+	if ((err = mm_new_pages((void *)start), (end - start) / PAGE_SIZE, access_level) != 0) {
+		return err;
+	}
+	return 0;
+}
+
+static void initialize_region(const char *file, unsigned long offset, unsigned long len,
+		unsigned long start, unsigned long end) {
+	getbytes(file, offset, len, start);
+	memset((char *)start + len, 0, end - start - len);
+}
+
+int initialize_memory(const char *file, simple_elf_t elf) {
+	int err;
+	if ((err = allocate_region((char *)elf.e_txtstart, 
+				(char *)elf.e_datstart, PTENT_RO)) != 0) {
+		return err;
+	}
+	initialize_region(file, elf.e_txtoff, elf.e_txtlen, elf.e_txtstart, elf.e_rodatstart);
+	initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, elf.e_rodatstart, elf.e_datstart);
+
+	if ((err = allocate_region((char *)elf.e_datstart, 
+				(char *)elf.e_datstart + elf.e_datlen + elf.e_bsslen, PTENT_RW)) != 0) {
+		return err;
+	}
+	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
+			elf.e_datstart + elf.e_datlen + elf.e_bsslen);
+}
