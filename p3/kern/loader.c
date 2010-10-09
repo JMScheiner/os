@@ -50,4 +50,31 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
   return -1;
 }
 
+int load_new_task(const char *file) {
+	int err;
+	if ((err = elf_check_header(file)) != ELF_SUCCESS) {
+		return err;
+	}
+
+	simple_elf_t elf_hdr;
+	if ((err = elf_load_helper(&elf_hdr, file)) != ELF_SUCCESS) {
+		return err;
+	}
+
+	pcb_t pcb;
+	if ((err = initialize_process(&pcb)) != 0) {
+		return err;
+	}
+
+	if ((err = initialize_memory(elf_hdr)) != 0) {
+		return err;
+	}
+
+	tcb_t tcb;
+	if ((err = initialize_thread(&pcb, &tcb)) != 0) {
+		return err;
+	}
+
+	
+
 /*@}*/
