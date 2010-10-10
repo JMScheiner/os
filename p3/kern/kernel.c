@@ -73,6 +73,8 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    handler_install();
    mm_init();
+	 process_table_init();
+	 thread_table_init();
    lprintf( "Hello from a brand new kernel!" );
    int b = 0;
    int a = 3 / b;

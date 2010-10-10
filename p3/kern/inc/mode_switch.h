@@ -4,14 +4,20 @@
 
 /** @brief Switch to user mode.
  *
- * @param stack_pointer The top of the user stack
+ * @param kernel_stack The part of the kernel stack to return to.
+ *
+ * @param user_stack The top of the user stack
  *
  * @param eflags The user's eflags register
+ *        Bit 1 (reserved) should be set
+ *        Bit 9 (IF Interrupt Enable) should be set
+ *        Bits 12,13 (IOPL IO Privilege Level) should be set
+ *        Bit 18 (AC Alignment Checking) should be unset
  *
  * @param instruction_pointer The next instruction the user will run.
  */
-void mode_switch(void *stack_pointer, unsigned int eflags, 
-                 void *instruction_pointer);
+void mode_switch(void *kernel_stack, void *user_stack, 
+                 unsigned int eflags, void *instruction_pointer);
 
 #endif
 

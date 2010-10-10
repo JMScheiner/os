@@ -71,10 +71,9 @@ int load_new_task(const char *file) {
 	}
 
 	tcb_t tcb;
-	if ((err = initialize_thread(&pcb, &tcb)) != 0) {
-		return err;
-	}
+	initialize_thread(&pcb, &tcb);
 
-	context_switch(tcb);
+	context_switch(&(get_tcb()->esp), tcb->esp);
+}
 
 /*@}*/

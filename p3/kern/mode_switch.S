@@ -1,20 +1,27 @@
 
 .globl mode_switch
 
-/** @def void mode_switch(void *stack_pointer, unsigned int eflags, 
- *                        void *instruction_pointer);
+/** @def void mode_switch(void *kernel_stack, void *user_stack, 
+ *                        unsigned int eflags, void *instruction_pointer);
  *
  * @brief Switch to user mode.
  *
- * @param stack_pointer The top of the user stack
+ * @param kernel_stack The part of the kernel stack to return to.
+ *
+ * @param user_stack The top of the user stack
  *
  * @param eflags The user's eflags register
+ *        Bit 1 (reserved) should be set
+ *        Bit 9 (IF Interrupt Enable) should be set
+ *        Bits 12,13 (IOPL IO Privilege Level) should be set
  *
  * @param instruction_pointer The next instruction the user will run.
  */
 mode_switch:
 	pushl   %ebp
 	movl    %esp, %ebp
+	pushl   8(%ebp)
+	call    set_esp0              // Set return point of kernel stack
 	movl    $SEGSEL_USER_DS, %ds  // Install data segment selectors into
 	movl    $SEGSEL_USER_DS, %es  // all data segments.
 	movl    $SEGSEL_USER_DS, %fs

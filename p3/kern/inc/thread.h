@@ -14,15 +14,16 @@ typedef struct {
 	/** @brief Process id. */
 	pid_t pid;
 
-	/** @brief Address to return to after a kernel to user mode switch. */
-	void *ret_addr
+	/** @brief Top address of the kernel stack for this thread. */
+	void *esp;
 
 	/** @brief Next thread in the same process. */
 	tcb_t *next;
 
 } tcb_t;
 
-int initialize_thread(pcb_t *pcb, tcb_t *tcb);
+void *initialize_thread(pcb_t *pcb, tcb_t *tcb);
+void *allocate_kernel_stack(tcb_t *tcb);
 
 #endif
 
