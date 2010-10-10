@@ -4,7 +4,7 @@
 
 int main()
 {
-	lprintf("My tid is %d", gettid());
+	lprintf("My tid is 0x%x", gettid());
 	while (1) {
 	}
 }

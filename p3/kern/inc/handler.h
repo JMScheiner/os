@@ -35,10 +35,23 @@ typedef uint8_t trap_gate_t[8];
 		tg[2] = ((ss) & 0x00FF); 			\
 	}
 
+#define IDT_TG_SET_DPL(tg, dpl)              \
+   {                                         \
+      tg[5] = (tg[5] & 0x9f) | ((dpl << 5) & 0x60);    \
+   }                                         
+
 #define INSTALL_HANDLER(tg, func, offset)             \
    IDT_TG_INIT(tg);                                   \
    IDT_TG_SET_OFFSET(tg, func);                       \
    IDT_TG_SET_SS(tg, SEGSEL_KERNEL_CS);               \
+   memcpy(idt_base() + offset * sizeof(trap_gate_t),  \
+      tg, sizeof(trap_gate_t));                        
+
+#define INSTALL_USER_HANDLER(tg, func, offset)             \
+   IDT_TG_INIT(tg);                                   \
+   IDT_TG_SET_OFFSET(tg, func);                       \
+   IDT_TG_SET_SS(tg, SEGSEL_KERNEL_CS);               \
+   IDT_TG_SET_DPL(tg, 0x3);                           \
    memcpy(idt_base() + offset * sizeof(trap_gate_t),  \
       tg, sizeof(trap_gate_t));                        
    

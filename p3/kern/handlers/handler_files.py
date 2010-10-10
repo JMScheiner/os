@@ -4,49 +4,49 @@ fwrapheader = open('handler_wrappers.h', 'w')
 fhandler = open('handler.c', 'w');
 ffaulthandler = open('fault_handlers.c', 'w')
 
-
+# handler name, idt index, not implemented, dpl 3
 handlers = [
-   ['divide_error', 'IDT_DE', True], 
-   ['debug', 'IDT_DB', True],
-   ['breakpoint', 'IDT_BP', True],
-   ['overflow', 'IDT_OF', True],
-   ['bound_range_exceeded','IDT_BR', True],
-   ['invalid_opcode', 'IDT_UD', True], 
-   ['device_not_available', 'IDT_NM', True],
-   ['double_fault', 'IDT_DF', True], 
-   ['invalid_tss', 'IDT_TS', True],
-   ['segment_not_present', 'IDT_NP', True],
-   ['stack_segment_fault', 'IDT_SS', True],
-   ['general_protection', 'IDT_GP', True],
-   ['page_fault', 'IDT_PF', False],
-   ['alignment_check', 'IDT_AC', True], 
-   ['machine_check', 'IDT_MC', True],
-   ['syscall', 'SYSCALL_INT', True], 
-   ['fork', 'FORK_INT', True], 
-   ['exec', 'EXEC_INT', True], 
-   ['wait', 'WAIT_INT', True],
-   ['deschedule', 'DESCHEDULE_INT', True], 
-   ['make_runnable', 'MAKE_RUNNABLE_INT', True], 
-   ['gettid', 'GETTID_INT', False], 
-   ['new_pages', 'NEW_PAGES_INT', True], 
-   ['remove_pages', 'REMOVE_PAGES_INT', True], 
-   ['sleep', 'SLEEP_INT', True], 
-   ['getchar', 'GETCHAR_INT', True], 
-   ['readline', 'READLINE_INT', True],
-   ['print', 'PRINT_INT', True], 
-   ['set_term_color', 'SET_TERM_COLOR_INT', True], 
-   ['set_cursor_pos', 'SET_CURSOR_POS_INT', True], 
-   ['get_cursor_pos', 'GET_CURSOR_POS_INT', True], 
-   ['thread_fork', 'THREAD_FORK_INT', True], 
-   ['get_ticks', 'GET_TICKS_INT', True], 
-   ['misbehave', 'MISBEHAVE_INT', True], 
-   ['halt', 'HALT_INT', True], 
-   ['ls', 'LS_INT', True], 
-   ['task_vanish', 'TASK_VANISH_INT', True], 
-   ['set_status', 'SET_STATUS_INT', True],
-   ['vanish', 'VANISH_INT', True],
-   ['timer', 'TIMER_IDT_ENTRY', True],
-   ['key', 'KEY_IDT_ENTRY', True]
+   ['divide_error', 'IDT_DE', True, False], 
+   ['debug', 'IDT_DB', True, False],
+   ['breakpoint', 'IDT_BP', True, False],
+   ['overflow', 'IDT_OF', True, False],
+   ['bound_range_exceeded','IDT_BR', True, False],
+   ['invalid_opcode', 'IDT_UD', True, False], 
+   ['device_not_available', 'IDT_NM', True, False],
+   ['double_fault', 'IDT_DF', True, False], 
+   ['invalid_tss', 'IDT_TS', True, False],
+   ['segment_not_present', 'IDT_NP', True, False],
+   ['stack_segment_fault', 'IDT_SS', True, False],
+   ['general_protection', 'IDT_GP', True, False],
+   ['page_fault', 'IDT_PF', False, False],
+   ['alignment_check', 'IDT_AC', True, False], 
+   ['machine_check', 'IDT_MC', True, False],
+   ['syscall', 'SYSCALL_INT', True, True], 
+   ['fork', 'FORK_INT', True, True], 
+   ['exec', 'EXEC_INT', True, True], 
+   ['wait', 'WAIT_INT', True, True],
+   ['deschedule', 'DESCHEDULE_INT', True, True], 
+   ['make_runnable', 'MAKE_RUNNABLE_INT', True, True], 
+   ['gettid', 'GETTID_INT', False, True], 
+   ['new_pages', 'NEW_PAGES_INT', True, True], 
+   ['remove_pages', 'REMOVE_PAGES_INT', True, True], 
+   ['sleep', 'SLEEP_INT', True, True], 
+   ['getchar', 'GETCHAR_INT', True, True], 
+   ['readline', 'READLINE_INT', True, True],
+   ['print', 'PRINT_INT', True, True], 
+   ['set_term_color', 'SET_TERM_COLOR_INT', True, True], 
+   ['set_cursor_pos', 'SET_CURSOR_POS_INT', True, True], 
+   ['get_cursor_pos', 'GET_CURSOR_POS_INT', True, True], 
+   ['thread_fork', 'THREAD_FORK_INT', True, True], 
+   ['get_ticks', 'GET_TICKS_INT', True, True], 
+   ['misbehave', 'MISBEHAVE_INT', True, True], 
+   ['halt', 'HALT_INT', True, True], 
+   ['ls', 'LS_INT', True, True], 
+   ['task_vanish', 'TASK_VANISH_INT', True, True], 
+   ['set_status', 'SET_STATUS_INT', True, True],
+   ['vanish', 'VANISH_INT', True, True],
+   ['timer', 'TIMER_IDT_ENTRY', True, False],
+   ['key', 'KEY_IDT_ENTRY', True, False]
 ]
 
 
@@ -75,7 +75,15 @@ for l in handlers:
    fwrap.write('#define NAME ' + l[0] + '_handler\n')
    fwrap.write('#include \"handlers/handler.def\"\n\n')
    fwrapheader.write('void asm_' + l[0] + '_handler(void);\n\n');
-   fhandler.write('\tINSTALL_HANDLER(tg, asm_' + l[0] + '_handler, ' + l[1] + ');\n');
+   
+   if l[3]: 
+      fhandler.write('\tINSTALL_USER_HANDLER(tg, asm_' +   
+         l[0] + '_handler, ' + l[1] + ');\n');
+   else:
+      fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
+         l[0] + '_handler, ' + l[1] + ');\n');
+
+   
    if l[2]:
       ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n')
       ffaulthandler.write('\tlprintf(\"Ignoring ' + l[0] + ' \");\n')

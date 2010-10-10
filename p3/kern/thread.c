@@ -9,7 +9,7 @@
 #include <mm.h>
 #include <asm_helper.h>
 
-static int next_tid = 0;
+static int next_tid = 0xdeadbeef;
 
 DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
 
