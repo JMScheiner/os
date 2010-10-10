@@ -2,6 +2,7 @@
 #include <process.h>
 #include <mm.h>
 #include <assert.h>
+#include <hashtable.h>
 
 static int next_pid = 0;
 

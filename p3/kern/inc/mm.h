@@ -6,11 +6,16 @@
 
 #include <stdlib.h>
 
+#define PTENT_RO           0x0
+#define PTENT_RW           0x2
+#define PTENT_SUPERVISOR   0x0
+#define PTENT_USER         0x4
+
 int mm_init(void); 
 
 void* mm_new_directory(void);
 void* mm_new_table(void);
-void* mm_new_pages(void* addr, size_t n);
+void* mm_new_pages(void* addr, size_t n, unsigned int flag);
 void* mm_new_kernel_pages(size_t n);
 
 #endif /* end of include guard: MM_1PZ6H5QE */

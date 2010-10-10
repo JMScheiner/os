@@ -29,10 +29,10 @@ CONTEXT_SWITCH_LABEL:
 	popa                   // Restore general purpose registers
 	popf                   // Restore eflags
 	popl   %ds             // Restore data segment
-	mov    %ds, %ss        // Restore stack segment
-	mov    %ds, %es        // Restore other data segments
-	mov    %ds, %fs
-	mov    %ds, %gs
+	//mov    %ds, %ss        // Restore stack segment
+	//mov    %ds, %es        // Restore other data segments
+	//mov    %ds, %fs
+	//mov    %ds, %gs
 	pushl  %eax
 	call   set_cr3         // Restore the page directory
 	leave

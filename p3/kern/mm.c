@@ -142,7 +142,7 @@ void* mm_new_table()
 * 
 * @return 0 on success. 
 */
-void* mm_new_pages(void* addr, size_t n)
+void* mm_new_pages(void* addr, size_t n, unsigned int flag)
 {
    assert(!((uint32_t)addr & PAGE_MASK));
    
@@ -162,7 +162,7 @@ void* mm_new_pages(void* addr, size_t n)
       if(!((uint32_t)table & PTENT_PRESENT))
       {
          table = (page_tablent_t*)mm_new_table();
-         dir[DIR_OFFSET(addr)] = (page_tablent_t*)((int)table | (PDENT_PRESENT | PDENT_RW));
+         dir[DIR_OFFSET(addr)] = (page_tablent_t*)((int)table | PDENT_PRESENT | flags);
       }
       else 
       {
@@ -172,7 +172,7 @@ void* mm_new_pages(void* addr, size_t n)
       /* We can't allocate a page that is already mapped */
       assert(! (table[ TABLE_OFFSET(addr) ] & PTENT_PRESENT) ); 
       
-      table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | PTENT_RW);
+      table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | flags);
       invalidate_page(addr);
    
       /* FIXME Possible complication - 

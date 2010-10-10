@@ -78,4 +78,4 @@ for l in handlers:
 
 
 fwrapheader.write('#endif //_HANDLER_WRAPPER_H_\n')
-fhandler.write('\n\n\treturn 0;\n}\n)');
+fhandler.write('\n\n\treturn 0;\n}\n');

@@ -108,11 +108,6 @@ void make_runnable_handler(regstate_t reg)
 
 }
 
-void gettid_handler(regstate_t reg)
-{
-
-}
-
 void new_pages_handler(regstate_t reg)
 {
 
