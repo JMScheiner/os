@@ -18,6 +18,7 @@
 #include <exec2obj.h>
 #include <loader.h>
 #include <elf_410.h>
+#include <simics.h>
 
 #include <process.h>
 #include <thread.h>
@@ -82,18 +83,26 @@ int load_new_task(const char *file) {
 	if ((err = elf_load_helper(&elf_hdr, file)) != ELF_SUCCESS) {
 		return err;
 	}
+   
+   lprintf("ELF loaded.");
 
 	pcb_t pcb;
 	if ((err = initialize_process(&pcb)) != 0) {
 		return err;
 	}
+   
+   lprintf("Process initialized.");
 
 	if ((err = initialize_memory(file, elf_hdr)) != 0) {
 		return err;
 	}
 
+   lprintf("Memory initialized.");
+
 	tcb_t tcb;
 	initialize_thread(&pcb, &tcb);
+
+   lprintf("Thread initialized");
 
 	//context_switch(&(get_tcb()->esp), tcb.esp);
 	

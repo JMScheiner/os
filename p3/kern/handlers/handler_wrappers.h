@@ -79,4 +79,8 @@ void asm_set_status_handler(void);
 
 void asm_vanish_handler(void);
 
+void asm_timer_handler(void);
+
+void asm_key_handler(void);
+
 #endif //_HANDLER_WRAPPER_H_

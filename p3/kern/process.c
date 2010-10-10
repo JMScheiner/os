@@ -22,13 +22,17 @@ int initialize_process(pcb_t *pcb) {
 	pcb->pid = atomic_add(&next_pid, 1);
 	pcb->ppid = get_pid();
 	pcb->thread_count = 0;
+   
+   lprintf("allocating new directory.");
 	pcb->page_directory = mm_new_directory();
+   lprintf("done");
 	pcb->thread = NULL;
 	//mutex_init(&pcb->lock);
 	return 0;
 }
 
 int get_pid() {
+   lprintf("get_pid");
 	tcb_t *tcb = get_tcb();
 	if (tcb == NULL) {
 		return 0;
@@ -38,7 +42,10 @@ int get_pid() {
 
 static int allocate_region(char *start, char *end, int access_level) {
 	int err;
-	if ((err = mm_new_pages((void *)start, (end - start) / PAGE_SIZE, access_level)) != 0) {
+   
+   lprintf("Allocating region: start = %p, end = %p", start, end);
+
+	if ((err = mm_new_pages((void *)start, (end - start + PAGE_SIZE - 1) / PAGE_SIZE, access_level)) != 0) {
 		return err;
 	}
 	return 0;
@@ -46,7 +53,11 @@ static int allocate_region(char *start, char *end, int access_level) {
 
 static void initialize_region(const char *file, unsigned long offset, unsigned long len,
 		unsigned long start, unsigned long end) {
+
+   lprintf("Initializing region: file = %s, offset = %ld, len = %ld, start = %p, end = %p", 
+      file, offset, len, (void*)start, (void*)end);
 	getbytes(file, offset, len, (char *)start);
+   MAGIC_BREAK;
 	memset((char *)start + len, 0, end - start - len);
 }
 

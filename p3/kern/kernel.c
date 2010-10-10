@@ -31,6 +31,7 @@
 
 #include <process.h>
 #include <thread.h>
+#include <loader.h>
 
 /*
  * state for kernel memory allocation.
@@ -78,6 +79,9 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    init_process_table();
    init_thread_table();
    lprintf( "Hello from a brand new kernel!" );
+   enable_interrupts();
+   load_new_task("idle");
+
    MAGIC_BREAK;
 
    while (1) {

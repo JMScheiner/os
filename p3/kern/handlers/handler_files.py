@@ -44,7 +44,9 @@ handlers = [
    ['ls', 'LS_INT', True], 
    ['task_vanish', 'TASK_VANISH_INT', True], 
    ['set_status', 'SET_STATUS_INT', True],
-   ['vanish', 'VANISH_INT', True]
+   ['vanish', 'VANISH_INT', True],
+   ['timer', 'TIMER_IDT_ENTRY', True],
+   ['key', 'KEY_IDT_ENTRY', True]
 ]
 
 
@@ -65,6 +67,7 @@ fhandler.write('int handler_install()\n{\n\ttrap_gate_t tg;\n');
 
 ffaulthandler.write('#include <handlers/handler_wrappers.h>\n');
 ffaulthandler.write('#include <interrupt_defines.h>\n');
+ffaulthandler.write('#include <simics.h>\n');
 ffaulthandler.write('#include <asm.h>\n');
 ffaulthandler.write('#include <reg.h>\n\n');
 
@@ -74,7 +77,9 @@ for l in handlers:
    fwrapheader.write('void asm_' + l[0] + '_handler(void);\n\n');
    fhandler.write('\tINSTALL_HANDLER(tg, asm_' + l[0] + '_handler, ' + l[1] + ');\n');
    if l[2]:
-      ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n\n}\n\n')
+      ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n')
+      ffaulthandler.write('\tlprintf(\"Ignoring ' + l[0] + ' \");\n')
+      ffaulthandler.write('}\n\n')
 
 
 fwrapheader.write('#endif //_HANDLER_WRAPPER_H_\n')

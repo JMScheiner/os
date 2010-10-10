@@ -115,3 +115,9 @@
 #define NAME vanish_handler
 #include "handlers/handler.def"
 
+#define NAME timer_handler
+#include "handlers/handler.def"
+
+#define NAME key_handler
+#include "handlers/handler.def"
+
