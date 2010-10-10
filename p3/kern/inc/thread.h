@@ -2,28 +2,31 @@
 #ifndef THREAD_FWFWJ23E
 #define THREAD_FWFWJ23E
 
-/** @brief Thread identifier type. */
-typedef unsigned int tid_t;
+typedef struct thread_control_block tcb_t;
+
+#include <process.h>
 
 /** @brief Thread control block structure. */
-typedef struct {
+struct thread_control_block {
 
 	/** @brief Thread id. */
-	tid_t tid;
+	int tid;
 
 	/** @brief Process id. */
-	pid_t pid;
+	int pid;
 
 	/** @brief Top address of the kernel stack for this thread. */
 	void *esp;
 
 	/** @brief Next thread in the same process. */
-	tcb_t *next;
+	struct thread_control_block *next;
 
-} tcb_t;
+};
 
+void init_thread_table(void);
 void *initialize_thread(pcb_t *pcb, tcb_t *tcb);
 void *allocate_kernel_stack(tcb_t *tcb);
+tcb_t *get_tcb(void);
 
 #endif
 

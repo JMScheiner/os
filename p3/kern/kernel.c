@@ -29,6 +29,8 @@
 #include <x86/interrupt_defines.h>  /* interrupt_setup() */
 #include <x86/asm.h>                /* enable_interrupts() */
 
+#include <process.h>
+#include <thread.h>
 
 /*
  * state for kernel memory allocation.
@@ -73,8 +75,8 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    handler_install();
    mm_init();
-	 process_table_init();
-	 thread_table_init();
+	 init_process_table();
+	 init_thread_table();
    lprintf( "Hello from a brand new kernel!" );
    char* m = (char*)mm_new_pages((void*)0x8000000, 8);
    char c = *m;
