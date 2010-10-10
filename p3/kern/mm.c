@@ -14,6 +14,8 @@
 * @author Justin Scheiner
 * @author Tim Wilson
 * @date 2010-10-07
+* @bug Kernel pages allocation probably can do better than malloc.
+* @bug Zeroing out pages probably happens at the wrong time. 
 */
 
 #include <mm.h>
@@ -24,7 +26,7 @@
 #include <assert.h>
 
 #include <common_kern.h>
-#include <string.h>        // memcpy
+#include <string.h>        // memcpy, memset
 
 
 /** 
@@ -41,13 +43,17 @@ int mm_init(void)
    
    page_tablent_t* pt;
    n_phys_frames = machine_phys_frames();
+   free_block_t* iter;
    
    /* Point the free list at the first free page. */
    user_free_list = (free_block_t*)USER_MEM_START;
 
    /* This makes an assumption that initially memory is contiguous. */
-   n_free_user_frames = user_free_list->nframes = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
-   user_free_list->next = NULL;
+   n_free_user_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
+
+   /* Build a very simple link structure on free frames. */
+   for(i = 0, iter = user_free_list; i < n_free_user_frames; i++, iter = iter->next)
+      iter->next = (free_block_t*)((char*)iter + PAGE_SIZE);
    
    /* Initialize global page directory. */
    global_dir = (page_dirent_t*)mm_new_kernel_page();
@@ -57,7 +63,6 @@ int mm_init(void)
    {
       /* Allocate a page table for each. */
       pt = global_dir[i] = (page_tablent_t*) mm_new_kernel_page();
-      lprintf("New kernel page at %p", pt);
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
@@ -144,21 +149,20 @@ void* mm_new_pages(void* addr, size_t n)
    /* Grab the current page directory. */
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table;
-   free_block_t* free_block, *next_block;
-
-
-   uint32_t nframes, free_frame;
-
-   assert((uint32_t)addr > USER_MEM_START);
+   free_block_t* free_block;
+   
+   assert((uint32_t)addr >= USER_MEM_START);
    assert(n > 0);
    assert(n_free_user_frames > n);
 
    while(n > 0)
    {
       table = dir[ DIR_OFFSET(addr) ];
+      
       if(!((uint32_t)table & PTENT_PRESENT))
       {
          table = (page_tablent_t*)mm_new_table();
+         dir[DIR_OFFSET(addr)] = (page_tablent_t*)((int)table | (PDENT_PRESENT | PDENT_RW));
       }
       else 
       {
@@ -170,44 +174,22 @@ void* mm_new_pages(void* addr, size_t n)
       
       table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | PTENT_RW);
       invalidate_page(addr);
+   
+      /* FIXME Possible complication - 
+       *  If we context switch here, we could pass execution to a thread
+       *  which now has access to memory that is not zeroed out. 
+       */ 
 
-      /* If things work the way I think they do, we should be able to use *addr to access
-       *    the node now. 
-       */
+      /* We can use addr to access the node now.*/
       free_block = (free_block_t*)addr;
-      if(free_block->nframes == 1)
-      {
-         /* Just point user_free_list at the next free frame. */
-         user_free_list = free_block->next;
-      }
-      else
-      {
-         /* Copy the information from this page to the next free page. */
-         free_frame = (uint32_t) user_free_list;
-         nframes = free_block->nframes;
-         next_block = free_block->next;
-         
-         user_free_list = user_free_list + (PAGE_SIZE / sizeof(free_block_t*));
-         
-         /* We need to remap the frame to the new block in order to modify it. */
-         table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | 
-            (PTENT_PRESENT | PTENT_RW);
-         
-         invalidate_page(addr);
-         
-         free_block->nframes = nframes - 1;
-         free_block->next = next_block;
-         
-         /* And then map it back to the correct frame. */
-         table[ TABLE_OFFSET(addr) ] = (uint32_t) free_frame | 
-            (PTENT_PRESENT | PTENT_RW | PTENT_USER);
-         
-         invalidate_page(addr);
-      }
+      
+      /* Just point user_free_list at the next free frame. */
+      user_free_list = free_block->next;
+      memset(addr, 0, PAGE_SIZE);
       
       /* Move on to the next page. */
       n--; 
-      addr += (PAGE_SIZE / sizeof(void*));
+      addr += (PAGE_SIZE);
    }
 
    return 0;
