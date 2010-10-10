@@ -198,7 +198,6 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
    /* Grab the current page directory. */
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table;
-   free_block_t* free_block;
 
    unsigned int page = (unsigned int)addr & (~PAGE_MASK); 
    unsigned int npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -207,15 +206,16 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table = dir[ DIR_OFFSET(page) ];
-      
       if(!((unsigned int)table & PTENT_PRESENT))
          mm_new_pages((void*)page, 1, flags);
-      else 
-         table = (page_tablent_t*)PAGE_OF(table);
+      
+      table = dir[ DIR_OFFSET(page) ];
+      table = (page_tablent_t*)PAGE_OF(table);
       
       if(!(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT))
          mm_new_pages((void*)page, 1, flags);
    }
+   return 0;
 }
 
 /* TODO This definitely isn't the best way of allocating kernel pages. */

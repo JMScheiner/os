@@ -57,7 +57,6 @@ static void initialize_region(const char *file, unsigned long offset, unsigned l
    lprintf("Initializing region: file = %s, offset = %ld, len = %ld, start = %p, end = %p", 
       file, offset, len, (void*)start, (void*)end);
 	getbytes(file, offset, len, (char *)start);
-   MAGIC_BREAK;
 	memset((char *)start + len, 0, end - start - len);
 }
 
