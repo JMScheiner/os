@@ -45,7 +45,7 @@ static int allocate_region(char *start, char *end, int access_level) {
    
    lprintf("Allocating region: start = %p, end = %p", start, end);
 
-	if ((err = mm_new_pages((void *)start, (end - start + PAGE_SIZE - 1) / PAGE_SIZE, access_level)) != 0) {
+	if ((err = mm_alloc((void *)start, end - start, access_level)) != 0) {
 		return err;
 	}
 	return 0;
