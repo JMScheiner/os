@@ -3,6 +3,11 @@
 #include <assert.h>
 #include <asm.h>
 #include <hashtable.h>
+#include <malloc.h>
+#include <atomic.h>
+#include <page.h>
+#include <mm.h>
+#include <asm_helper.h>
 
 static int next_tid = 0;
 
@@ -41,22 +46,22 @@ void *initialize_thread(pcb_t *pcb, tcb_t *tcb) {
 #define STACK_TABLE_KEY(addr) ((unsigned int)(addr) / PAGE_SIZE)
 
 void *allocate_kernel_stack(tcb_t *tcb) {
-	void *stack = mm_new_kernel_page();
+	void *stack = mm_new_kernel_pages(1);
 	disable_interrupts();
 	//mutex_lock(&stack_table_lock);
-	HASHTABLE_PUT(stack_table, STACK_TABLE_KEY(stack), tcb);
+	HASHTABLE_PUT(tcb_table_t, stack_table, STACK_TABLE_KEY(stack), tcb);
 	enable_interrupts();
 	//mutex_unlock(&stack_table_lock);
-	tcb->esp = (char *)stack + PAGE_SIZE - WORD_SIZE; 
+	tcb->esp = (char *)stack + PAGE_SIZE; 
 	return stack;
 }
 
 tcb_t *get_tcb() {
 	void *esp = get_esp();
-	tcb_t *tcb;
+	tcb_t *tcb = NULL;
 	disable_interrupts();
 	//mutex_lock(&stack_table_lock);
-	HASHTABLE_GET(stack_table, STACK_TABLE_KEY(esp), tcb);
+	HASHTABLE_GET(tcb_table_t, stack_table, STACK_TABLE_KEY(esp), tcb);
 	enable_interrupts();
 	//mutex_unlock(&stack_table_lock);
 	return tcb;

@@ -142,7 +142,7 @@ void* mm_new_table()
 * 
 * @return 0 on success. 
 */
-void* mm_new_pages(void* addr, size_t n, unsigned int flag)
+int mm_new_pages(void* addr, size_t n, unsigned int flags)
 {
    assert(!((uint32_t)addr & PAGE_MASK));
    

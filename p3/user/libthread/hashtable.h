@@ -13,9 +13,33 @@
 #include <simics.h>
 
 /** @brief List of primes below powers of 2 to be used as table sizes. */
-extern unsigned int prime_hashtable_sizes[]; 
-
-unsigned int default_hash(int key);
+unsigned int prime_hashtable_sizes[] = 
+  {(1 << 5)-1,
+   (1 << 6)-3,
+   (1 << 7)-1,
+   (1 << 8)-5,
+   (1 << 9)-3,
+   (1 << 10)-3,
+   (1 << 11)-9,
+   (1 << 12)-3,
+   (1 << 13)-1,
+   (1 << 14)-3,
+   (1 << 15)-19,
+   (1 << 16)-15,
+   (1 << 17)-1,
+   (1 << 18)-5,
+   (1 << 19)-1,
+   (1 << 20)-3,
+   (1 << 21)-9,
+   (1 << 22)-3,
+   (1 << 23)-15,
+   (1 << 24)-3,
+   (1 << 25)-39,
+   (1 << 26)-5,
+   (1 << 27)-39,
+   (1 << 28)-57,
+   (1 << 29)-3,
+   (1 << 30)-35};
 
 /** @def DEFINE_HASHTABLE(hashtable_type, key_type, val_type)
  *

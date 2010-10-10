@@ -5,6 +5,7 @@
 #include <hashtable.h>
 #include <string.h>
 #include <atomic.h>
+#include <page.h>
 
 static int next_pid = 0;
 
@@ -37,7 +38,7 @@ int get_pid() {
 
 static int allocate_region(char *start, char *end, int access_level) {
 	int err;
-	if ((err = mm_new_pages((void *)start), (end - start) / PAGE_SIZE, access_level) != 0) {
+	if ((err = mm_new_pages((void *)start, (end - start) / PAGE_SIZE, access_level)) != 0) {
 		return err;
 	}
 	return 0;
@@ -64,4 +65,5 @@ int initialize_memory(const char *file, simple_elf_t elf) {
 	}
 	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
 			elf.e_datstart + elf.e_datlen + elf.e_bsslen);
+	return 0;
 }

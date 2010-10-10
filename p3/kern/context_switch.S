@@ -1,4 +1,6 @@
 
+#include <x86/cr.h>
+
 .globl context_switch
 
 /** @def void context_switch(void **old_esp, void *new_esp)

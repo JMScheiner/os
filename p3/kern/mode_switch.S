@@ -1,4 +1,6 @@
 
+#include <x86/seg.h>
+
 .globl mode_switch
 
 /** @def void mode_switch(void *kernel_stack, void *user_stack, 
