@@ -39,7 +39,8 @@ STUDENTTESTS =
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
-THREAD_OBJS = malloc.o
+THREAD_OBJS = mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o cond.o
+THREAD_OBJS += mutex_unlock_and_vanish.o sem.o rwlock.o
 
 # Thread Group Library Support.
 #
@@ -52,7 +53,11 @@ THREAD_OBJS = malloc.o
 ###########################################################################
 # Object files for your syscall wrappers
 ###########################################################################
-SYSCALL_OBJS = syscall.o
+SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
+SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
+SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
+SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
+SYSCALL_OBJS += halt.o misbehave.o
 
 ###########################################################################
 # Parts of your kernel
@@ -66,7 +71,7 @@ SYSCALL_OBJS = syscall.o
 #
 KERNEL_OBJS = fake_console.o kernel.o loader.o malloc_wrappers.o mm.o mm_asm.o region.o
 KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
-KERNEL_OBJS += threadman.o
+KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o threadman.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your

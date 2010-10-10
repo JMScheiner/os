@@ -9,7 +9,7 @@ DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
 
 pcb_table_t pcb_table;
 
-void process_table_init(void) {
+void init_process_table(void) {
 	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table);
 }
 
@@ -20,11 +20,11 @@ int initialize_process(pcb_t *pcb) {
 	pcb->thread_count = 0;
 	pcb->page_directory = mm_new_directory();
 	pcb->thread = NULL;
-	mutex_init(&pcb->lock);
+	//mutex_init(&pcb->lock);
 	return 0;
 }
 
-pid_t get_pid() {
+int get_pid() {
 	tcb_t *tcb = get_tcb();
 	if (tcb == NULL) {
 		return 0;

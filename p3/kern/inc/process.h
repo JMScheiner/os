@@ -2,14 +2,16 @@
 #ifndef PROCESS_HJSD67S
 #define PROCESS_HJSD67S
 
-/** @brief Process identifier type. */
-typedef unsigned int pid_t;
+typedef struct process_control_block pcb_t;
+
+#include <thread.h>
+#include <elf_410.h>
 
 /** @brief Process control block structure. */
-typedef struct {
+struct process_control_block {
 
 	/** @brief Process id. */
-	pid_t pid;
+	int pid;
 
 	/** @brief Number of kernel threads running within the process. */
 	int thread_count;
@@ -21,12 +23,14 @@ typedef struct {
 	tcb_t *thread;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
-	mutex_t lock;
+	//mutex_t lock;
 
-} pcb_t;
+};
 
-void init_pcb_table(void);
+void init_process_table(void);
 int initialize_process(pcb_t *pcb);
+int get_pid(void);
+int initialize_memory(const char *file, simple_elf_t elf);
 
 #endif
 

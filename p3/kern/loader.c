@@ -19,6 +19,14 @@
 #include <loader.h>
 #include <elf_410.h>
 
+#include <process.h>
+#include <thread.h>
+#include <context_switch.h>
+#include <mode_switch.h>
+#include <eflags.h>
+#include <assert.h>
+
+#define USER_STACK_BASE 0xc0000000
 
 /* --- Local function prototypes --- */ 
 
@@ -50,6 +58,22 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
   return -1;
 }
 
+#define SET(bit_vector, flag) \
+	bit_vector |= flag
+
+#define UNSET(bit_vector, flag) \
+	bit_vector &= ~flag
+
+unsigned int get_user_eflags() {
+	unsigned int eflags = get_eflags();
+	SET(eflags, EFL_RESV1);
+	SET(eflags, EFL_IF);
+	SET(eflags, EFL_IOPL_RING3);
+	UNSET(eflags, EFL_NT);
+	UNSET(eflags, EFL_AC);
+	return eflags;
+}
+
 int load_new_task(const char *file) {
 	int err;
 	if ((err = elf_check_header(file)) != ELF_SUCCESS) {
@@ -73,27 +97,16 @@ int load_new_task(const char *file) {
 	tcb_t tcb;
 	initialize_thread(&pcb, &tcb);
 
-	context_switch(&(get_tcb()->esp), tcb->esp);
+	context_switch(&(get_tcb()->esp), tcb.esp);
 	
 	unsigned int user_eflags = get_user_eflags();
 
-	mode_switch(tcb->esp, , user_eflags, elf_hdr.e_entry);
-}
+	mode_switch(tcb.esp, (void *)USER_STACK_BASE, 
+			user_eflags, (void *)elf_hdr.e_entry);
 
-#define SET(bit_vector, flag) \
-	bit_vector |= flag
-
-#define UNSET(bit_vector, flag) \
-	bit_vector &= ~flag
-
-unsigned int get_user_eflags() {
-	unsigned int eflags = get_eflags();
-	SET(eflags, EFL_RESV1);
-	SET(eflags, EFL_IF);
-	SET(eflags, EFL_IOPL_RING3);
-	UNSET(eflags, ELF_NT);
-	UNSET(eflags, EFL_AC);
-	return eflags;
+	// Never get here
+	assert(0);
+	return 0;
 }
 
 /*@}*/
