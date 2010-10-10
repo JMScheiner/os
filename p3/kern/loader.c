@@ -74,6 +74,26 @@ int load_new_task(const char *file) {
 	initialize_thread(&pcb, &tcb);
 
 	context_switch(&(get_tcb()->esp), tcb->esp);
+	
+	unsigned int user_eflags = get_user_eflags();
+
+	mode_switch(tcb->esp, , user_eflags, elf_hdr.e_entry);
+}
+
+#define SET(bit_vector, flag) \
+	bit_vector |= flag
+
+#define UNSET(bit_vector, flag) \
+	bit_vector &= ~flag
+
+unsigned int get_user_eflags() {
+	unsigned int eflags = get_eflags();
+	SET(eflags, EFL_RESV1);
+	SET(eflags, EFL_IF);
+	SET(eflags, EFL_IOPL_RING3);
+	UNSET(eflags, ELF_NT);
+	UNSET(eflags, EFL_AC);
+	return eflags;
 }
 
 /*@}*/
