@@ -24,6 +24,7 @@ mode_switch:
 	movl    %esp, %ebp
 	pushl   8(%ebp)
 	call    set_esp0              // Set return point of kernel stack
+	popl    %eax
 	pushl   $SEGSEL_USER_DS       // Push user stack segment selector
 	pushl   12(%ebp)               // Push user esp
 	pushl   16(%ebp)              // Push user eflags
