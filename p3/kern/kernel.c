@@ -76,9 +76,11 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 	 process_table_init();
 	 thread_table_init();
    lprintf( "Hello from a brand new kernel!" );
+   char* m = (char*)mm_new_pages((void*)0x8000000, 8);
+   char c = *m;
    int b = 0;
    int a = 3 / b;
-   lprintf("%d", a);
+   lprintf("%d %d", a, c);
    MAGIC_BREAK;
 
    while (1) {

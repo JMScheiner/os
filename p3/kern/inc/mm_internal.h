@@ -33,10 +33,10 @@
 #define PTENT_ATTR            0x80
 #define PTENT_GLOBAL          0x100
 
-#define DIR_OFFSET(addr) ((((uint32_t)addr) >> DIR_SHIFT) & OFFSET_MASK)
-#define TABLE_OFFSET(addr) ((((uint32_t)addr) >> TABLE_SHIFT) & OFFSET_MASK)
-#define PAGE_OFFSET(addr) (((uint32_t)addr) & (PAGE_SIZE - 1))
-#define PAGE_OF(addr) (((uint32_t)addr) & (~(PAGE_SIZE - 1)))
+#define DIR_OFFSET(addr) ((((int)addr) >> DIR_SHIFT) & OFFSET_MASK)
+#define TABLE_OFFSET(addr) ((((int)addr) >> TABLE_SHIFT) & OFFSET_MASK)
+#define PAGE_OFFSET(addr) (((int)addr) & (PAGE_SIZE - 1))
+#define PAGE_OF(addr) (((int)addr) & (~(PAGE_SIZE - 1)))
 
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
@@ -51,12 +51,8 @@ typedef page_tablent_t* page_dirent_t;
 */
 typedef struct _FREE_BLOCK_T 
 {
-   /* @brief The number of frames following the currently free page. */
-   size_t nframes;
-   
    /* @brief The next free block of physical memory. */
    struct _FREE_BLOCK_T* next;
-
 } free_block_t;
 
 free_block_t* user_free_list; 
