@@ -75,8 +75,8 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    handler_install();
    mm_init();
-	 init_process_table();
-	 init_thread_table();
+   init_process_table();
+   init_thread_table();
    lprintf( "Hello from a brand new kernel!" );
    char* m = (char*)mm_new_pages((void*)0x8000000, 8);
    char c = *m;

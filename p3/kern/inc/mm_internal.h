@@ -24,7 +24,6 @@
 
 // Page table entry flags. 
 #define PTENT_PRESENT         0x1
-#define PTENT_RW              0X2
 #define PTENT_USER            0x4
 #define PTENT_WRITE_THROUGH   0x8
 #define PTENT_DISABLE_CACHE   0x10
