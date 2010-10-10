@@ -18,7 +18,7 @@ handlers = [
    ['segment_not_present', 'IDT_NP', True],
    ['stack_segment_fault', 'IDT_SS', True],
    ['general_protection', 'IDT_GP', True],
-   ['page_fault', 'IDT_PF', True],
+   ['page_fault', 'IDT_PF', False],
    ['alignment_check', 'IDT_AC', True], 
    ['machine_check', 'IDT_MC', True],
    ['syscall', 'SYSCALL_INT', True], 

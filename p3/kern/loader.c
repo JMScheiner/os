@@ -107,7 +107,8 @@ int load_new_task(const char *file) {
 	//context_switch(&(get_tcb()->esp), tcb.esp);
 	
 	unsigned int user_eflags = get_user_eflags();
-
+   
+   MAGIC_BREAK;
 	mode_switch(tcb.esp, (void *)USER_STACK_BASE, 
 			user_eflags, (void *)elf_hdr.e_entry);
 

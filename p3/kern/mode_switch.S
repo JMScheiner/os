@@ -30,9 +30,9 @@ mode_switch:
 	movw    %ax, %fs
 	movw    %ax, %gs
 	pushl   $SEGSEL_USER_DS       // Push user stack segment selector
-	pushl   8(%ebp)               // Push user esp
-	pushl   12(%ebp)              // Push user eflags
+	pushl   12(%ebp)               // Push user esp
+	pushl   16(%ebp)              // Push user eflags
 	pushl   $SEGSEL_USER_CS       // Push user code segment selector
-	pushl   16(%ebp)              // Push user instruction pointer
+	pushl   20(%ebp)              // Push user instruction pointer
 	iret                          // return to user mode
 

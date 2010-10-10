@@ -206,11 +206,11 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table = dir[ DIR_OFFSET(page) ];
-      
       if(!((unsigned int)table & PTENT_PRESENT))
          mm_new_pages((void*)page, 1, flags);
-      else 
-         table = (page_tablent_t*)PAGE_OF(table);
+      
+      table = dir[ DIR_OFFSET(page) ];
+      table = (page_tablent_t*)PAGE_OF(table);
       
       if(!(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT))
          mm_new_pages((void*)page, 1, flags);

@@ -64,11 +64,6 @@ void general_protection_handler(regstate_t reg)
 	lprintf("Ignoring general_protection ");
 }
 
-void page_fault_handler(regstate_t reg)
-{
-	lprintf("Ignoring page_fault ");
-}
-
 void alignment_check_handler(regstate_t reg)
 {
 	lprintf("Ignoring alignment_check ");
