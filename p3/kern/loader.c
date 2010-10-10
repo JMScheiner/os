@@ -68,7 +68,7 @@ unsigned int get_user_eflags() {
 	SET(eflags, EFL_RESV1);
 	SET(eflags, EFL_IF);
 	SET(eflags, EFL_IOPL_RING3);
-	UNSET(eflags, EFL_NT);
+	//UNSET(eflags, EFL_NT);
 	UNSET(eflags, EFL_AC);
 	return eflags;
 }
@@ -102,14 +102,17 @@ int load_new_task(const char *file) {
 	tcb_t tcb;
 	initialize_thread(&pcb, &tcb);
 
-   lprintf("Thread initialized");
+  lprintf("Thread initialized");
 
 	//context_switch(&(get_tcb()->esp), tcb.esp);
-	
+
+	int *user_stack = (int *)USER_STACK_BASE;
+	user_stack[-1] = 0;
+	user_stack[-2] = 0;
+
 	unsigned int user_eflags = get_user_eflags();
    
-   MAGIC_BREAK;
-	mode_switch(tcb.esp, (void *)USER_STACK_BASE, 
+	mode_switch(tcb.esp, (void *)(&user_stack[-3]), 
 			user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here
