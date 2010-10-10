@@ -13,6 +13,9 @@ struct process_control_block {
 	/** @brief Process id. */
 	int pid;
 
+	/** @brief Process id of our parent. */
+	int ppid;
+
 	/** @brief Number of kernel threads running within the process. */
 	int thread_count;
 

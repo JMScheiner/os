@@ -22,10 +22,11 @@ mode_switch:
 	movl    %esp, %ebp
 	pushl   8(%ebp)
 	call    set_esp0              // Set return point of kernel stack
-	movl    $SEGSEL_USER_DS, %ds  // Install data segment selectors into
-	movl    $SEGSEL_USER_DS, %es  // all data segments.
-	movl    $SEGSEL_USER_DS, %fs
-	movl    $SEGSEL_USER_DS, %gs
+	movl    $SEGSEL_USER_DS, %eax
+	movw    %ax, %ds              // Install data segment selectors into
+	movw    %ax, %es              // all data segments.
+	movw    %ax, %fs
+	movw    %ax, %gs
 	pushl   $SEGSEL_USER_DS       // Push user stack segment selector
 	pushl   8(%ebp)               // Push user esp
 	pushl   12(%ebp)              // Push user eflags

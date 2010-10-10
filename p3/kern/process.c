@@ -2,6 +2,9 @@
 #include <process.h>
 #include <mm.h>
 #include <assert.h>
+#include <hashtable.h>
+#include <string.h>
+#include <atomic.h>
 
 static int next_pid = 0;
 
@@ -10,7 +13,7 @@ DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
 pcb_table_t pcb_table;
 
 void init_process_table(void) {
-	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table);
+	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash);
 }
 
 int initialize_process(pcb_t *pcb) {
@@ -42,21 +45,21 @@ static int allocate_region(char *start, char *end, int access_level) {
 
 static void initialize_region(const char *file, unsigned long offset, unsigned long len,
 		unsigned long start, unsigned long end) {
-	getbytes(file, offset, len, start);
+	getbytes(file, offset, len, (char *)start);
 	memset((char *)start + len, 0, end - start - len);
 }
 
 int initialize_memory(const char *file, simple_elf_t elf) {
 	int err;
 	if ((err = allocate_region((char *)elf.e_txtstart, 
-				(char *)elf.e_datstart, PTENT_RO)) != 0) {
+				(char *)elf.e_datstart, PTENT_RO | PTENT_USER)) != 0) {
 		return err;
 	}
 	initialize_region(file, elf.e_txtoff, elf.e_txtlen, elf.e_txtstart, elf.e_rodatstart);
 	initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, elf.e_rodatstart, elf.e_datstart);
 
 	if ((err = allocate_region((char *)elf.e_datstart, 
-				(char *)elf.e_datstart + elf.e_datlen + elf.e_bsslen, PTENT_RW)) != 0) {
+				(char *)elf.e_datstart + elf.e_datlen + elf.e_bsslen, PTENT_RW | PTENT_USER)) != 0) {
 		return err;
 	}
 	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 

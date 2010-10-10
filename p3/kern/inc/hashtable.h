@@ -41,6 +41,8 @@ unsigned int prime_hashtable_sizes[] =
    (1 << 29)-3,
    (1 << 30)-35};
 
+unsigned int default_hash(int key);
+
 /** @def DEFINE_HASHTABLE(hashtable_type, key_type, val_type)
  *
  * @brief Generate the definition for a new type of hashtable mapping keys to

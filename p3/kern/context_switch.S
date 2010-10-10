@@ -17,22 +17,23 @@ context_switch:
 	pushl  %ds             // Save data segment
 	pushf                  // Save eflags
 	pusha                  // Save general purpose registers
-	pushl  %cs
-	pushl  $CONTEXT_SWITCH_LABEL
+	//pushw  %cs
 	movl   8(%ebp), %ecx
 	// Save stack pointer so eventually someone can context switch back to us
 	movl   %esp, (%ecx)
 	// Switch to someone else
 	movl   12(%ebp), %esp
-	lret
-CONTEXT_SWITCH_LABEL:
+	//popw   %cx
+	//ljmp   %cx, $cs_reload
+//cs_reload:
 	popa                   // Restore general purpose registers
 	popf                   // Restore eflags
 	popl   %ds             // Restore data segment
-	mov    %ds, %ss        // Restore stack segment
-	mov    %ds, %es        // Restore other data segments
-	mov    %ds, %fs
-	mov    %ds, %gs
+	mov    %ds, %ecx
+	movw   %cx, %ss        // Restore stack segment
+	movw   %cx, %es        // Restore other data segments
+	movw   %cx, %fs
+	movw   %cx, %gs
 	pushl  %eax
 	call   set_cr3         // Restore the page directory
 	leave

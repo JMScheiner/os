@@ -2,6 +2,7 @@
 #include <thread.h>
 #include <assert.h>
 #include <asm.h>
+#include <hashtable.h>
 
 static int next_tid = 0;
 
@@ -11,8 +12,8 @@ tcb_table_t tcb_table;
 tcb_table_t stack_table;
 
 void init_thread_table(void) {
-	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table);
-	STATIC_INIT_HASHTABLE(tcb_table_t, stack_table);
+	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash);
+	STATIC_INIT_HASHTABLE(tcb_table_t, stack_table, default_hash);
 }
 
 void *initialize_thread(pcb_t *pcb, tcb_t *tcb) {

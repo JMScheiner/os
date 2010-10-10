@@ -97,7 +97,7 @@ int load_new_task(const char *file) {
 	tcb_t tcb;
 	initialize_thread(&pcb, &tcb);
 
-	context_switch(&(get_tcb()->esp), tcb.esp);
+	//context_switch(&(get_tcb()->esp), tcb.esp);
 	
 	unsigned int user_eflags = get_user_eflags();
 
