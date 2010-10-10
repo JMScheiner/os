@@ -7,6 +7,8 @@ typedef struct process_control_block pcb_t;
 #include <thread.h>
 #include <elf_410.h>
 
+#define USER_STACK_BASE 0xc0000000
+
 /** @brief Process control block structure. */
 struct process_control_block {
 

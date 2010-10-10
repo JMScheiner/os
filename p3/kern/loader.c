@@ -26,8 +26,6 @@
 #include <eflags.h>
 #include <assert.h>
 
-#define USER_STACK_BASE 0xc0000000
-
 /* --- Local function prototypes --- */ 
 
 

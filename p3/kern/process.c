@@ -65,5 +65,9 @@ int initialize_memory(const char *file, simple_elf_t elf) {
 	}
 	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
 			elf.e_datstart + elf.e_datlen + elf.e_bsslen);
+	if ((err = allocate_region((char *)(USER_STACK_BASE - PAGE_SIZE), 
+				(char *)USER_STACK_BASE, PTENT_RW | PTENT_USER)) != 0) {
+		return err;
+	}
 	return 0;
 }
