@@ -57,22 +57,35 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
   return -1;
 }
 
+/** @brief Set a flag in a bit vector. */
 #define SET(bit_vector, flag) \
 	bit_vector |= flag
 
+/** @brief Unset a flag in a bit vector. */
 #define UNSET(bit_vector, flag) \
 	bit_vector &= ~flag
 
+/** @brief Get a value for the eflags register suitable for use in user 
+ * mode. */
 unsigned int get_user_eflags() {
 	unsigned int eflags = get_eflags();
 	SET(eflags, EFL_RESV1);
 	SET(eflags, EFL_IF);
-	SET(eflags, EFL_IOPL_RING3);
+	UNSET(eflags, EFL_IOPL_RING3);
 	//UNSET(eflags, EFL_NT);
 	UNSET(eflags, EFL_AC);
 	return eflags;
 }
 
+/** @brief Load a new task from a file
+ *
+ * TODO: Lots of this should be reused to implement fork, but some of it will
+ * probably need to be re-done.
+ *
+ * @param file The name of the executable file to load.
+ *
+ * @return < 0 on error. Never returns on success.
+ */
 int load_new_task(const char *file) {
 	int err;
 	if ((err = elf_check_header(file)) != ELF_SUCCESS) {

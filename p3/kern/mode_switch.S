@@ -24,9 +24,9 @@ mode_switch:
 	movl    %esp, %ebp
 	pushl   8(%ebp)
 	call    set_esp0              // Set return point of kernel stack
-	popl    %eax
+	addl    $4, %esp
 	pushl   $SEGSEL_USER_DS       // Push user stack segment selector
-	pushl   12(%ebp)               // Push user esp
+	pushl   12(%ebp)              // Push user esp
 	pushl   16(%ebp)              // Push user eflags
 	pushl   $SEGSEL_USER_CS       // Push user code segment selector
 	pushl   20(%ebp)              // Push user instruction pointer
@@ -35,8 +35,8 @@ mode_switch:
 	movw    %ax, %es              // all data segments.
 	movw    %ax, %fs
 	movw    %ax, %gs
-	xor     %eax, %eax
-	xor     %ebx, %ebx
+	xor     %eax, %eax            // Clear general purpose registers
+	xor     %ebx, %ebx            // for user
 	xor     %ecx, %ecx
 	xor     %edx, %edx
 	xor     %esi, %esi
