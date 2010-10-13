@@ -65,7 +65,7 @@ typedef struct REGSTATE
 } regstate_t;
 
 #define SYSCALL_ARG(regstate) \
-	(regstate).esi
+	((regstate).esi)
 
 #endif /* end of include guard: REG_X239SB19 */
 
