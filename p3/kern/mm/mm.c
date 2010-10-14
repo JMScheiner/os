@@ -22,12 +22,15 @@
 #include <mm_internal.h>   
 #include <page.h>          // PAGE_SIZE, PAGE_SHIFT
 #include <cr.h>            // get_cr3
+#include <mutex.h>
 #include <simics.h>
 #include <assert.h>
 
 #include <common_kern.h>
 #include <string.h>        // memcpy, memset
 
+/* Protects the free list. */
+static mutex_t mm_lock;
 
 /** 
 * @brief Initialize the user frame list. 
@@ -77,6 +80,8 @@ int mm_init(void)
    
    /* Everything else is not present, so doesn't matter. */
    for( ; i < DIR_SIZE; i++) global_dir[i] = 0;
+
+   mutex_init(&mm_lock);
 
    /* After this point we give up our direct access to pages in user land.*/
    set_cr3((uint32_t)global_dir);
@@ -172,15 +177,15 @@ int mm_new_pages(void* addr, size_t n, unsigned int flags)
       
       table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | flags);
       invalidate_page(addr);
+      
+      free_block = (free_block_t*)addr;
    
       /* FIXME Possible complication - 
        *  If we context switch here, we could pass execution to a thread
        *  which now has access to memory that is not zeroed out. 
+       *    memset needs to happen during free. 
        */ 
 
-      /* We can use addr to access the node now.*/
-      free_block = (free_block_t*)addr;
-      
       /* Just point user_free_list at the next free frame. */
       user_free_list = free_block->next;
       memset(addr, 0, PAGE_SIZE);
@@ -193,27 +198,80 @@ int mm_new_pages(void* addr, size_t n, unsigned int flags)
    return 0;
 }
 
+/** 
+* @brief Make the address "addr" available to the current thread
+*  with flags "flags" for len bytes. 
+*
+*  The page will be filled with zeros initially.
+*
+*  Pages that already belong to the user will be skipped, and the 
+*     "flags" value WILL NOT be applied.
+* 
+* @param addr The address to allocate.
+* @param len Length of the new region.
+* @param flags Flags for the region, e.g. PTENT_PRESENT
+* 
+* @return 
+*/
 int mm_alloc(void* addr, size_t len, unsigned int flags)
 {
+   lprintf("addr = %p, len = %d, flags = %x", addr, len, flags);
+   assert(len > 0);
+   assert((unsigned long)addr >= USER_MEM_START);
+
    /* Grab the current page directory. */
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table;
+   free_block_t* free_block;
 
-   unsigned int page = (unsigned int)addr & (~PAGE_MASK); 
+   unsigned int page = PAGE_OF(addr);
    unsigned int npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
    int i;
    
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table = dir[ DIR_OFFSET(page) ];
-      if(!((unsigned int)table & PTENT_PRESENT))
-         mm_new_pages((void*)page, 1, flags);
+
+      if(!((unsigned long)table & PTENT_PRESENT))
+      {
+         table = (page_tablent_t*) mm_new_table();
+         dir[DIR_OFFSET(page)] = (page_tablent_t*)((int)table | PDENT_PRESENT | flags);
+      }
+      else
+      {
+         /* Wipe the flags. */
+         table = (page_tablent_t*)PAGE_OF(table);
+      }
+   
+      /* SKIP Pages that are already allocated to us. 
+       *    - The assumption here is that this function will be called 
+       *      in order of priority, and that flags set by previous users will 
+       *      be correct. To change flags use mm_setflags(addr, flags)
+       */
+      if(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT)
+      {
+         lprintf("Skipping page %p", (void*)page);
+         continue;
+      }
+
+      /* Allocate the free page, but keep it in supervisor mode for now. */
+      mutex_lock(&mm_lock);
+      table[ TABLE_OFFSET(page) ] = ((unsigned long) user_free_list | PTENT_PRESENT | flags);
+         
+      invalidate_page(addr);
+      
+      /* We can use "page" to access the node now.*/
+      free_block = (free_block_t*)page;
+      user_free_list = free_block->next;
+
+      /* Wipe the free block part of the page. The rest should already be wiped. */
+      memset((void*)page, 0, sizeof(free_block_t));
+      
+      /* Let the user see the page if appropriate. */
+      mutex_unlock(&mm_lock);
       
       table = dir[ DIR_OFFSET(page) ];
       table = (page_tablent_t*)PAGE_OF(table);
-      
-      if(!(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT))
-         mm_new_pages((void*)page, 1, flags);
    }
    return 0;
 }

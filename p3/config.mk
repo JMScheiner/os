@@ -26,7 +26,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the 410user/progs
 # directory.
 #
-410TESTS =
+410TESTS = ck1
 
 ###########################################################################
 # Test programs you have written which you wish to run
@@ -57,7 +57,7 @@ SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
 SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
 SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
-SYSCALL_OBJS += halt.o misbehave.o
+SYSCALL_OBJS += halt.o misbehave.o 
 
 ###########################################################################
 # Parts of your kernel
@@ -69,10 +69,10 @@ SYSCALL_OBJS += halt.o misbehave.o
 #
 # Kernel object files you provide in from kern/
 #
-KERNEL_OBJS = fake_console.o kernel.o loader.o malloc_wrappers.o mm.o mm_asm.o region.o
+KERNEL_OBJS = console.o kernel.o loader.o malloc_wrappers.o mm/mm.o mm/mm_asm.o mm/region.o
 KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
-KERNEL_OBJS += context_switch.o mode_switch.o threadman.o process.o thread.o atomic.o
-KERNEL_OBJS += hashtable.o asm_helper.o pagefault.o
+KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
+KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o mutex.o keyboard.o timer.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your

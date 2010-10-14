@@ -118,6 +118,6 @@
 #define NAME timer_handler
 #include "handlers/handler.def"
 
-#define NAME key_handler
+#define NAME keyboard_handler
 #include "handlers/handler.def"
 

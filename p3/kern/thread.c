@@ -8,6 +8,7 @@
 #include <page.h>
 #include <mm.h>
 #include <asm_helper.h>
+#include <reg.h>
 
 static int next_tid = 0xdeadbeef;
 
@@ -66,4 +67,13 @@ tcb_t *get_tcb() {
 	//mutex_unlock(&stack_table_lock);
 	return tcb;
 }
+
+void gettid_handler(volatile regstate_t reg)
+{
+   reg.eax = get_tcb()->tid;
+   //MAGIC_BREAK;
+}
+
+
+
 

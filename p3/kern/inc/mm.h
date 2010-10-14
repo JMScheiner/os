@@ -10,6 +10,8 @@
 #define PTENT_RW           0x2
 #define PTENT_SUPERVISOR   0x0
 #define PTENT_USER         0x4
+#define PTENT_COW          0x200
+#define PTENT_ZFOD         0x400
 
 int mm_init(void); 
 

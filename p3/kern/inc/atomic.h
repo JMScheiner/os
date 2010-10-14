@@ -21,6 +21,9 @@
  */
 int atomic_add(int *dest, int src);
 
+/* For the timer. */
+int atomic_add_volatile(volatile unsigned int* dest, int src);
+
 #endif /* end of include guard: ATOMIC_XEF37AV5 */
 
 

@@ -45,8 +45,8 @@ handlers = [
    ['task_vanish', 'TASK_VANISH_INT', True, True], 
    ['set_status', 'SET_STATUS_INT', True, True],
    ['vanish', 'VANISH_INT', True, True],
-   ['timer', 'TIMER_IDT_ENTRY', True, False],
-   ['key', 'KEY_IDT_ENTRY', True, False]
+   ['timer', 'TIMER_IDT_ENTRY', False, False],
+   ['keyboard', 'KEY_IDT_ENTRY', False, False]
 ]
 
 
@@ -83,7 +83,6 @@ for l in handlers:
       fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
          l[0] + '_handler, ' + l[1] + ');\n');
 
-   
    if l[2]:
       ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n')
       ffaulthandler.write('\tlprintf(\"Ignoring ' + l[0] + ' \");\n')
@@ -92,3 +91,5 @@ for l in handlers:
 
 fwrapheader.write('#endif //_HANDLER_WRAPPER_H_\n')
 fhandler.write('\n\n\treturn 0;\n}\n');
+
+

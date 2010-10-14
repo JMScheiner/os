@@ -9,6 +9,7 @@
                  lmm_dump.o \
                  lmm_find_free.o \
                  lmm_free.o \
+                 lmm_free_page.o \
                  lmm_init.o \
                  lmm_remove_free.o \
 

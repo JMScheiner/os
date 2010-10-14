@@ -52,7 +52,7 @@ int handler_install()
 	INSTALL_USER_HANDLER(tg, asm_set_status_handler, SET_STATUS_INT);
 	INSTALL_USER_HANDLER(tg, asm_vanish_handler, VANISH_INT);
 	INSTALL_HANDLER(tg, asm_timer_handler, TIMER_IDT_ENTRY);
-	INSTALL_HANDLER(tg, asm_key_handler, KEY_IDT_ENTRY);
+	INSTALL_HANDLER(tg, asm_keyboard_handler, KEY_IDT_ENTRY);
 
 
 	return 0;

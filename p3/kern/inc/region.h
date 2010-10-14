@@ -5,12 +5,28 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef struct REGION
+typedef struct REGION region_t;
+
+#include <process.h>
+
+struct REGION
 {
-   void (*fault)(void* addr, uint8_t access_mode);
-   void (*init)(void* addr, uint8_t access_mode);
-   void (*free)(void* addr, uint8_t access_mode);
-} region_t;
+   void* start;
+   void* end;
+
+   void (*fault)(struct REGION* region, void* addr, int access_mode);
+   void (*free)(struct REGION* region);
+   struct REGION* next;
+};
+
+int allocate_region( 
+   void *start,   
+   void *end, 
+   int access_level, 
+   void (*fault)(region_t*, void*, int), 
+   void (*free)(region_t*),
+   pcb_t* pcb;
+); 
 
 void* init_bss(char* bss, size_t size);
 void* init_data(char* data, size_t size);

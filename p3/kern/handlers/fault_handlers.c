@@ -189,13 +189,3 @@ void vanish_handler(regstate_t reg)
 	lprintf("Ignoring vanish ");
 }
 
-void timer_handler(regstate_t reg)
-{
-	lprintf("Ignoring timer ");
-}
-
-void key_handler(regstate_t reg)
-{
-	lprintf("Ignoring key ");
-}
-

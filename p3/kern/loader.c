@@ -93,7 +93,7 @@ int load_new_task(const char *file) {
    
    lprintf("Process initialized.");
 
-	if ((err = initialize_memory(file, elf_hdr)) != 0) {
+	if ((err = initialize_memory(file, elf_hdr, &pcb)) != 0) {
 		return err;
 	}
 

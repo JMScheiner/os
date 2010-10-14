@@ -4,6 +4,7 @@
 
 typedef struct process_control_block pcb_t;
 
+#include <region.h>
 #include <thread.h>
 #include <elf_410.h>
 
@@ -26,6 +27,9 @@ struct process_control_block {
 
 	/** @brief Pointer to the next thread in this process that will execute. */
 	tcb_t *thread;
+   
+   /** @brief A list of regions with different page fault and freeing procedures. */
+   region_t* regions;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
 	//mutex_t lock;
@@ -35,7 +39,7 @@ struct process_control_block {
 void init_process_table(void);
 int initialize_process(pcb_t *pcb);
 int get_pid(void);
-int initialize_memory(const char *file, simple_elf_t elf);
+int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);
 
 #endif
 

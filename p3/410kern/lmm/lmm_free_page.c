@@ -21,6 +21,7 @@
 
 #include <lmm/lmm.h>
 #include <lmm/lmm_types.h>
+#include <x86/page.h>
 
 void lmm_free_page(lmm_t *lmm, void *page)
 {

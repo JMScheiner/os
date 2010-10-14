@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <simics.h>                 /* lprintf() */
 #include <malloc.h>
+#include <assert.h>
+#include <timer.h>
+#include <console.h>
 
 /* multiboot header file */
 #include <multiboot.h>              /* boot_info */
@@ -74,19 +77,19 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     * when you are ready.
     */
    
-   handler_install();
+   lprintf( "Hello from a brand new kernel!" );
+   
+   timer_init();
    mm_init();
    init_process_table();
    init_thread_table();
-   lprintf( "Hello from a brand new kernel!" );
+   
+   handler_install();
    enable_interrupts();
-   load_new_task("gettid_test");
+   
+   clear_console();
+   load_new_task("ck1");
 
-   MAGIC_BREAK;
-
-   while (1) {
-      continue;
-   }
-
+   assert(0);
    return 0;
 }
