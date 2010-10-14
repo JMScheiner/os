@@ -84,11 +84,6 @@ void fork_handler(regstate_t reg)
 	lprintf("Ignoring fork ");
 }
 
-void exec_handler(regstate_t reg)
-{
-	lprintf("Ignoring exec ");
-}
-
 void wait_handler(regstate_t reg)
 {
 	lprintf("Ignoring wait ");

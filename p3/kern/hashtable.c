@@ -1,6 +1,8 @@
 
 #include <hashtable.h>
 
+/** @brief A roughly doubling sequence of prime numbers suitable
+ * for use as table sizes in a hashtable. */
 unsigned int prime_hashtable_sizes[] = 
   {(1 << 5)-1,
    (1 << 6)-3,
@@ -29,6 +31,12 @@ unsigned int prime_hashtable_sizes[] =
    (1 << 29)-3,
    (1 << 30)-35};
 
+/** @brief Default identity hash function to use for simple hash tables
+ *
+ * @param key The key to hash
+ *
+ * @return The orginal key (as an unsigned value)
+ */
 unsigned int default_hash(int key) {
 	return key;
 }

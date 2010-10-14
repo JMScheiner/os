@@ -23,7 +23,7 @@ handlers = [
    ['machine_check', 'IDT_MC', True, False],
    ['syscall', 'SYSCALL_INT', True, True], 
    ['fork', 'FORK_INT', True, True], 
-   ['exec', 'EXEC_INT', True, True], 
+   ['exec', 'EXEC_INT', False, True], 
    ['wait', 'WAIT_INT', True, True],
    ['deschedule', 'DESCHEDULE_INT', True, True], 
    ['make_runnable', 'MAKE_RUNNABLE_INT', True, True], 
