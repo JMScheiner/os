@@ -1,7 +1,7 @@
 
 fwrap = open('handler_wrappers.S', 'w')
 fwrapheader = open('handler_wrappers.h', 'w')
-fhandler = open('handler.c', 'w');
+fhandler = open('handler.c', 'w')
 ffaulthandler = open('fault_handlers.c', 'w')
 
 # handler name, idt index, not implemented, dpl 3
@@ -53,43 +53,44 @@ handlers = [
 fwrapheader.write('#ifndef _HANDLER_WRAPPER_H_\n')
 fwrapheader.write('#define _HANDLER_WRAPPER_H_\n\n')
 
-fhandler.write('#include \"handler.h\"\n\n');
+fhandler.write('#include \"handler.h\"\n\n')
 
-fhandler.write('#include <timer_defines.h>\n');
-fhandler.write('#include <idt.h>\n');
-fhandler.write('#include <handlers/handler_wrappers.h>\n');
-fhandler.write('#include <syscall_int.h>\n');
-fhandler.write('#include <keyhelp.h>\n');
-fhandler.write('#include <string.h>\n');
-fhandler.write('#include <asm.h>\n');
-fhandler.write('#include <stdio.h>\n\n');
-fhandler.write('int handler_install()\n{\n\ttrap_gate_t tg;\n');
+fhandler.write('#include <timer_defines.h>\n')
+fhandler.write('#include <idt.h>\n')
+fhandler.write('#include <handlers/handler_wrappers.h>\n')
+fhandler.write('#include <syscall_int.h>\n')
+fhandler.write('#include <keyhelp.h>\n')
+fhandler.write('#include <string.h>\n')
+fhandler.write('#include <asm.h>\n')
+fhandler.write('#include <stdio.h>\n\n')
+fhandler.write('int handler_install()\n{\n\ttrap_gate_t tg;\n')
 
-ffaulthandler.write('#include <handlers/handler_wrappers.h>\n');
-ffaulthandler.write('#include <interrupt_defines.h>\n');
-ffaulthandler.write('#include <simics.h>\n');
-ffaulthandler.write('#include <asm.h>\n');
-ffaulthandler.write('#include <reg.h>\n\n');
+ffaulthandler.write('#include <handlers/handler_wrappers.h>\n')
+ffaulthandler.write('#include <interrupt_defines.h>\n')
+ffaulthandler.write('#include <simics.h>\n')
+ffaulthandler.write('#include <asm.h>\n')
+ffaulthandler.write('#include <reg.h>\n\n')
 
 for l in handlers: 
    fwrap.write('#define NAME ' + l[0] + '_handler\n')
    fwrap.write('#include \"handlers/handler.def\"\n\n')
-   fwrapheader.write('void asm_' + l[0] + '_handler(void);\n\n');
+   fwrapheader.write('void asm_' + l[0] + '_handler(void);\n\n')
    
    if l[3]: 
       fhandler.write('\tINSTALL_USER_HANDLER(tg, asm_' +   
-         l[0] + '_handler, ' + l[1] + ');\n');
+         l[0] + '_handler, ' + l[1] + ');\n')
    else:
       fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
-         l[0] + '_handler, ' + l[1] + ');\n');
+         l[0] + '_handler, ' + l[1] + ');\n')
 
    if l[2]:
       ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n')
       ffaulthandler.write('\tlprintf(\"Ignoring ' + l[0] + ' \");\n')
+      ffaulthandler.write('\tMAGIC_BREAK;\n')
       ffaulthandler.write('}\n\n')
 
 
 fwrapheader.write('#endif //_HANDLER_WRAPPER_H_\n')
-fhandler.write('\n\n\treturn 0;\n}\n');
+fhandler.write('\n\n\treturn 0;\n}\n')
 
 

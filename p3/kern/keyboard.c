@@ -2,8 +2,9 @@
 * @file keyboard.c
 * @brief Responsible for responding to keyboard interrupts
 * 	and generally for the keyboard interface.
+*
 * @author Justin Scheiner
-* @bug None known.
+* @bug Definitely not thread safe!!!
 *
 */
 
@@ -12,6 +13,7 @@
 #include <keyhelp.h>
 #include <asm.h>
 #include <stdint.h>
+#include <simics.h>
 
 //NOTE: This value must be a power of 2
 //	512 is maybe excessively large for a key buffer, but

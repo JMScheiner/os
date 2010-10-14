@@ -1,17 +1,6 @@
 
 #include <reg.h>
-
-/* TODO These need to live elsewhere, I'm just not sure where yet. */
-
-/** @brief Evaluate to true iff addr1 and addr2 are on the same page. 
- *
- * @param addr1 The first address
- * @param addr2 The second address
- *
- * @return True iff addr1 and addr2 are on the same page.
- */
-#define SAME_PAGE(addr1, addr2) \
-	(((addr1) / PAGE_SIZE) == ((addr2) / PAGE_SIZE))
+#include <mm.h>
 
 /**
  * @brief Perform a checked loop over a region of memory
@@ -24,13 +13,13 @@
  * @param max The maximum number of iterations to perform.
  */
 #define SAFE_LOOP(addr, inc, cntr, max) \
-	for ((cntr) = 0 \
-			; (cntr) < (max) \
-			  && (((cntr) != 0) \
-						&& (SAME_PAGE(addr, addr - inc)) \
-					|| validate(addr)) \
+	for ((cntr) = 0 ; \
+			      (cntr) < (max) \
+			   && ((cntr) != 0) \
+			   && ((SAME_PAGE(addr, addr - inc)) \
+			   || mm_validate(addr)) \
 			; (cntr)++, \
-				((char *)(addr)) += (inc))
+				((addr)) += (inc))
 
 #define RETURN(ret) \
 	do { \
@@ -40,6 +29,7 @@
 
 #define MAX_NAME_LENGTH 127
 #define MAX_ARGUMENTS 127
+#define MAX_ARG_LENGTH 127
 #define EXEC_ARGS 2
 
 #define EXEC_INVALID_ARGS -1
@@ -54,11 +44,10 @@
  */
 void exec_handler(volatile regstate_t reg) {
 	void *arg_addr = (void *)SYSCALL_ARG(reg);
-	int cnt;
 	int argc;
 	int execname_len;
 
-	if (!validate(arg_addr) || !validate(arg_addr + sizeof(void *))) {
+	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
 		RETURN(EXEC_INVALID_ARGS);
 	}
 
@@ -76,7 +65,7 @@ void exec_handler(volatile regstate_t reg) {
 		if (*argvec == NULL) break;
 		char *arg = *argvec;
 		int arg_len;
-		SAFE_LOOP(arg, cizeof(char), arg_len, MAX_ARG_LENGTH) {
+		SAFE_LOOP(arg, sizeof(char), arg_len, MAX_ARG_LENGTH) {
 			if (*arg == '\0') break;
 		}
 

@@ -276,6 +276,52 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
    return 0;
 }
 
+/** 
+* @brief Returns the flags for the page "addr" is in.
+* 
+* @param addr The address to get the flags for. 
+* 
+* @return The flags (page directory and table bits 0).
+*         Or -1 if the page directory entry is not present.
+*/
+int mm_getflags(void* addr)
+{
+   unsigned long page;
+   long dflags, tflags;
+
+   page = ((unsigned long)addr) & PAGE_MASK;
+   page_dirent_t* dir = (page_dirent_t*) get_cr3();
+   page_tablent_t* table = dir[ DIR_OFFSET(page) ];
+   
+   dflags = ((unsigned long)table) & PAGE_MASK;
+   
+   if(dflags & PDENT_PRESENT)
+   {
+      tflags = (unsigned long)table[ TABLE_OFFSET(page) ]  & PAGE_MASK;
+      return tflags;
+   }
+   else return -1;
+}
+
+/** 
+* @brief Used specifically to validate user arguments in system calls. 
+*  For TRUE the page must be 
+*     - Present
+*     - Readable
+*     - User mode.
+* 
+* @param addr 
+* 
+* @return 
+*/
+boolean_t mm_validate(void* addr)
+{
+   int tflags = mm_getflags(addr);
+   if(tflags > 0 && ( tflags & (PTENT_USER | PTENT_PRESENT)))
+      return TRUE;
+   else return FALSE; 
+}
+
 /* TODO This definitely isn't the best way of allocating kernel pages. */
 
 void* mm_new_kernel_pages(size_t n)
