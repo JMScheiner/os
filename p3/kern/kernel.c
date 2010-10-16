@@ -19,6 +19,7 @@
 #include <string.h>
 #include <timer.h>
 #include <console.h>
+#include <scheduler.h>
 
 /* multiboot header file */
 #include <multiboot.h>              /* boot_info */
@@ -83,12 +84,15 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    lprintf( "Hello from a brand new kernel!" );
    
    timer_init();
+   scheduler_init();
    mm_init();
    init_process_table();
    init_thread_table();
    
    handler_install();
    enable_interrupts();
+   
+   load_new_task("gettid_test");
    
    clear_console();
    load_new_task(1, INIT_PROGRAM, strlen(INIT_PROGRAM));

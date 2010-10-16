@@ -52,6 +52,7 @@ void timer_init()
 void timer_handler(void)
 {
    atomic_add_volatile(&ticks, 1);
+
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 }
 

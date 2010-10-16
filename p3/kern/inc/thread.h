@@ -5,6 +5,9 @@
 typedef struct thread_control_block tcb_t;
 
 #include <process.h>
+#include <list.h>
+
+DEFINE_LIST(tcb_node_t, tcb_t);
 
 /** @brief Thread control block structure. */
 struct thread_control_block {
@@ -21,6 +24,11 @@ struct thread_control_block {
 	/** @brief Next thread in the same process. */
 	struct thread_control_block *next;
 
+   tcb_node_t scheduler_node;
+   tcb_node_t mutex_node;
+
+   unsigned long sleep_until;
+   
 };
 
 void init_thread_table(void);

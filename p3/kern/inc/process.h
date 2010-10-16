@@ -7,6 +7,7 @@ typedef struct process_control_block pcb_t;
 #include <region.h>
 #include <thread.h>
 #include <mutex.h>
+#include <list.h>
 #include <elf_410.h>
 
 #define USER_STACK_BASE 0xc0000000
@@ -34,8 +35,6 @@ struct process_control_block {
 
 	/** @brief Mutual exclusion lock for pcb fields. */
 	mutex_t lock;
-
-   struct process_control_block* next_to_run;
 
 };
 
