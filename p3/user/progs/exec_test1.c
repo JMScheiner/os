@@ -7,8 +7,8 @@ int main()
 {
 	lprintf("My tid before exec is 0x%x", gettid());
 	char *arg = NULL;
-	exec("gettid_test", &arg);
-	lprintf("FAIL - exec should not return");
+	int err = exec("gettid_test", &arg);
+	lprintf("FAIL - exec returned with error %d", err);
 	while (1);
 	return 1;
 }
