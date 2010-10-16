@@ -19,18 +19,22 @@ void context_switch(void **old_esp, void *new_esp);
 * 
 * @param old_bottom The bottom of the stack we are executing on. 
 * @param new_bottom The bottom of the stack we plan on adding to the scheduler. 
+* @param new_esp A pointer to the saved esp in the new thread. 
 */
 void duplicate_thread_context(void* old_bottom, void* new_bottom, void** new_esp);
 
 /** 
-* @brief Creates a new context identical to the current processes
-*  at the stack pointer pointed to by "new_esp"
+* @brief Creates a new thread context identical to the current one. 
+*  ...with the exception that it's page directory will point to new_directory.
 *
-*  Used for thread forking. Page directory is the same. 
-* 
-* @param new_esp The stack pointer in the new stack.
+* @param old_bottom The bottom of the stack we are executing on. 
+* @param new_bottom The bottom of the stack we plan on adding to the scheduler. 
+* @param new_esp A pointer to the saved esp in the new thread. 
+* @param new_directory The page directory of the new process.
 */
-void prepare_proc_context(void* kstack_bottom, void *new_esp, void* new_directory);
+void duplicate_proc_context(  
+   void* old_bottom, void *new_bottom, void** new_esp, void* new_directory
+);
 
 #endif
 

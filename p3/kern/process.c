@@ -69,16 +69,18 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
 {
 	//int err;
    
-   // Allocate text region.
-   allocate_region((char*)elf.e_txtstart, (char*)elf.e_datstart, 
+   // Allocate text region. FIXME Allocate text and rodata together.
+   allocate_region((char*)elf.e_txtstart, (char*)elf.e_rodatstart, 
       PTENT_RO | PTENT_USER, txt_fault, txt_free, pcb);
       
    // Allocate rodata region.
-   allocate_region((char*)elf.e_rodatstart, elf.e_rodatstart + (char*)elf.e_rodatlen, 
+   allocate_region(
+      (char*)elf.e_rodatstart, elf.e_rodatstart + (char*)elf.e_rodatlen, 
       PTENT_RO | PTENT_USER,  rodata_fault, rodata_free, pcb);
    
    //Allocate data region.
-   allocate_region((char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
+   allocate_region(
+      (char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
       PTENT_RW | PTENT_USER,  dat_fault, dat_free, pcb);
       
    //Allocate bss region.

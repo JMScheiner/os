@@ -1,8 +1,20 @@
+/** 
+* @file context_switch.S
+* @brief Context switching code for the 410 kernel.
+* @author Tim Wilson
+* @author Justin Scheiner
+* @bug Care has to be taken as to when duplicate_thread_context is called. 
+*  In particulare, local references to "my tcb" become inaccurate when we 
+*  eventually context switch to the child. We should put more thought into
+*  whether there is anything "bad" on the stack in the new childs thread.
+* @date 2010-10-16
+*/
 
 #include <x86/cr.h>
 
 .globl context_switch
 .globl duplicate_thread_context
+.globl duplicate_proc_context
 
 /** @def void context_switch(void **old_esp, void *new_esp)
  * 
@@ -53,7 +65,14 @@ context_switch:
 * @param new_bottom The bottom of the stack we plan on adding to the scheduler. 
 */
 duplicate_thread_context: 
-	call   get_cr3         // Save the page directory
+	call   get_cr3         // Save the current page directory
+   jmp duplicate_context  
+
+duplicate_proc_context: 
+   mov   16(%esp),  %eax  // Save the new page directory.
+   jmp duplicate_context
+
+duplicate_context: 
    pusha 
    movl   32(%esp), %eax  // Grab the bottom of the current kernel stack. 
    movl   36(%esp), %ebx  // Grab the bottom of the new kernel stack. 

@@ -16,12 +16,10 @@
  */
 #define SAFE_LOOP(addr, inc, cntr, max) \
 	for ((cntr) = 0 ; \
-			      (cntr) < (max) \
-			   && ((cntr) != 0) \
-			   && ((SAME_PAGE(addr, addr - inc)) \
-			   || mm_validate(addr)) \
-			; (cntr)++, \
-				((addr)) += (inc))
+			((cntr) == (max)) ? 0 : \
+         ((cntr) == 0 || !SAME_PAGE(addr, (addr) - (inc))) ? \
+            mm_validate(addr) : 1 ; \
+         (cntr)++, (addr) += (inc))
 
 #define NOT_NULL_TERMINATED -1
 #define INVALID_MEMORY -2

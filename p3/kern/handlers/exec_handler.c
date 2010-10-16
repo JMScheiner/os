@@ -29,16 +29,17 @@ void exec_handler(volatile regstate_t reg) {
 	char buf[MAX_TOTAL_LENGTH];
 	char *ptr = buf;
 
-	MAGIC_BREAK;
-	/* TODO Check if there is more than one thread. */
 
 	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
 		RETURN(EXEC_INVALID_ARGS);
 	}
 
+	/* TODO Check if there is more than one thread. */
 	char *execname = *(char **)arg_addr;
 	char **argvec = *(char ***)(arg_addr + sizeof(char *));
 	int total_bytes = v_strcpy(ptr, execname, MAX_TOTAL_LENGTH);
+	MAGIC_BREAK;
+
 	if (total_bytes < 0) {
 		RETURN(EXEC_INVALID_ARG);
 	}
