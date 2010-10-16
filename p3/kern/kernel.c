@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <timer.h>
 #include <console.h>
+#include <scheduler.h>
 
 /* multiboot header file */
 #include <multiboot.h>              /* boot_info */
@@ -80,6 +81,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    lprintf( "Hello from a brand new kernel!" );
    
    timer_init();
+   scheduler_init();
    mm_init();
    init_process_table();
    init_thread_table();
