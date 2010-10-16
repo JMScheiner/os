@@ -37,8 +37,9 @@
 #include <process.h>
 #include <thread.h>
 #include <loader.h>
+#include <types.h>
 
-#define INIT_PROGRAM "ck1"
+#define INIT_PROGRAM "exec_test1"
 
 /*
  * state for kernel memory allocation.
@@ -90,10 +91,11 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    init_thread_table();
    
    handler_install();
+   interrupts_initialized = TRUE;
    enable_interrupts();
    
    clear_console();
-   load_new_task(1, INIT_PROGRAM, strlen(INIT_PROGRAM));
+   load_new_task(1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
 
    assert(0);
    return 0;

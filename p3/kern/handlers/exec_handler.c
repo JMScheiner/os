@@ -3,6 +3,7 @@
 #include <mm.h>
 #include <validation.h>
 #include <loader.h>
+#include <simics.h>
 
 #define RETURN(ret) \
 	do { \
@@ -28,6 +29,7 @@ void exec_handler(volatile regstate_t reg) {
 	char buf[MAX_TOTAL_LENGTH];
 	char *ptr = buf;
 
+	MAGIC_BREAK;
 	/* TODO Check if there is more than one thread. */
 
 	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
