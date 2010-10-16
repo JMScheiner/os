@@ -194,8 +194,8 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* Allocate the free page, but keep it in supervisor mode for now. */
       
       table[ TABLE_OFFSET(page) ] = 
-         ((unsigned long) user_free_list | PTENT_PRESENT | flags);// & ~PTENT_USER;
-      invalidate_page(addr);
+         ((unsigned long) user_free_list | PTENT_PRESENT | flags) & ~PTENT_USER;
+      invalidate_page((void*)page);
       
       /* We can use "page" to access the node now.*/
       free_block = (free_block_t*)page;
@@ -205,12 +205,12 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       memset((void*)page, 0, sizeof(free_block_t));
       
       /* Let the user see the page if appropriate. */
-      /*if(flags & PTENT_USER)
+      if(flags & PTENT_USER)
       {
          table[ TABLE_OFFSET(page) ] = 
             ((unsigned long) user_free_list | PTENT_PRESENT | flags);
-         invalidate_page(addr);
-      }*/
+         invalidate_page((void*)page);
+      }
       lprintf("New page table entry at %p. Flags = 0x%lx", 
          (void*)page, table[ TABLE_OFFSET(page) ] & PAGE_MASK);
 
@@ -287,18 +287,16 @@ int mm_getflags(void* addr)
    unsigned long page;
    long dflags, tflags;
 
-   page = ((unsigned long)addr) & PAGE_MASK;
+   page = ((unsigned long)addr) & ~PAGE_MASK;
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table = dir[ DIR_OFFSET(page) ];
    
    dflags = ((unsigned long)table) & PAGE_MASK;
    table = (page_tablent_t*)PAGE_OF(table);
    
-   lprintf("address = %p, dflags = 0x%lx", addr, dflags);
    if(dflags & PDENT_PRESENT)
    {
       tflags = (unsigned long)table[ TABLE_OFFSET(page) ]  & PAGE_MASK;
-      lprintf("address = %p, tflags = 0x%lx", addr, tflags);
       return tflags;
    }
    else return -1;
