@@ -14,28 +14,43 @@ static int next_pid = 0;
 DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
 
 pcb_table_t pcb_table;
+mutex_t pcb_table_lock;
 
-void init_process_table(void) {
+void init_process_table(void) 
+{
+   mutex_init(&pcb_table_lock);
 	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash);
 }
 
-int initialize_process(pcb_t *pcb) {
-	assert(pcb);
+pcb_t* get_pcb()
+{
+   tcb_t* tcb = get_tcb();
+   assert(tcb);
+   
+   pcb_t* pcb = NULL;
+   
+   mutex_lock(&pcb_table_lock);
+   HASHTABLE_GET(pcb_table_t, pcb_table, tcb->pid, pcb);
+   mutex_unlock(&pcb_table_lock);
+   
+   return pcb;
+}
+
+pcb_t* initialize_process() 
+{
+   pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
 	pcb->pid = atomic_add(&next_pid, 1);
 	pcb->ppid = get_pid();
 	pcb->thread_count = 0;
    pcb->regions = NULL;
    
-   lprintf("allocating new directory.");
 	pcb->page_directory = mm_new_directory();
-   lprintf("done");
-	pcb->thread = NULL;
-	//mutex_init(&pcb->lock);
-	return 0;
+	mutex_init(&pcb->lock);
+	mutex_init(&pcb->mm_lock);
+	return pcb;
 }
 
 int get_pid() {
-   lprintf("get_pid");
 	tcb_t *tcb = get_tcb();
 	if (tcb == NULL) {
 		return 0;

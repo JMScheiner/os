@@ -13,7 +13,6 @@ int allocate_region(
    pcb_t* pcb
 ) 
 {
-	int err;
    
    /* TODO When does the region list get freed. */
    region_t* region = malloc(sizeof(region_t));
@@ -27,11 +26,7 @@ int allocate_region(
    region->next = pcb->regions;
    pcb->regions = region;
    
-	if ((err = mm_alloc((void *)start, end - start, access_level)) != 0) 
-   {
-		return err;
-	}
-
+	mm_alloc(pcb, (void *)start, end - start, access_level);
 	return 0;
 }
 

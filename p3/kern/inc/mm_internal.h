@@ -2,8 +2,6 @@
 
 #define MM_INTERNAL_DR6WBXWC
 
-#include <stdint.h>
-
 #define DIR_SIZE 1024
 #define TABLE_SIZE 1024
 #define DIR_SHIFT 22
@@ -37,7 +35,7 @@
 int n_phys_frames;
 int n_free_user_frames;
 
-typedef uint32_t page_tablent_t;
+typedef unsigned long page_tablent_t;
 typedef page_tablent_t* page_dirent_t;
 
 /** 

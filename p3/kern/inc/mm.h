@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <page.h>
 #include <types.h>
+#include <process.h>
 
 #define PTENT_PRESENT      0x1
 #define PTENT_RO           0x0
@@ -34,8 +35,8 @@ int mm_init(void);
 
 void* mm_new_directory(void);
 void* mm_new_table(void);
-int mm_new_pages(void* addr, size_t n, unsigned int flags);
-int mm_alloc(void* addr, size_t len, unsigned int flags);
+void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
+void mm_free_pages(pcb_t* pcb, void* addr, size_t n);
 void* mm_new_kernel_pages(size_t n);
 
 int mm_getflags(void* addr);

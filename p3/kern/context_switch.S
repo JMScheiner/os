@@ -2,6 +2,7 @@
 #include <x86/cr.h>
 
 .globl context_switch
+.globl duplicate_thread_context
 
 /** @def void context_switch(void **old_esp, void *new_esp)
  * 
@@ -36,4 +37,37 @@ context_switch:
 	call   set_cr3         // Restore the page directory
 	addl   $4, %esp        // Pop page directory off stack
 	ret
+
+/** 
+* @brief Creates a new thread context identical to the current one. 
+*
+*  Invokes memcpy, copying the stack part of the kernel stack region.
+*
+*  After this function returns, it is safe to add the new thread to the
+*     scheduler queue, and it will begin running with an updated TCB, 
+*     and with the same stack context / register state.
+*
+*  It should be safe to context switch while this is happening.
+* 
+* @param old_bottom The bottom of the stack we are executing on. 
+* @param new_bottom The bottom of the stack we plan on adding to the scheduler. 
+*/
+duplicate_thread_context: 
+	call   get_cr3         // Save the page directory
+   pusha 
+   movl   32(%esp), %eax  // Grab the bottom of the current kernel stack. 
+   movl   36(%esp), %ebx  // Grab the bottom of the new kernel stack. 
+   subl   %esp,     %eax  // Calculate the depth of the current stack. 
+   subl   %eax,     %ebx  // Calculate the %esp for the new stack. 
+   pushl  %ebx            // Prepare for memcpy, target.
+   pushl  %esp            // Prepare for memcpy, source. 
+   pushl  %eax            // Prepare for memcpy, n
+   call   memcpy          // Make the call. 
+   popl   %eax            // Pop arguments.
+   popl   %eax
+   popl   %ebx
+   movl   40(%esp), %eax  // Grab the address of the saved %esp
+   movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
+   popa
+   ret 
 

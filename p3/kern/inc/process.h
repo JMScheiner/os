@@ -27,20 +27,21 @@ struct process_control_block {
 	/** @brief Base address of the process page directory. */
 	void *page_directory;
 
-	/** @brief Pointer to the next thread in this process that will execute. */
-	tcb_t *thread;
-   
    /** @brief A list of regions with different page fault and freeing procedures. */
    region_t* regions;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
 	mutex_t lock;
 
+   /** @brief Lock for page directory. */
+   mutex_t mm_lock;
+
 };
 
 void init_process_table(void);
-int initialize_process(pcb_t *pcb);
+pcb_t* initialize_process();
 int get_pid(void);
+pcb_t* get_pcb(void);
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);
 
 #endif

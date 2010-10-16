@@ -67,7 +67,8 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
 
 /** @brief Get a value for the eflags register suitable for use in user 
  * mode. */
-unsigned int get_user_eflags() {
+unsigned int get_user_eflags() 
+{
 	unsigned int eflags = get_eflags();
 	SET(eflags, EFL_RESV1);
 	SET(eflags, EFL_IF);
@@ -97,27 +98,12 @@ int load_new_task(const char *file) {
 		return err;
 	}
    
-   lprintf("ELF loaded.");
-
-	pcb_t pcb;
-	if ((err = initialize_process(&pcb)) != 0) {
-		return err;
-	}
-   
-   lprintf("Process initialized.");
-
-	if ((err = initialize_memory(file, elf_hdr, &pcb)) != 0) {
+	pcb_t* pcb = initialize_process();
+	if ((err = initialize_memory(file, elf_hdr, pcb)) != 0) {
 		return err;
 	}
 
-   lprintf("Memory initialized.");
-
-	tcb_t tcb;
-	initialize_thread(&pcb, &tcb);
-
-  lprintf("Thread initialized");
-
-	//context_switch(&(get_tcb()->esp), tcb.esp);
+	tcb_t* tcb = initialize_thread(pcb);
 
 	int *user_stack = (int *)USER_STACK_BASE;
 	user_stack[-1] = 0;
@@ -125,7 +111,7 @@ int load_new_task(const char *file) {
 
 	unsigned int user_eflags = get_user_eflags();
    
-	mode_switch(tcb.esp, (void *)(&user_stack[-3]), 
+	mode_switch(tcb->esp, (void *)(&user_stack[-3]), 
 			user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

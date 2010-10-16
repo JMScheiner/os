@@ -9,6 +9,7 @@
 *        will touch the scheduler is the timer.  Is the timer maskable? 
 */
 #include <scheduler.h>
+#include <context_switch.h>
 #include <thread.h>
 #include <list.h>
 #include <x86/asm.h>
@@ -41,9 +42,15 @@ void scheduler_block(tcb_t* tcb)
 
 tcb_t* scheduler_next()
 {
+   tcb_t* current = running;
+   
    disable_interrupts();
+   
    running = LIST_NEXT(running, scheduler_node);
+   context_switch(&current->esp, running->esp);
+   
    enable_interrupts();
+   
    return running;
 }
 
@@ -51,6 +58,9 @@ void scheduler_sleep(tcb_t* tcb, unsigned long ticks)
 {
    //TODO
 }
+
+
+
 
 
 

@@ -14,8 +14,8 @@
 * @author Justin Scheiner
 * @author Tim Wilson
 * @date 2010-10-07
-* @bug Kernel pages allocation probably can do better than malloc.
-* @bug Zeroing out pages probably happens at the wrong time. 
+* @bug Kernel page allocation can probably do better than malloc.
+* @bug We hold on to directory locks for a long time.
 */
 
 #include <mm.h>
@@ -130,72 +130,7 @@ void* mm_new_table()
    for(i = 0; i < TABLE_SIZE; i++)
       table[i] = 0;
    
-   //TODO What else needs to be done? 
-   
    return (void*)table;
-}
-
-/** 
-* @brief Allocates some number of physical pages at the given 
-*  virtual address, in the current page table. 
-*
-*  TODO Need to be able to specify RW and user/supervisor.
-* 
-* @param n The number of pages to allocate.
-* 
-* @return 0 on success. 
-*/
-int mm_new_pages(void* addr, size_t n, unsigned int flags)
-{
-   assert(!((uint32_t)addr & PAGE_MASK));
-   
-   /* Grab the current page directory. */
-   page_dirent_t* dir = (page_dirent_t*) get_cr3();
-   page_tablent_t* table;
-   free_block_t* free_block;
-   
-   assert((uint32_t)addr >= USER_MEM_START);
-   assert(n > 0);
-   assert(n_free_user_frames > n);
-
-   while(n > 0)
-   {
-      table = dir[ DIR_OFFSET(addr) ];
-      
-      if(!((uint32_t)table & PTENT_PRESENT))
-      {
-         table = (page_tablent_t*)mm_new_table();
-         dir[DIR_OFFSET(addr)] = (page_tablent_t*)((int)table | PDENT_PRESENT | flags);
-      }
-      else 
-      {
-         table = (page_tablent_t*)PAGE_OF(table);
-      }
-      
-      /* We can't allocate a page that is already mapped */
-      assert(! (table[ TABLE_OFFSET(addr) ] & PTENT_PRESENT) ); 
-      
-      table[ TABLE_OFFSET(addr) ] = (uint32_t)user_free_list | (PTENT_PRESENT | flags);
-      invalidate_page(addr);
-      
-      free_block = (free_block_t*)addr;
-   
-      /* FIXME Possible complication - 
-       *  If we context switch here, we could pass execution to a thread
-       *  which now has access to memory that is not zeroed out. 
-       *    memset needs to happen during free. 
-       */ 
-
-      /* Just point user_free_list at the next free frame. */
-      user_free_list = free_block->next;
-      memset(addr, 0, PAGE_SIZE);
-      
-      /* Move on to the next page. */
-      n--; 
-      addr += (PAGE_SIZE);
-   }
-
-   return 0;
 }
 
 /** 
@@ -213,7 +148,7 @@ int mm_new_pages(void* addr, size_t n, unsigned int flags)
 * 
 * @return 
 */
-int mm_alloc(void* addr, size_t len, unsigned int flags)
+void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 {
    lprintf("addr = %p, len = %d, flags = %x", addr, len, flags);
    assert(len > 0);
@@ -228,6 +163,7 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
    unsigned int npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
    int i;
    
+   mutex_lock(&pcb->mm_lock);
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table = dir[ DIR_OFFSET(page) ];
@@ -255,9 +191,9 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
       }
 
       /* Allocate the free page, but keep it in supervisor mode for now. */
-      mutex_lock(&mm_lock);
-      table[ TABLE_OFFSET(page) ] = ((unsigned long) user_free_list | PTENT_PRESENT | flags);
-         
+      
+      table[ TABLE_OFFSET(page) ] = 
+         ((unsigned long) user_free_list | PTENT_PRESENT | flags) & ~PTENT_USER;
       invalidate_page(addr);
       
       /* We can use "page" to access the node now.*/
@@ -268,12 +204,69 @@ int mm_alloc(void* addr, size_t len, unsigned int flags)
       memset((void*)page, 0, sizeof(free_block_t));
       
       /* Let the user see the page if appropriate. */
-      mutex_unlock(&mm_lock);
-      
-      table = dir[ DIR_OFFSET(page) ];
-      table = (page_tablent_t*)PAGE_OF(table);
+      if(flags & PTENT_USER)
+      {
+         table[ TABLE_OFFSET(page) ] = ((unsigned long) user_free_list | PTENT_PRESENT | flags);
+         invalidate_page(addr);
+      }
    }
-   return 0;
+   mutex_unlock(&pcb->mm_lock);
+}
+
+/** 
+* @brief Removes pages from the currently running processes address space. 
+* 
+* @param addr The page aligned address to free. 
+* @param n The number of pages to remove. 
+*/
+void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
+{
+   unsigned long page;
+   page_dirent_t* dir;
+   page_tablent_t* table;
+   page_tablent_t frame;
+   free_block_t* free_frame;
+   
+   assert(((unsigned int)addr & PAGE_MASK) == 0);
+   assert((unsigned int)addr > USER_MEM_START);
+   dir = (page_dirent_t*) get_cr3();
+
+   mutex_lock(&pcb->mm_lock);
+   for(page = (unsigned long) addr; page += PAGE_SIZE; n--)
+   {
+      table = dir[ DIR_OFFSET(page) ]; 
+      
+      /* Skip page tables that are not present. */
+      if(!((unsigned long)table & PDENT_PRESENT)) continue;
+   
+      table = (page_tablent_t*)PAGE_OF(table);
+      frame = table[ TABLE_OFFSET(page) ];
+      
+      if(!(frame & PTENT_PRESENT)) continue;
+      
+      /* Prevent other user space threads from touching the frame from here on. */
+      table[ TABLE_OFFSET(page) ] = frame & ~PTENT_USER;
+      invalidate_page((void*)page);
+      
+      /* Manage the newly freed frame. Note that we hold a lock to the 
+       *    entire directory while we free this frame. This should only
+       *    affect people who are freeing or allocating memory in this 
+       *    process. 
+       **/
+      memset((void*)page, 0, PAGE_SIZE);
+      free_frame = (free_block_t*) page;
+     
+      mutex_lock(&mm_lock);
+      free_frame->next = user_free_list;
+      user_free_list = (free_block_t*)frame;
+      mutex_unlock(&mm_lock);
+
+      /* This frame should now be invisible to this process. */
+      table[ TABLE_OFFSET(page) ] = 0;
+      invalidate_page((void*)page);
+
+   }
+   mutex_unlock(&pcb->mm_lock);
 }
 
 /** 
