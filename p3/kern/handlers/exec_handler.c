@@ -56,7 +56,6 @@ void exec_handler(volatile regstate_t reg) {
 
 	/* TODO Free user memory regions. */
 
-	/* TODO Actually use those nice arguments I copied over. */
-	load_new_task(buf);
+	load_new_task(argc, buf, total_bytes);
 }
 

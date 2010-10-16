@@ -65,6 +65,12 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
 #define UNSET(bit_vector, flag) \
 	bit_vector &= ~flag
 
+#define ALIGN_UP(addr, align) \
+	((((addr) + (align) - 1) / (align)) * (align))
+
+#define ALIGN_DOWN(addr, align) \
+	(((addr) / (align)) * (align))
+
 /** @brief Get a value for the eflags register suitable for use in user 
  * mode. */
 unsigned int get_user_eflags() {
@@ -77,23 +83,62 @@ unsigned int get_user_eflags() {
 	return eflags;
 }
 
+/**
+ * @brief Copy the arguments to the new program to the user stack
+ *
+ * @param argc The number of arguments
+ * @param argv A character array of \0 separated string arguments
+ * @param arg_len The total number of bytes in argv, including all the \0
+ *                bytes. 
+ *
+ * @return The base of the user stack.
+ */
+void *copy_to_stack(int argc, char *argv, int arg_len) {
+	char *ptr = (char *)USER_STACK_BASE;
+	char *args = ptr - arg_len;
+
+	/* Copy the value of the arguments onto the stack. */
+	memcpy(args, argv, arg_len);
+
+	/* Move ptr to the address of argc on the user stack. */
+	ptr = ALIGN_DOWN(args, sizeof(void *));
+	ptr -= sizeof(char *) * (argc + 1) + sizeof(int);
+
+	/* The stack base is one word below argc. */
+	void *user_stack = ptr - sizeof(void *);
+	*(int *)ptr = argc;
+	ptr += sizeof(int);
+
+	/* Copy the address of each argument to form the argv array. */
+	int i;
+	for (i = 0; i < argc; i++) {
+		*(char **)ptr = args;
+		args += strlen(args) + 1;
+	}
+
+	/* argv must be NULL terminated. */
+	*(char **)ptr = NULL;
+	return user_stack;
+}
+
 /** @brief Load a new task from a file
  *
- * TODO: Lots of this should be reused to implement fork, but some of it will
- * probably need to be re-done.
- *
- * @param file The name of the executable file to load.
+ * @param argc The number of arguments to the program
+ * @param argv A \0 separated array of string arguments to the program. The
+ *             first argument is the name of the program.
+ * @param arg_len The total number of bytes in argv, including all the \0
+ *                bytes. 
  *
  * @return < 0 on error. Never returns on success.
  */
-int load_new_task(const char *file) {
+int load_new_task(int argc, char *argv, int arg_len) {
 	int err;
-	if ((err = elf_check_header(file)) != ELF_SUCCESS) {
+	if ((err = elf_check_header(argv)) != ELF_SUCCESS) {
 		return err;
 	}
 
 	simple_elf_t elf_hdr;
-	if ((err = elf_load_helper(&elf_hdr, file)) != ELF_SUCCESS) {
+	if ((err = elf_load_helper(&elf_hdr, argv)) != ELF_SUCCESS) {
 		return err;
 	}
    
@@ -106,7 +151,7 @@ int load_new_task(const char *file) {
    
    lprintf("Process initialized.");
 
-	if ((err = initialize_memory(file, elf_hdr, &pcb)) != 0) {
+	if ((err = initialize_memory(argv, elf_hdr, &pcb)) != 0) {
 		return err;
 	}
 
@@ -119,14 +164,11 @@ int load_new_task(const char *file) {
 
 	//context_switch(&(get_tcb()->esp), tcb.esp);
 
-	int *user_stack = (int *)USER_STACK_BASE;
-	user_stack[-1] = 0;
-	user_stack[-2] = 0;
+	copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();
-   
-	mode_switch(tcb.esp, (void *)(&user_stack[-3]), 
-			user_eflags, (void *)elf_hdr.e_entry);
+
+	mode_switch(tcb.esp, user_stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here
 	assert(0);
