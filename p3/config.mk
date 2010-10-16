@@ -72,7 +72,8 @@ SYSCALL_OBJS += halt.o misbehave.o
 KERNEL_OBJS = console.o kernel.o loader.o malloc_wrappers.o mm/mm.o mm/mm_asm.o mm/region.o
 KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
 KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
-KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o mutex.o keyboard.o timer.o
+KERNEL_OBJS += synchro/mutex.o synchro/cond.o validation.o
+KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o keyboard.o timer.o
 KERNEL_OBJS += handlers/exec_handler.o scheduler.o
 
 ###########################################################################

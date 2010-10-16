@@ -16,6 +16,7 @@
 #include <simics.h>                 /* lprintf() */
 #include <malloc.h>
 #include <assert.h>
+#include <string.h>
 #include <timer.h>
 #include <console.h>
 #include <scheduler.h>
@@ -36,6 +37,8 @@
 #include <process.h>
 #include <thread.h>
 #include <loader.h>
+
+#define INIT_PROGRAM "ck1"
 
 /*
  * state for kernel memory allocation.
@@ -89,9 +92,8 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    handler_install();
    enable_interrupts();
    
-   load_new_task("gettid_test");
-   
    clear_console();
+   load_new_task(1, INIT_PROGRAM, strlen(INIT_PROGRAM));
 
    assert(0);
    return 0;

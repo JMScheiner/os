@@ -160,7 +160,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    free_block_t* free_block;
 
    unsigned int page = PAGE_OF(addr);
-   unsigned int npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+   unsigned int npages = PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr) + 1;
    int i;
    
    mutex_lock(&pcb->mm_lock);

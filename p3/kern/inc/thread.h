@@ -2,6 +2,8 @@
 #ifndef THREAD_FWFWJ23E
 #define THREAD_FWFWJ23E
 
+#define KERNEL_STACK_SIZE 1
+
 typedef struct thread_control_block tcb_t;
 
 #include <process.h>

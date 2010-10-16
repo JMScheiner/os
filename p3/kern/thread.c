@@ -18,6 +18,8 @@
 
 static mutex_t stack_table_lock, tcb_table_lock;
 
+/** @brief Number of pages per kernel stack. */
+
 static int next_tid = 0xdeadbeef;
 
 DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);

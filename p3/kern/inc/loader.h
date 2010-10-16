@@ -18,6 +18,8 @@ int getbytes( const char *filename, int offset, int size, char *buf );
  * Declare your loader prototypes here.
  */
 
-int load_new_task(const char *file);
+unsigned int get_user_eflags();
+void *copy_to_stack(int argc, char *argv, int arg_len);
+int load_new_task(int argc, char *argv, int arg_len);
 
 #endif /* _LOADER_H */
