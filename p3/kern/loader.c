@@ -69,7 +69,7 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
 	((((addr) + (align) - 1) / (align)) * (align))
 
 #define ALIGN_DOWN(addr, align) \
-	(((addr) / (align)) * (align))
+	(void *)(((unsigned int)(addr) / (align)) * (align))
 
 /** @brief Get a value for the eflags register suitable for use in user 
  * mode. */
@@ -164,11 +164,11 @@ int load_new_task(int argc, char *argv, int arg_len) {
 
 	//context_switch(&(get_tcb()->esp), tcb.esp);
 
-	copy_to_stack(argc, argv, arg_len);
+	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();
 
-	mode_switch(tcb.esp, user_stack, user_eflags, (void *)elf_hdr.e_entry);
+	mode_switch(tcb.esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here
 	assert(0);

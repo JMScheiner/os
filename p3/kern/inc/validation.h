@@ -21,6 +21,9 @@
 			; (cntr)++, \
 				((addr)) += (inc))
 
+#define NOT_NULL_TERMINATED -1
+#define INVALID_MEMORY -2
+
 int v_strcpy(char *dest, char *src, int max_len);
 int v_memcpy(char *dest, char *src, int max_len);
 

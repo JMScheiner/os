@@ -13,7 +13,8 @@
 #define EXEC_ARGS 2
 
 #define EXEC_INVALID_ARGS -1
-#define EXEC_ARGS_TOO_LONG -2
+#define EXEC_INVALID_ARG -2
+#define EXEC_ARGS_TOO_LONG -3
 
 /**
  * @brief Handle the exec system call.
@@ -35,7 +36,10 @@ void exec_handler(volatile regstate_t reg) {
 
 	char *execname = *(char **)arg_addr;
 	char **argvec = *(char ***)(arg_addr + sizeof(char *));
-	int total_bytes += v_strcpy(ptr, execname, MAX_TOTAL_LENGTH - total_bytes);
+	int total_bytes = v_strcpy(ptr, execname, MAX_TOTAL_LENGTH - total_bytes);
+	if (total_bytes < 0) {
+		RETURN(EXEC_INVALID_ARG);
+	}
 	ptr += total_bytes;
 	
 	SAFE_LOOP(argvec, sizeof(char *), argc, MAX_TOTAL_LENGTH) {
@@ -47,6 +51,9 @@ void exec_handler(volatile regstate_t reg) {
 		}
 		char *arg = *argvec;
 		int arg_len = v_strcpy(ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
+		if (arg_len < 0) {
+			RETURN(EXEC_INVALID_ARG);
+		}
 		total_bytes += arg_len;
 		ptr += arg_len;
 	}
