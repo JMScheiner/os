@@ -89,8 +89,9 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    handler_install();
    enable_interrupts();
    
+   load_new_task("gettid_test");
+   
    clear_console();
-   load_new_task("ck1");
 
    assert(0);
    return 0;

@@ -12,8 +12,6 @@ typedef struct process_control_block pcb_t;
 
 #define USER_STACK_BASE 0xc0000000
 
-DEFINE_LIST(pcb_node_t, pcb_t);
-
 /** @brief Process control block structure. */
 struct process_control_block {
 
@@ -38,11 +36,6 @@ struct process_control_block {
 	/** @brief Mutual exclusion lock for pcb fields. */
 	mutex_t lock;
 
-   pcb_node_t scheduler_node;
-   pcb_node_t mutex_node;
-
-   unsigned long sleep_until;
-   
 };
 
 void init_process_table(void);

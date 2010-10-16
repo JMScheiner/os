@@ -9,12 +9,12 @@
 *        will touch the scheduler is the timer.  Is the timer maskable? 
 */
 #include <scheduler.h>
-#include <process.h>
+#include <thread.h>
 #include <list.h>
 #include <x86/asm.h>
 
-static pcb_t* running;
-static pcb_t* blocked;
+static tcb_t* running;
+static tcb_t* blocked;
 
 void scheduler_init()
 {
@@ -22,24 +22,24 @@ void scheduler_init()
    INIT_LIST(blocked); 
 }
 
-void scheduler_register(pcb_t* pcb)
+void scheduler_register(tcb_t* tcb)
 {
-   LIST_INIT_NODE(pcb, scheduler_node);   
+   LIST_INIT_NODE(tcb, scheduler_node);   
    
    disable_interrupts();
-   LIST_INSERT_AFTER(running, pcb, scheduler_node);
+   LIST_INSERT_AFTER(running, tcb, scheduler_node);
    enable_interrupts();
 }
 
-void scheduler_block(pcb_t* pcb)
+void scheduler_block(tcb_t* tcb)
 {
    disable_interrupts();
-   LIST_REMOVE(running, pcb, scheduler_node);
-   LIST_INSERT_BEFORE(blocked, pcb, scheduler_node);
+   LIST_REMOVE(running, tcb, scheduler_node);
+   LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
    enable_interrupts();
 }
 
-pcb_t* scheduler_next()
+tcb_t* scheduler_next()
 {
    disable_interrupts();
    running = LIST_NEXT(running, scheduler_node);
@@ -47,7 +47,7 @@ pcb_t* scheduler_next()
    return running;
 }
 
-void scheduler_sleep(pcb_t* pcb, unsigned long ticks)
+void scheduler_sleep(tcb_t* tcb, unsigned long ticks)
 {
    //TODO
 }
