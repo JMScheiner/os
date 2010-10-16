@@ -10,6 +10,9 @@
 #include <asm_helper.h>
 #include <reg.h>
 
+/** @brief Number of pages per kernel stack. */
+#define KERNEL_STACK_SIZE 1
+
 static int next_tid = 0xdeadbeef;
 
 DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
@@ -47,7 +50,7 @@ void *initialize_thread(pcb_t *pcb, tcb_t *tcb) {
 #define STACK_TABLE_KEY(addr) ((unsigned int)(addr) / PAGE_SIZE)
 
 void *allocate_kernel_stack(tcb_t *tcb) {
-	void *stack = mm_new_kernel_pages(1);
+	void *stack = mm_new_kernel_pages(KERNEL_STACK_SIZE);
 	disable_interrupts();
 	//mutex_lock(&stack_table_lock);
 	HASHTABLE_PUT(tcb_table_t, stack_table, STACK_TABLE_KEY(stack), tcb);

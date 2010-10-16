@@ -1,25 +1,7 @@
 
 #include <reg.h>
 #include <mm.h>
-
-/**
- * @brief Perform a checked loop over a region of memory
- *
- * @param addr The variable that will loop over the memory region
- * @param inc The number of bytes to increment the address by on each iteration
- *            of the loop.
- * @param cntr A variable counting the number of iterations performed by the
- *             loop. Need not be initialized.
- * @param max The maximum number of iterations to perform.
- */
-#define SAFE_LOOP(addr, inc, cntr, max) \
-	for ((cntr) = 0 ; \
-			      (cntr) < (max) \
-			   && ((cntr) != 0) \
-			   && ((SAME_PAGE(addr, addr - inc)) \
-			   || mm_validate(addr)) \
-			; (cntr)++, \
-				((addr)) += (inc))
+#include <validation.h>
 
 #define RETURN(ret) \
 	do { \
@@ -27,15 +9,11 @@
 		return; \
 	} while (0)
 
-#define MAX_NAME_LENGTH 127
-#define MAX_ARGUMENTS 127
-#define MAX_ARG_LENGTH 127
+#define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 2)
 #define EXEC_ARGS 2
 
 #define EXEC_INVALID_ARGS -1
-#define EXEC_EXE_TOO_LONG -2
-#define EXEC_ARGS_TOO_LONG -3
-#define EXEC_ARG_TOO_LONG -4
+#define EXEC_ARGS_TOO_LONG -2
 
 /**
  * @brief Handle the exec system call.
@@ -43,42 +21,42 @@
  * @param reg The register state of the user upon calling exec.
  */
 void exec_handler(volatile regstate_t reg) {
-	void *arg_addr = (void *)SYSCALL_ARG(reg);
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int argc;
 	int execname_len;
+	char[MAX_TOTAL_LENGTH] buf;
+	char *ptr = buf;
+
+	/* TODO Check if there is more than one thread. */
 
 	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
 		RETURN(EXEC_INVALID_ARGS);
 	}
 
 	char *execname = *(char **)arg_addr;
-	SAFE_LOOP(execname, sizeof(char), execname_len, MAX_NAME_LENGTH) {
-		if (*execname == '\0') break;
-	}
-
-	if (execname_len == MAX_NAME_LENGTH) {
-		RETURN(EXEC_EXE_TOO_LONG);
-	}
-
-	char **argvec = *(char ***)(arg_addr + 1);
-	SAFE_LOOP(argvec, sizeof(char *), argc, MAX_ARGUMENTS - 1) {
-		if (*argvec == NULL) break;
+	char **argvec = *(char ***)(arg_addr + sizeof(char *));
+	int total_bytes += v_strcpy(ptr, execname, MAX_TOTAL_LENGTH - total_bytes);
+	ptr += total_bytes;
+	
+	SAFE_LOOP(argvec, sizeof(char *), argc, MAX_TOTAL_LENGTH) {
+		if (total_bytes == MAX_TOTAL_LENGTH) {
+			RETURN(EXEC_ARGS_TOO_LONG);
+		}
+		if (*argvec == NULL) {
+			break;
+		}
 		char *arg = *argvec;
-		int arg_len;
-		SAFE_LOOP(arg, sizeof(char), arg_len, MAX_ARG_LENGTH) {
-			if (*arg == '\0') break;
-		}
-
-		if (arg_len == MAX_ARG_LENGTH) {
-			RETURN(EXEC_ARG_TOO_LONG);
-		}
+		int arg_len = v_strcpy(ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
+		total_bytes += arg_len;
+		ptr += arg_len;
 	}
 
 	/* execname is an argument too */
 	argc++;
 
-	if (argc == MAX_ARGUMENTS) {
-		RETURN(EXEC_ARGS_TOO_LONG);
-	}
+	/* TODO Free user memory regions. */
+
+	/* TODO Actually use those nice arguments I copied over. */
+	load_new_task(buf);
 }
 
