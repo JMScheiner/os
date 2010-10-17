@@ -71,8 +71,9 @@ duplicate_thread_context:
    movl   40(%esp), %ebx  // Grab the bottom of the new kernel stack. 
    subl   %esp,     %eax  // Calculate the depth of the current stack. 
    subl   %eax,     %ebx  // Calculate the %esp for the new stack. 
+   movl   %esp,     %ecx  // Save %esp before we start pushing for memcpy
    pushl  %eax            // Prepare for memcpy, n
-   pushl  %esp            // Prepare for memcpy, source. 
+   pushl  %ecx            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
    popl   %eax
@@ -91,15 +92,15 @@ duplicate_proc_context:
    movl   40(%esp), %ebx  // Grab the bottom of the new kernel stack. 
    subl   %esp,     %eax  // Calculate the depth of the current stack. 
    subl   %eax,     %ebx  // Calculate the %esp for the new stack. 
+   movl   %esp,     %ecx  // Save %esp before we start pushing for memcpy
    pushl  %eax            // Prepare for memcpy, n
-   pushl  %esp            // Prepare for memcpy, source. 
+   pushl  %ecx            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
    popl   %eax
    popl   %eax            // Pop arguments.
    popl   %eax
    movl   44(%esp), %eax  // Grab the address of the saved %esp
-   addl   $4,     %ebx    // HACK HACK HACK
    movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
    popa
    ret 
