@@ -38,6 +38,7 @@ void* mm_new_table(void);
 void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
 void mm_free_pages(pcb_t* pcb, void* addr, size_t n);
 void* mm_new_kernel_pages(size_t n);
+void mm_duplicate_address_space(void* dir);
 
 int mm_getflags(void* addr);
 boolean_t mm_validate(void* addr);

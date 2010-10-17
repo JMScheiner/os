@@ -74,7 +74,7 @@ KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_han
 KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
 KERNEL_OBJS += synchro/mutex.o synchro/cond.o validation.o
 KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o keyboard.o timer.o
-KERNEL_OBJS += handlers/exec_handler.o scheduler.o
+KERNEL_OBJS += handlers/exec_handler.o handlers/fork_handler.o scheduler.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your

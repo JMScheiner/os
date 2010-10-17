@@ -94,12 +94,6 @@ void syscall_handler(regstate_t reg)
 	MAGIC_BREAK;
 }
 
-void fork_handler(regstate_t reg)
-{
-	lprintf("Ignoring fork ");
-	MAGIC_BREAK;
-}
-
 void wait_handler(regstate_t reg)
 {
 	lprintf("Ignoring wait ");
@@ -169,12 +163,6 @@ void set_cursor_pos_handler(regstate_t reg)
 void get_cursor_pos_handler(regstate_t reg)
 {
 	lprintf("Ignoring get_cursor_pos ");
-	MAGIC_BREAK;
-}
-
-void thread_fork_handler(regstate_t reg)
-{
-	lprintf("Ignoring thread_fork ");
 	MAGIC_BREAK;
 }
 

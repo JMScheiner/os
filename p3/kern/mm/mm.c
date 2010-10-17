@@ -119,6 +119,17 @@ void* mm_new_directory()
 }
 
 /** 
+* @brief Duplicates the current address space into the 
+*  allocated page directory dir.
+* 
+* @param dir A new page directory.
+*/
+void mm_duplicate_address_space(void* dir) 
+{
+   //TODO
+}
+
+/** 
 * @brief Allocates an empty page. 
 *  
 * @return the newly allocated table. 
