@@ -80,7 +80,6 @@ void keyboard_handler(void)
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
    
-   MAGIC_BREAK;
    /* FIXME Call the scheduler in the keyboard handler. */
    scheduler_next();
 

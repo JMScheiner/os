@@ -75,11 +75,11 @@ duplicate_thread_context:
    pushl  %esp            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
-   popl   %ebx
+   popl   %eax
    popl   %eax            // Pop arguments.
    popl   %eax
    movl   44(%esp), %eax  // Grab the address of the saved %esp
-   movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
+   movl   %ebx,   (%eax)  // %ebx still holds the new stack pointer.
    popa
    ret 
 
@@ -95,10 +95,11 @@ duplicate_proc_context:
    pushl  %esp            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
-   popl   %ebx
+   popl   %eax
    popl   %eax            // Pop arguments.
    popl   %eax
    movl   44(%esp), %eax  // Grab the address of the saved %esp
+   addl   $4,     %ebx    // HACK HACK HACK
    movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
    popa
    ret 

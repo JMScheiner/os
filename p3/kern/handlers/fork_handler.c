@@ -7,6 +7,7 @@
 #include <atomic.h>
 #include <simics.h>
 #include <mm.h>
+#include <asm_helper.h>
 
 
 void thread_fork_handler(volatile regstate_t reg)
@@ -52,16 +53,19 @@ void fork_handler(volatile regstate_t reg)
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
    
+   lprintf("Passing fresh page directory at %p", new_pcb->page_directory);
    mm_duplicate_address_space(new_pcb);
    
    MAGIC_BREAK;
    duplicate_proc_context(
       current_tcb->kstack, new_tcb->kstack, &new_tcb->esp, new_pcb->page_directory);
-   MAGIC_BREAK;
    
+   lprintf("Back! Saved esp = %p, my esp is %p", 
+      new_tcb->esp, get_esp());
+      
    current_pcb = get_pcb();
    
-   lprintf("Back! Current pid = %d", current_pcb->pid);
+   MAGIC_BREAK;
    if(current_pcb->pid != newpid)
    {
       scheduler_register(new_tcb);
