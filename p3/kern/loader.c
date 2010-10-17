@@ -95,6 +95,7 @@ unsigned int get_user_eflags()
  * @return The base of the user stack.
  */
 void *copy_to_stack(int argc, char *argv, int arg_len) {
+	MAGIC_BREAK;
 	char *ptr = (char *)USER_STACK_BASE;
 	char *args = ptr - arg_len;
 
@@ -103,12 +104,14 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
 
 	/* Move ptr to the address of argc on the user stack. */
 	ptr = ALIGN_DOWN(args, sizeof(void *));
-	ptr -= sizeof(char *) * (argc + 1) + sizeof(int);
+	ptr -= sizeof(char *) * (argc + 1) + sizeof(int) + sizeof(char **);
 
 	/* The stack base is one word below argc. */
 	void *user_stack = ptr - sizeof(void *);
 	*(int *)ptr = argc;
 	ptr += sizeof(int);
+	*(char ***)ptr = (char **)(ptr + 4);
+	ptr += sizeof(char **);
 
 	/* Copy the address of each argument to form the argv array. */
 	int i;
@@ -118,7 +121,7 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
 	}
 
 	/* argv must be NULL terminated. */
-	*(char **)ptr = NULL;
+	*(char **)(ptr + 4) = NULL;
 	return user_stack;
 }
 
