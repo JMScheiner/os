@@ -45,7 +45,7 @@ void exec_handler(volatile regstate_t reg) {
 	}
 	ptr += total_bytes;
 	
-	SAFE_LOOP(argvec, sizeof(char *), argc, MAX_TOTAL_LENGTH) {
+	SAFE_LOOP(argvec, argc, MAX_TOTAL_LENGTH) {
 		if (total_bytes == MAX_TOTAL_LENGTH) {
 			RETURN(EXEC_ARGS_TOO_LONG);
 		}

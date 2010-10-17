@@ -17,7 +17,7 @@
  */
 int v_strcpy(char *dest, char *src, int max_len) {
 	int i;
-	SAFE_LOOP(src, sizeof(char), i, max_len) {
+	SAFE_LOOP(src, i, max_len) {
 		if ((dest[i] = *src) == '\0') {
 			return i + 1;
 		}
@@ -39,7 +39,7 @@ int v_strcpy(char *dest, char *src, int max_len) {
  */
 int v_memcpy(char *dest, char *src, int max_len) {
 	int i;
-	SAFE_LOOP(src, sizeof(char), i, max_len) {
+	SAFE_LOOP(src, i, max_len) {
 		dest[i] = *src;
 	}
 	if (i < max_len) {

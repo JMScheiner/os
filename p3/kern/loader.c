@@ -117,11 +117,12 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
 	int i;
 	for (i = 0; i < argc; i++) {
 		*(char **)ptr = args;
+		ptr += sizeof(char *);
 		args += strlen(args) + 1;
 	}
 
 	/* argv must be NULL terminated. */
-	*(char **)(ptr + 4) = NULL;
+	*(char **)ptr = NULL;
 	return user_stack;
 }
 
