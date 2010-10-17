@@ -74,6 +74,10 @@ int mm_init(void)
       global_dir[i] = (page_dirent_t)((uint32_t)global_dir[i] | 
          (PDENT_GLOBAL | PDENT_RW | PDENT_PRESENT) );
    }
+
+   /* Explicitly unmap NULL to prevent NULL dereferences in the kernel. */
+   pt = global_dir[0];
+   pt[0] = 0; /* Not present, readable, or global */
    
    assert(addr == USER_MEM_START);
    assert(i == (USER_MEM_START >> DIR_SHIFT));
@@ -85,9 +89,7 @@ int mm_init(void)
 
    /* After this point we give up our direct access to pages in user land.*/
    set_cr3((uint32_t)global_dir);
-   lprintf("Here we go....");
    set_cr0(get_cr0() | CR0_PG);
-   lprintf("OKAY! VM is enabled!");
 
    return 0;
 }
@@ -119,14 +121,97 @@ void* mm_new_directory()
 }
 
 /** 
-* @brief Duplicates the current address space into the 
-*  allocated page directory dir.
+* @brief Duplicates the current address space in the process
+*  indicated by pcb. 
+*
+*  TODO We also need to copy the region list!   
+*     - if page faults are expected to work correctly.
 * 
-* @param dir A new page directory.
+* @param pcb The new process to copy into. The page directory 
+*  should be empty, but allocated.  
 */
-void mm_duplicate_address_space(void* dir) 
+void mm_duplicate_address_space(pcb_t* pcb) 
 {
-   //TODO
+   unsigned long d_index;
+   unsigned long t_index;
+   unsigned long flags;
+   unsigned long page;
+
+   page_dirent_t *new_dir, *current_dir;
+   page_tablent_t *null_table, *current_table, *new_table;
+   page_tablent_t current_frame, new_frame;
+   free_block_t *free_block;
+   
+   /* More assertions! */
+   assert(pcb->page_directory);
+   
+   new_dir = (page_dirent_t*)pcb->page_directory;
+   current_dir = (page_dirent_t*)get_cr3();
+   null_table = current_dir[0];
+   
+   /* Iterate over all frames in user space. */
+   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
+   {
+      current_table = current_dir[d_index];
+      
+      /* Skip nonexistent page tables. */
+      if(!((unsigned long)current_table & PDENT_PRESENT)) continue;
+
+      /* Grab the flags from the current directory entry. */
+      flags = (unsigned long)current_table & PAGE_MASK;
+      current_table = (page_tablent_t*)PAGE_OF(current_table);
+
+      /* Allocate a new table and set the appropriate flags. */
+      new_table = (page_tablent_t*) mm_new_table();
+      new_dir[d_index] = (page_tablent_t*)((int)new_table | flags);
+
+      for(t_index = 0; t_index < TABLE_SIZE; t_index++)
+      {
+         current_frame = current_table[t_index];
+
+         /* Skip nonexistent frames. */
+         if(!(current_frame & PTENT_PRESENT)) continue;
+
+         /* Grab the flags from the current page table entry. */
+         flags = current_frame & PAGE_MASK;
+
+         /* Since NULL is inaccessible due to our defensive programming hack, 
+          *    I am using it to map the frame in the new process. 
+          *    While this is going on, accidental NULL dereferences will hose us...
+          *    But there shouldn't be any of those. :D
+          **/
+
+         /* 
+          *    1. Allocate a new frame to copy to. 
+          *    2. Map it in the current address space. 
+          *    3. Copy to it from the appropriate page. 
+          *    4. Unmap it in the current address space. 
+          *    5. Map it in the new address space. 
+          */
+
+         mutex_lock(&mm_lock);
+         new_frame = (page_tablent_t) user_free_list;
+         null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW) ;
+         invalidate_page((void*)0);
+
+         /* We can use NULL to access the node now. */
+         free_block = (free_block_t*)0;
+         user_free_list = free_block->next;
+         mutex_unlock(&mm_lock);
+
+         /* Copy to the new frame (at NULL) */
+         page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
+         memcpy(NULL, (void*)page, PAGE_SIZE);
+         
+         /* Map the frame in the new process with the same flags as the current one.. */
+         new_table[t_index] = new_frame | flags;
+      }
+   }
+   
+   /* Unmap NULL for good measure. */
+   null_table[ 0 ] = 0;
+   invalidate_page((void*)0);
+
 }
 
 /** 
@@ -203,6 +288,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       }
 
       /* Allocate the free page, but keep it in supervisor mode for now. */
+      mutex_lock(&mm_lock);
       
       table[ TABLE_OFFSET(page) ] = 
          ((unsigned long) user_free_list | PTENT_PRESENT | flags) & ~PTENT_USER;
@@ -211,6 +297,8 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* We can use "page" to access the node now.*/
       free_block = (free_block_t*)page;
       user_free_list = free_block->next;
+
+      mutex_unlock(&mm_lock);
 
       /* Wipe the free block part of the page. The rest should already be wiped. */
       memset((void*)page, 0, sizeof(free_block_t));
@@ -222,9 +310,6 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
             ((unsigned long) user_free_list | PTENT_PRESENT | flags);
          invalidate_page((void*)page);
       }
-      lprintf("New page table entry at %p. Flags = 0x%lx", 
-         (void*)page, table[ TABLE_OFFSET(page) ] & PAGE_MASK);
-
    }
    mutex_unlock(&pcb->mm_lock);
 }

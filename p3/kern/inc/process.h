@@ -39,10 +39,10 @@ struct process_control_block {
 };
 
 void init_process_table(void);
-pcb_t* initialize_process();
 int get_pid(void);
-pcb_t* get_pcb(void);
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);
+pcb_t* initialize_process();
+pcb_t* get_pcb(void);
 
 #endif
 
