@@ -14,6 +14,7 @@
 #include <asm.h>
 #include <stdint.h>
 #include <simics.h>
+#include <scheduler.h>
 
 //NOTE: This value must be a power of 2
 //	512 is maybe excessively large for a key buffer, but
@@ -78,6 +79,11 @@ void keyboard_handler(void)
 	}
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+   
+   MAGIC_BREAK;
+   /* FIXME Call the scheduler in the keyboard handler. */
+   scheduler_next();
+
 }
 
 /** 

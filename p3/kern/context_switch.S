@@ -41,9 +41,9 @@
 context_switch:
 	call   get_cr3         // Save the page directory
 	pusha                  // Save general purpose registers
-	movl   32(%esp), %eax  // Save stack pointer so someone else 
+	movl   36(%esp), %eax  // Save stack pointer so someone else 
 	movl   %esp, (%eax)    // can context switch back to us
-	movl   36(%esp), %esp  // Switch to someone else
+	movl   40(%esp), %esp  // Switch to someone else
 	popa                   // Restore general purpose registers
 	pushl  %eax            // Set page directory as argument
 	call   set_cr3         // Restore the page directory

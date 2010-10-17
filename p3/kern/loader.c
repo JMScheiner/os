@@ -19,6 +19,7 @@
 #include <loader.h>
 #include <elf_410.h>
 #include <simics.h>
+#include <scheduler.h>
 
 #include <process.h>
 #include <thread.h>
@@ -150,12 +151,12 @@ int load_new_task(int argc, char *argv, int arg_len) {
 	if ((err = initialize_memory(argv, elf_hdr, pcb)) != 0) {
 		return err;
 	}
-
 	tcb_t* tcb = initialize_thread(pcb);
 
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();
+   scheduler_register(tcb);
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

@@ -47,7 +47,12 @@ pcb_t* initialize_process()
 	pcb->page_directory = mm_new_directory();
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->mm_lock);
-	return pcb;
+   
+   mutex_lock(&pcb_table_lock);
+   HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
+   mutex_unlock(&pcb_table_lock);
+	
+   return pcb;
 }
 
 int get_pid() {

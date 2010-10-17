@@ -54,8 +54,10 @@ void fork_handler(volatile regstate_t reg)
    
    mm_duplicate_address_space(new_pcb);
    
+   MAGIC_BREAK;
    duplicate_proc_context(
       current_tcb->kstack, new_tcb->kstack, &new_tcb->esp, new_pcb->page_directory);
+   MAGIC_BREAK;
    
    current_pcb = get_pcb();
    

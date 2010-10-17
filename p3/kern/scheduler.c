@@ -47,10 +47,8 @@ tcb_t* scheduler_next()
    tcb_t* current = running;
    
    disable_interrupts();
-   
    running = LIST_NEXT(running, scheduler_node);
    context_switch(&current->esp, running->esp);
-   
    enable_interrupts();
    
    return running;
