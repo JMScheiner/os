@@ -95,7 +95,6 @@ unsigned int get_user_eflags()
  * @return The base of the user stack.
  */
 void *copy_to_stack(int argc, char *argv, int arg_len) {
-	MAGIC_BREAK;
 	char *ptr = (char *)USER_STACK_BASE;
 	char *args = ptr - arg_len;
 

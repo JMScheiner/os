@@ -13,6 +13,7 @@
 #include <thread.h>
 #include <list.h>
 #include <x86/asm.h>
+#include <simics.h>
 
 static tcb_t* running;
 static tcb_t* blocked;
@@ -25,6 +26,7 @@ void scheduler_init()
 
 void scheduler_register(tcb_t* tcb)
 {
+   lprintf("Adding %x to the scheduler.", tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);   
    
    disable_interrupts();

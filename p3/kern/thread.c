@@ -52,7 +52,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 {
 	assert(pcb);
    
-   void* kstack_page = mm_new_kernel_pages(1);
+   void* kstack_page = mm_new_kernel_page();
 
    /* Put the TCB at the bottom of the kernel stack. */
    tcb_t* tcb = (tcb_t*)kstack_page;

@@ -39,7 +39,7 @@
 #include <loader.h>
 #include <types.h>
 
-#define INIT_PROGRAM "exec_test1"
+#define INIT_PROGRAM "fork_test"
 
 /*
  * state for kernel memory allocation.

@@ -4,6 +4,10 @@
 #include <thread.h>
 #include <scheduler.h>
 #include <context_switch.h>
+#include <atomic.h>
+#include <simics.h>
+#include <mm.h>
+
 
 void thread_fork_handler(volatile regstate_t reg)
 {
@@ -16,6 +20,7 @@ void thread_fork_handler(volatile regstate_t reg)
    
    new_tcb = initialize_thread(pcb);
    new_tid = new_tcb->tid;
+   atomic_add(&pcb->thread_count, 1);
    
    /* This function should "return" twice */
    duplicate_thread_context(current_tcb->kstack, new_tcb->kstack, &new_tcb->esp);
@@ -34,7 +39,33 @@ void thread_fork_handler(volatile regstate_t reg)
 
 void fork_handler(volatile regstate_t reg)
 {
-   //TODO
+   unsigned long newpid; 
+   pcb_t *current_pcb, *new_pcb; 
+   tcb_t *current_tcb, *new_tcb;
+
+   current_pcb = get_pcb();
+   current_tcb = get_tcb();
+   
+   new_pcb = initialize_process();
+   
+   new_tcb = initialize_thread(new_pcb);
+   new_pcb->thread_count = 1;
+   newpid = new_pcb->pid;
+   
+   mm_duplicate_address_space(new_pcb);
+   
+   duplicate_proc_context(
+      current_tcb->kstack, new_tcb->kstack, &new_tcb->esp, new_pcb->page_directory);
+   
+   current_pcb = get_pcb();
+   
+   lprintf("Back! Current pid = %d", current_pcb->pid);
+   if(current_pcb->pid != newpid)
+   {
+      scheduler_register(new_tcb);
+      reg.eax = newpid;
+   }
+   else reg.eax = 0;
 }
 
 

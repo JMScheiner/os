@@ -66,26 +66,39 @@ context_switch:
 */
 duplicate_thread_context: 
 	call   get_cr3         // Save the current page directory
-   jmp duplicate_context  
-
-duplicate_proc_context: 
-   mov   16(%esp),  %eax  // Save the new page directory.
-   jmp duplicate_context
-
-duplicate_context: 
    pusha 
-   movl   32(%esp), %eax  // Grab the bottom of the current kernel stack. 
-   movl   36(%esp), %ebx  // Grab the bottom of the new kernel stack. 
+   movl   36(%esp), %eax  // Grab the bottom of the current kernel stack. 
+   movl   40(%esp), %ebx  // Grab the bottom of the new kernel stack. 
    subl   %esp,     %eax  // Calculate the depth of the current stack. 
    subl   %eax,     %ebx  // Calculate the %esp for the new stack. 
-   pushl  %ebx            // Prepare for memcpy, target.
-   pushl  %esp            // Prepare for memcpy, source. 
    pushl  %eax            // Prepare for memcpy, n
+   pushl  %esp            // Prepare for memcpy, source. 
+   pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
    popl   %eax            // Pop arguments.
    popl   %eax
    popl   %ebx
-   movl   40(%esp), %eax  // Grab the address of the saved %esp
+   movl   44(%esp), %eax  // Grab the address of the saved %esp
+   movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
+   popa
+   ret 
+
+
+duplicate_proc_context: 
+   mov    16(%esp),  %eax  // Save the new page directory.
+   pusha 
+   movl   36(%esp), %eax  // Grab the bottom of the current kernel stack. 
+   movl   40(%esp), %ebx  // Grab the bottom of the new kernel stack. 
+   subl   %esp,     %eax  // Calculate the depth of the current stack. 
+   subl   %eax,     %ebx  // Calculate the %esp for the new stack. 
+   pushl  %eax            // Prepare for memcpy, n
+   pushl  %esp            // Prepare for memcpy, source. 
+   pushl  %ebx            // Prepare for memcpy, target.
+   call   memcpy          // Make the call. 
+   popl   %eax            // Pop arguments.
+   popl   %eax
+   popl   %ebx
+   movl   44(%esp), %eax  // Grab the address of the saved %esp
    movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
    popa
    ret 

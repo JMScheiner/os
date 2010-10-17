@@ -110,6 +110,7 @@ void* mm_new_directory()
    
    /* Allocate the new page directory. */
    page_dirent_t* dir = (page_dirent_t*) mm_new_kernel_page();
+   lprintf("Allocating new directory at %p", dir);
 
    /* The kernel part of every directory should be the same. */
    memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
@@ -135,7 +136,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long flags;
-   unsigned long page;
+   unsigned long new_page;
 
    page_dirent_t *new_dir, *current_dir;
    page_tablent_t *null_table, *current_table, *new_table;
@@ -155,7 +156,9 @@ void mm_duplicate_address_space(pcb_t* pcb)
       current_table = current_dir[d_index];
       
       /* Skip nonexistent page tables. */
-      if(!((unsigned long)current_table & PDENT_PRESENT)) continue;
+      if(!((unsigned long)current_table & PDENT_PRESENT)){
+         continue;
+      }
 
       /* Grab the flags from the current directory entry. */
       flags = (unsigned long)current_table & PAGE_MASK;
@@ -170,10 +173,13 @@ void mm_duplicate_address_space(pcb_t* pcb)
          current_frame = current_table[t_index];
 
          /* Skip nonexistent frames. */
-         if(!(current_frame & PTENT_PRESENT)) continue;
+         if(!(current_frame & PTENT_PRESENT)){
+            continue;
+         }
 
          /* Grab the flags from the current page table entry. */
          flags = current_frame & PAGE_MASK;
+         new_page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
 
          /* Since NULL is inaccessible due to our defensive programming hack, 
           *    I am using it to map the frame in the new process. 
@@ -188,7 +194,8 @@ void mm_duplicate_address_space(pcb_t* pcb)
           *    4. Unmap it in the current address space. 
           *    5. Map it in the new address space. 
           */
-
+         
+         lprintf("Duplicating 0x%lx in new address space.", new_page);
          mutex_lock(&mm_lock);
          new_frame = (page_tablent_t) user_free_list;
          null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW) ;
@@ -200,10 +207,11 @@ void mm_duplicate_address_space(pcb_t* pcb)
          mutex_unlock(&mm_lock);
 
          /* Copy to the new frame (at NULL) */
-         page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
-         memcpy(NULL, (void*)page, PAGE_SIZE);
+         lprintf("....Copying");
+         memcpy(NULL, (void*)new_page, PAGE_SIZE);
          
          /* Map the frame in the new process with the same flags as the current one.. */
+         lprintf("....Mapping");
          new_table[t_index] = new_frame | flags;
       }
    }
@@ -246,7 +254,6 @@ void* mm_new_table()
 */
 void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 {
-   lprintf("addr = %p, len = %d, flags = 0x%x", addr, len, flags);
    assert(len > 0);
    assert((unsigned long)addr >= USER_MEM_START);
 
@@ -283,7 +290,6 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
        */
       if(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT)
       {
-         lprintf("Skipping page %p", (void*)page);
          continue;
       }
 
