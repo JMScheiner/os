@@ -52,8 +52,8 @@ tcb_t* scheduler_next()
    running = LIST_NEXT(running, scheduler_node);
 
    MAGIC_BREAK;
-   context_switch(&current->esp, running->esp);
    set_esp0((int)running->kstack);
+   context_switch(&current->esp, running->esp);
    enable_interrupts();
    
    return running;
