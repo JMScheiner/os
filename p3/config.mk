@@ -34,7 +34,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the user/progs
 # directory.
 #
-STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test
+STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test tfork_test
 
 ###########################################################################
 # Object files for your thread library
