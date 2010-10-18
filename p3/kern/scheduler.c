@@ -15,6 +15,7 @@
 #include <x86/asm.h>
 #include <simics.h>
 #include <asm_helper.h>
+#include <cr.h>
 
 static tcb_t* running;
 static tcb_t* blocked;
@@ -50,12 +51,9 @@ tcb_t* scheduler_next()
    disable_interrupts();
    running = LIST_NEXT(running, scheduler_node);
 
-      
-   lprintf("About to switch to save esp = %p",  running->esp);
-   
    MAGIC_BREAK;
    context_switch(&current->esp, running->esp);
-   lprintf("Back! esp = %p",  get_esp());
+   set_esp0((int)running->kstack);
    enable_interrupts();
    
    return running;

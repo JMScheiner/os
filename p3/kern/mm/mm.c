@@ -71,13 +71,13 @@ int mm_init(void)
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
          pt[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
 
-      global_dir[i] = (page_dirent_t)((uint32_t)global_dir[i] | 
-         (PDENT_GLOBAL | PDENT_RW | PDENT_PRESENT) );
+      global_dir[i] = (page_dirent_t)((unsigned long)global_dir[i] | (PDENT_RW | PDENT_PRESENT) );
+         
    }
 
    /* Explicitly unmap NULL to prevent NULL dereferences in the kernel. */
-   pt = global_dir[0];
-   pt[0] = 0; /* Not present, readable, or global */
+   pt = (page_tablent_t*)PAGE_OF(global_dir[0]);
+   pt[0] = 0; /* Not present, writable, or global */
    
    assert(addr == USER_MEM_START);
    assert(i == (USER_MEM_START >> DIR_SHIFT));
@@ -202,9 +202,10 @@ void mm_duplicate_address_space(pcb_t* pcb)
          new_frame = (page_tablent_t) user_free_list;
 
          null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW);
-         invalidate_page((void*)0);
+         invalidate_page(NULL);
    
          /* We can use NULL to access the node now. */
+         MAGIC_BREAK;
          free_block = (free_block_t*)0;
          user_free_list = free_block->next;
          lprintf("free_block->next = 0x%lx", (unsigned long)free_block->next);
