@@ -52,6 +52,7 @@ tcb_t* scheduler_next()
 
       
    lprintf("About to switch to save esp = %p",  running->esp);
+   
    MAGIC_BREAK;
    context_switch(&current->esp, running->esp);
    lprintf("Back! esp = %p",  get_esp());

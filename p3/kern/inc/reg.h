@@ -66,6 +66,18 @@ typedef struct REGSTATE
    uint32_t ss;
 } regstate_t;
 
+typedef struct PUSHA
+{
+   uint32_t edi;         
+   uint32_t esi;
+   uint32_t ebp;
+   uint32_t original_esp;
+   uint32_t ebx;
+   uint32_t edx;
+   uint32_t ecx;
+   uint32_t eax;
+} pusha_t;
+
 #define SYSCALL_ARG(regstate) \
 	((regstate).esi)
 

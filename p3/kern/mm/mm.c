@@ -150,7 +150,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
    current_dir = (page_dirent_t*)get_cr3();
    null_table = current_dir[0];
    
-   /* Iterate over all frames in user space. */
+   /* Iterate over all pages in user space. */
    for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
    {
       current_table = current_dir[d_index];
@@ -166,7 +166,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
 
       /* Allocate a new table and set the appropriate flags. */
       new_table = (page_tablent_t*) mm_new_table();
-      new_dir[d_index] = (page_tablent_t*)((int)new_table | flags);
+      new_dir[d_index] = (page_tablent_t*)((unsigned long)new_table | flags);
 
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
@@ -197,13 +197,17 @@ void mm_duplicate_address_space(pcb_t* pcb)
          
          lprintf("Duplicating 0x%lx in new address space.", new_page);
          mutex_lock(&mm_lock);
-         new_frame = (page_tablent_t) user_free_list;
-         null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW) ;
-         invalidate_page((void*)0);
 
+         lprintf("user_free_list currently sits at 0x%lx", (unsigned long) user_free_list);
+         new_frame = (page_tablent_t) user_free_list;
+
+         null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW);
+         invalidate_page((void*)0);
+   
          /* We can use NULL to access the node now. */
          free_block = (free_block_t*)0;
          user_free_list = free_block->next;
+         lprintf("free_block->next = 0x%lx", (unsigned long)free_block->next);
          mutex_unlock(&mm_lock);
 
          /* Copy to the new frame (at NULL) */
@@ -211,7 +215,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
          memcpy(NULL, (void*)new_page, PAGE_SIZE);
          
          /* Map the frame in the new process with the same flags as the current one.. */
-         lprintf("....Mapping");
+         lprintf("....Mapping 0x%lx", new_frame);
          new_table[t_index] = new_frame | flags;
       }
    }
@@ -296,12 +300,14 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* Allocate the free page, but keep it in supervisor mode for now. */
       mutex_lock(&mm_lock);
       
+      lprintf("mm_alloc: mapping user_free_list = 0x%lx.", (unsigned long) user_free_list);
       table[ TABLE_OFFSET(page) ] = 
          ((unsigned long) user_free_list | PTENT_PRESENT | flags) & ~PTENT_USER;
       invalidate_page((void*)page);
       
       /* We can use "page" to access the node now.*/
       free_block = (free_block_t*)page;
+      lprintf("mm_alloc: free_block->next = 0x%lx", (unsigned long) free_block->next);
       user_free_list = free_block->next;
 
       mutex_unlock(&mm_lock);
