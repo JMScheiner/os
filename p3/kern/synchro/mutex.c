@@ -13,7 +13,6 @@ boolean_t locks_enabled = FALSE;
 
 void mutex_init(mutex_t *mp) {
 	assert(mp);
-	assert(!mp->initialized);
 
 	mp->owner = NULL;
 	mp->ticket = 0;

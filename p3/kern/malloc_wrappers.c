@@ -9,10 +9,16 @@
 #include <malloc.h>
 #include <malloc_internal.h>
 #include <mutex.h>
+#include <malloc_wrappers.h>
 
 /* safe versions of malloc functions */
 
 static mutex_t heap_lock;
+
+void alloc_init()
+{
+	mutex_init(&heap_lock);
+}
 
 void *malloc(size_t size)
 {

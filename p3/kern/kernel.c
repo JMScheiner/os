@@ -34,6 +34,7 @@
 #include <x86/interrupt_defines.h>  /* interrupt_setup() */
 #include <x86/asm.h>                /* enable_interrupts() */
 
+#include <malloc_wrappers.h>
 #include <process.h>
 #include <thread.h>
 #include <loader.h>
@@ -83,7 +84,8 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     */
    
    lprintf( "Hello from a brand new kernel!" );
-   
+
+	 alloc_init();
    timer_init();
    scheduler_init();
    mm_init();
