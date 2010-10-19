@@ -6,7 +6,6 @@ typedef struct process_control_block pcb_t;
 
 #include <region.h>
 #include <mutex.h>
-#include <thread.h>
 #include <list.h>
 #include <elf_410.h>
 

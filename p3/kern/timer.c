@@ -27,13 +27,6 @@
 // This overflows every 12 hours - but is fine for the purposes of 15410. 
 static volatile unsigned int ticks;
 
-/**
- * @brief Flag indicating whether a timer tick should cause a
- * context switch. This should be false during events like schedule
- * manipulation that cannot block and should not be interrupted.
- */
-boolean_t context_switch_on_tick = TRUE;
-
 /** 
 * @brief Initializes the timer. 
 * 
@@ -60,10 +53,6 @@ void timer_init()
 void timer_handler(void)
 {
    atomic_add_volatile(&ticks, 1);
-
-	 if (context_switch_on_tick) {
-		 // context_switch
-	 }
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 }

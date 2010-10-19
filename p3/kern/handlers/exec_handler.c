@@ -4,6 +4,7 @@
 #include <validation.h>
 #include <loader.h>
 #include <simics.h>
+#include <thread.h>
 
 #define RETURN(ret) \
 	do { \

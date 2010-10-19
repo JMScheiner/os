@@ -7,6 +7,7 @@
 #include <atomic.h>
 #include <page.h>
 #include <region.h>
+#include <thread.h>
 #include <pagefault.h>
 
 static int next_pid = 0;
@@ -28,7 +29,6 @@ pcb_t* get_pcb()
    assert(tcb);
    
    pcb_t* pcb = NULL;
-   
    mutex_lock(&pcb_table_lock);
    HASHTABLE_GET(pcb_table_t, pcb_table, tcb->pid, pcb);
    mutex_unlock(&pcb_table_lock);

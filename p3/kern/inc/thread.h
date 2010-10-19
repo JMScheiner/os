@@ -4,8 +4,7 @@
 
 #define KERNEL_STACK_SIZE 1
 
-typedef struct thread_control_block tcb_t;
-
+#include <thread_type.h>
 #include <process.h>
 #include <list.h>
 

@@ -4,8 +4,6 @@
 
 #include <types.h>
 
-extern boolean_t context_switch_on_tick;
-
 void timer_init(void);
 
 /** 
