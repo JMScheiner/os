@@ -110,7 +110,7 @@ void* mm_new_directory()
    
    /* Allocate the new page directory. */
    page_dirent_t* dir = (page_dirent_t*) mm_new_kernel_page();
-   lprintf("Allocating new directory at %p", dir);
+   //lprintf("Allocating new directory at %p", dir);
 
    /* The kernel part of every directory should be the same. */
    memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
@@ -136,95 +136,106 @@ void mm_duplicate_address_space(pcb_t* pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long flags;
-   unsigned long new_page;
-
-   page_dirent_t *new_dir, *current_dir;
-   page_tablent_t *null_table, *current_table, *new_table;
+   unsigned long copy_page = 0, page;
+   
+   page_dirent_t *current_dir, *new_dir;
+   page_tablent_t *copy_table = NULL, *current_table, *new_table;
    page_tablent_t current_frame, new_frame;
-   free_block_t *free_block;
-   
-   /* More assertions! */
-   assert(pcb->page_directory);
-   
-   new_dir = (page_dirent_t*)pcb->page_directory;
+
+   free_block_t* free_block;
+
    current_dir = (page_dirent_t*)get_cr3();
-   null_table = current_dir[0];
+   new_dir = pcb->page_directory;
+
+   boolean_t copy_page_found = FALSE;
    
-   /* Iterate over all pages in user space. */
-   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
+   /* Find an unallocated page in an existing directory to copy through. */
+   //lprintf("Searching for free page to use for copy.");
+   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE && !copy_page_found; d_index++)
    {
       current_table = current_dir[d_index];
-      
-      /* Skip nonexistent page tables. */
-      if(!((unsigned long)current_table & PDENT_PRESENT)){
-         continue;
-      }
-
-      /* Grab the flags from the current directory entry. */
-      flags = (unsigned long)current_table & PAGE_MASK;
+      if(!TABLE_PRESENT(current_table)) continue;
       current_table = (page_tablent_t*)PAGE_OF(current_table);
-
-      /* Allocate a new table and set the appropriate flags. */
-      new_table = (page_tablent_t*) mm_new_table();
-      new_dir[d_index] = (page_tablent_t*)((unsigned long)new_table | flags);
 
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
          current_frame = current_table[t_index];
-
-         /* Skip nonexistent frames. */
-         if(!(current_frame & PTENT_PRESENT)){
-            continue;
+         if(!PAGE_PRESENT(current_frame))
+         {
+            copy_table = current_table;
+            copy_page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
+            copy_page_found = TRUE;
+            break;
          }
-
-         /* Grab the flags from the current page table entry. */
-         flags = current_frame & PAGE_MASK;
-         new_page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
-
-         /* Since NULL is inaccessible due to our defensive programming hack, 
-          *    I am using it to map the frame in the new process. 
-          *    While this is going on, accidental NULL dereferences will hose us...
-          *    But there shouldn't be any of those. :D
-          **/
-
-         /* 
-          *    1. Allocate a new frame to copy to. 
-          *    2. Map it in the current address space. 
-          *    3. Copy to it from the appropriate page. 
-          *    4. Unmap it in the current address space. 
-          *    5. Map it in the new address space. 
-          */
-         
-         lprintf("Duplicating 0x%lx in new address space.", new_page);
-         mutex_lock(&mm_lock);
-
-         lprintf("user_free_list currently sits at 0x%lx", (unsigned long) user_free_list);
-         new_frame = (page_tablent_t) user_free_list;
-
-         null_table[ 0 ] = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW);
-         invalidate_page(NULL);
-   
-         /* We can use NULL to access the node now. */
-         MAGIC_BREAK;
-         free_block = (free_block_t*)0;
-         user_free_list = free_block->next;
-         lprintf("free_block->next = 0x%lx", (unsigned long)free_block->next);
-         mutex_unlock(&mm_lock);
-
-         /* Copy to the new frame (at NULL) */
-         lprintf("....Copying");
-         memcpy(NULL, (void*)new_page, PAGE_SIZE);
-         
-         /* Map the frame in the new process with the same flags as the current one.. */
-         lprintf("....Mapping 0x%lx", new_frame);
-         new_table[t_index] = new_frame | flags;
       }
    }
    
-   /* Unmap NULL for good measure. */
-   null_table[ 0 ] = 0;
-   invalidate_page((void*)0);
+   /* If none exist, allocate a new page table for the copy page. */
+   if(!copy_page_found)
+   {
+      for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE && !copy_page_found; d_index++)
+      {
+         current_table = current_dir[d_index];
+         if(!TABLE_PRESENT(current_table))
+         {
+            /* Allocate page table. */
+            copy_table = current_dir[d_index] 
+               = (page_tablent_t*)((int)mm_new_table() | PDENT_PRESENT | PDENT_RW);
+            
+            /* Make copy_page the zero'th page in the new directory. */
+            copy_page = (d_index << DIR_SHIFT);
+            break;
+         }
+      }
+   }
 
+   //lprintf("Using 0x%lx for copy.", copy_page);
+   
+   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
+   {
+      current_table = current_dir[d_index];
+      if(!TABLE_PRESENT(current_table)) continue;
+      
+      flags = (int)current_table & PAGE_MASK;
+      current_table = (page_tablent_t*)PAGE_OF(current_table);
+      
+      new_table = mm_new_table();
+      new_dir[d_index] = (page_dirent_t)((int)new_table | flags);
+
+      for(t_index = 0; t_index < TABLE_SIZE; t_index++)
+      {
+         current_frame = current_table[t_index];
+         if(!PAGE_PRESENT(current_frame)) continue;
+
+         flags = current_frame & PAGE_MASK;
+         page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
+         
+         if(page == copy_page) continue;
+         //lprintf("Copying page 0x%lx", page);
+
+         mutex_lock(&mm_lock);
+         
+         new_frame = (unsigned long)user_free_list;
+         copy_table[ TABLE_OFFSET(copy_page) ] 
+            = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW); 
+         invalidate_page((void*)copy_page);
+         
+         free_block = (free_block_t*)copy_page;
+         user_free_list = free_block->next;
+         //lprintf("mm_duplicate_address_space: free_block->next = 0x%lx", 
+            //(unsigned long) free_block->next);
+
+         mutex_unlock(&mm_lock);
+         
+         //lprintf("memcpying a page from %p -> %p", (void*)page, (void*)copy_page);
+         //lprintf("frames %p -> %p", (void*)current_table[t_index], (void*)new_frame);
+         memcpy((void*)copy_page, (void*)page, PAGE_SIZE);
+         new_table[t_index] = new_frame | flags;
+      }
+   }
+   /* Unmap the page we used to copy for good measure. */
+   copy_table[ TABLE_OFFSET(copy_page) ] = 0;
+   invalidate_page((void*)copy_page);
 }
 
 /** 
@@ -269,6 +280,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 
    unsigned int page = PAGE_OF(addr);
    unsigned int npages = (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
+   unsigned long frame;
    int i;
    
    mutex_lock(&pcb->mm_lock);
@@ -301,15 +313,16 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* Allocate the free page, but keep it in supervisor mode for now. */
       mutex_lock(&mm_lock);
       
-      lprintf("mm_alloc: mapping user_free_list = 0x%lx.", (unsigned long) user_free_list);
-      table[ TABLE_OFFSET(page) ] = 
-         ((unsigned long) user_free_list | PTENT_PRESENT | flags) & ~PTENT_USER;
+      //lprintf("mm_alloc: mapping user_free_list = 0x%lx.", (unsigned long) user_free_list);
+      frame = (unsigned long)user_free_list;
+      table[ TABLE_OFFSET(page) ] = ( frame | PTENT_PRESENT | flags) & ~PTENT_USER;
+         
       invalidate_page((void*)page);
       
       /* We can use "page" to access the node now.*/
       free_block = (free_block_t*)page;
-      lprintf("mm_alloc: free_block->next = 0x%lx", (unsigned long) free_block->next);
       user_free_list = free_block->next;
+      //lprintf("mm_alloc: user_free_list free_block->next = 0x%lx", (unsigned long) free_block->next);
 
       mutex_unlock(&mm_lock);
 
@@ -320,7 +333,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       if(flags & PTENT_USER)
       {
          table[ TABLE_OFFSET(page) ] = 
-            ((unsigned long) user_free_list | PTENT_PRESENT | flags);
+            ((unsigned long) frame | PTENT_PRESENT | flags);
          invalidate_page((void*)page);
       }
    }
