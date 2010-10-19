@@ -11,9 +11,7 @@
 #include <string.h>
 #include <handlers/handler_wrappers.h>
 #include <cr.h>
-
-/* The offset of a POPA in our assembly wrappers. */
-#define POPA_OFFSET 6 
+#include <pop_stub.h>
 
 void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory);
 
@@ -30,12 +28,11 @@ void thread_fork_handler(volatile regstate_t reg)
    newtid = new_tcb->tid;
    atomic_add(&pcb->thread_count, 1);
    
-   
-   lprintf("new_tcb->kstack = %p", new_tcb->kstack);
+   //lprintf("new_tcb->kstack = %p", new_tcb->kstack);
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)get_cr3());
    
-   lprintf("Registering task 0x%x with esp = %p", new_tcb->tid, new_tcb->esp);
+   //lprintf("Registering task 0x%x with esp = %p", new_tcb->tid, new_tcb->esp);
 
    scheduler_register(new_tcb);
    reg.eax = newtid;
@@ -62,9 +59,10 @@ void fork_handler(volatile regstate_t reg)
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->page_directory);
-
+   
    /* Register the first thread in the new TCB. */
    scheduler_register(new_tcb);
+   
    reg.eax = newpid;
    return /* ! */;
 }
@@ -84,8 +82,7 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory)
    void (**ret_site)(void);
    ret_site = esp;
 
-   /* asm_fork_handler + 6 will hopefully be the popa instruction. */
-   (*ret_site) = (asm_fork_handler + POPA_OFFSET);
+   (*ret_site) = (pop_stub);
    
    /* Set up the context context_switch will popa off the stack. */
    esp -= sizeof(pusha_t);

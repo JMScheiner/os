@@ -30,6 +30,9 @@
 #define DIR_OFFSET(addr) ((((int)addr) >> DIR_SHIFT) & OFFSET_MASK)
 #define TABLE_OFFSET(addr) ((((int)addr) >> TABLE_SHIFT) & OFFSET_MASK)
 
+#define TABLE_PRESENT(table) ((unsigned long)(table) & PDENT_PRESENT)
+#define PAGE_PRESENT(page) ((unsigned long)(page) & PTENT_PRESENT)
+
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
 int n_phys_frames;

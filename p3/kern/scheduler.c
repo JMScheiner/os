@@ -30,7 +30,7 @@ void scheduler_init()
 
 void scheduler_register(tcb_t* tcb)
 {
-   lprintf("Adding %x to the scheduler.", tcb->tid);
+   //lprintf("Adding %x to the scheduler.", tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);   
    
    context_switch_on_tick = FALSE;
@@ -62,7 +62,6 @@ tcb_t* scheduler_next()
    context_switch_on_tick = FALSE;
    running = LIST_NEXT(running, scheduler_node);
 
-   MAGIC_BREAK;
    set_esp0((int)running->kstack);
    context_switch(&current->esp, running->esp);
    context_switch_on_tick = TRUE;
