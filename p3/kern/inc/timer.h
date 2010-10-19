@@ -1,6 +1,10 @@
-#ifndef TIMER_39YOD2E4
 
+#ifndef TIMER_39YOD2E4
 #define TIMER_39YOD2E4
+
+#include <types.h>
+
+extern boolean_t context_switch_on_tick;
 
 void timer_init(void);
 

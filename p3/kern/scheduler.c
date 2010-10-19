@@ -16,6 +16,8 @@
 #include <simics.h>
 #include <asm_helper.h>
 #include <cr.h>
+#include <types.h>
+#include <timer.h>
 
 static tcb_t* running;
 static tcb_t* blocked;
@@ -31,30 +33,39 @@ void scheduler_register(tcb_t* tcb)
    lprintf("Adding %x to the scheduler.", tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);   
    
-   disable_interrupts();
+   context_switch_on_tick = FALSE;
    LIST_INSERT_AFTER(running, tcb, scheduler_node);
-   enable_interrupts();
+   context_switch_on_tick = TRUE;
+}
+
+void scheduler_run(tcb_t* tcb)
+{
+	context_switch_on_tick = FALSE;
+	LIST_REMOVE(running, tcb, scheduler_node);
+	LIST_INSERT_AFTER(running, tcb, scheduler_node);
+	scheduler_next();
+	context_switch_on_tick = TRUE;
 }
 
 void scheduler_block(tcb_t* tcb)
 {
-   disable_interrupts();
+   context_switch_on_tick = FALSE;
    LIST_REMOVE(running, tcb, scheduler_node);
    LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-   enable_interrupts();
+   context_switch_on_tick = TRUE;
 }
 
 tcb_t* scheduler_next()
 {
    tcb_t* current = running;
    
-   disable_interrupts();
+   context_switch_on_tick = FALSE;
    running = LIST_NEXT(running, scheduler_node);
 
    MAGIC_BREAK;
    set_esp0((int)running->kstack);
    context_switch(&current->esp, running->esp);
-   enable_interrupts();
+   context_switch_on_tick = TRUE;
    
    return running;
 }

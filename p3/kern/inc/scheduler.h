@@ -7,6 +7,7 @@
 
 void scheduler_register(tcb_t* tcb);
 void scheduler_block(tcb_t* tcb);
+void scheduler_run(tcb_t *tcb);
 tcb_t* scheduler_next(void);
 void scheduler_sleep(tcb_t* tcb, unsigned long ticks);
 void scheduler_init(void);

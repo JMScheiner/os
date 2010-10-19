@@ -1,26 +1,56 @@
 
 #include <mutex.h>
 #include <x86/asm.h>
+#include <atomic.h>
+#include <timer.h>
+#include <assert.h>
+#include <types.h>
+#include <thread.h>
+#include <stdlib.h>
+#include <scheduler.h>
 
-boolean_t interrupts_initialized = FALSE;
+boolean_t locks_enabled = FALSE;
 
-int mutex_init(mutex_t *mp) {
-	return 0;
+void mutex_init(mutex_t *mp) {
+	assert(mp);
+	assert(!mp->initialized);
+
+	mp->owner = NULL;
+	mp->ticket = 0;
+	mp->now_serving = 0;
+	mp->initialized = TRUE;
 }
 
-int mutex_destroy(mutex_t *mp) {
-	return 0;
+void mutex_destroy(mutex_t *mp) {
+	assert(mp);
+	assert(mp->initialized);
+	mp->initialized = FALSE;
 }
 
-int mutex_lock(mutex_t *mp) {
-	if (interrupts_initialized)
-		disable_interrupts();
-	return 0;
+void mutex_lock(mutex_t *mp) {
+	assert(mp);
+	assert(mp->initialized);
+	if (!locks_enabled) return;
+
+	int ticket = atomic_add(&mp->ticket, 1);
+	while (ticket != mp->now_serving) {
+		context_switch_on_tick = FALSE;
+		if (mp->owner != NULL)
+			scheduler_run((tcb_t *)(mp->owner));
+		else
+			scheduler_next();
+		context_switch_on_tick = TRUE;
+	}
+
+	mp->owner = get_tcb();
 }
 
-int mutex_unlock(mutex_t *mp) {
-	if (interrupts_initialized)
-		enable_interrupts();
-	return 0;
+void mutex_unlock(mutex_t *mp) {
+	assert(mp);
+	assert(mp->initialized);
+	if (!locks_enabled) return;
+
+	mp->owner = NULL;
+	mp->now_serving++;
 }
 

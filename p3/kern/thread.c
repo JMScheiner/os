@@ -73,14 +73,17 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	return tcb;
 }
 
-tcb_t *get_tcb() 
+/**
+ * @brief Get the tcb of this thread
+ *
+ * NOTE: Relies on kernel stacks being one page.
+ *
+ * @return The tcb
+ */
+tcb_t *get_tcb()
 {
 	void *esp = get_esp();
-	tcb_t *tcb = NULL;
-	mutex_lock(&stack_table_lock);
-	HASHTABLE_GET(tcb_table_t, stack_table, STACK_TABLE_KEY(esp), tcb);
-	mutex_unlock(&stack_table_lock);
-	return tcb;
+	return (tcb_t *)PAGE_OF(esp);
 }
 
 void gettid_handler(volatile regstate_t reg)

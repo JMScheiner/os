@@ -91,7 +91,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    init_thread_table();
    
    handler_install();
-   interrupts_initialized = TRUE;
+   locks_enabled = TRUE;
    enable_interrupts();
    
    clear_console();
