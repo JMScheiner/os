@@ -97,6 +97,9 @@
 #define NAME get_ticks_handler
 #include "handlers/handler.def"
 
+#define NAME yield_handler
+#include "handlers/handler.def"
+
 #define NAME misbehave_handler
 #include "handlers/handler.def"
 

@@ -94,84 +94,6 @@ void syscall_handler(regstate_t reg)
 	MAGIC_BREAK;
 }
 
-void wait_handler(regstate_t reg)
-{
-	lprintf("Ignoring wait ");
-	MAGIC_BREAK;
-}
-
-void deschedule_handler(regstate_t reg)
-{
-	lprintf("Ignoring deschedule ");
-	MAGIC_BREAK;
-}
-
-void make_runnable_handler(regstate_t reg)
-{
-	lprintf("Ignoring make_runnable ");
-	MAGIC_BREAK;
-}
-
-void new_pages_handler(regstate_t reg)
-{
-	lprintf("Ignoring new_pages ");
-	MAGIC_BREAK;
-}
-
-void remove_pages_handler(regstate_t reg)
-{
-	lprintf("Ignoring remove_pages ");
-	MAGIC_BREAK;
-}
-
-void sleep_handler(regstate_t reg)
-{
-	lprintf("Ignoring sleep ");
-	MAGIC_BREAK;
-}
-
-void getchar_handler(regstate_t reg)
-{
-	lprintf("Ignoring getchar ");
-	MAGIC_BREAK;
-}
-
-void readline_handler(regstate_t reg)
-{
-	lprintf("Ignoring readline ");
-	MAGIC_BREAK;
-}
-
-void print_handler(regstate_t reg)
-{
-	lprintf("Ignoring print ");
-	MAGIC_BREAK;
-}
-
-void set_term_color_handler(regstate_t reg)
-{
-	lprintf("Ignoring set_term_color ");
-	MAGIC_BREAK;
-}
-
-void set_cursor_pos_handler(regstate_t reg)
-{
-	lprintf("Ignoring set_cursor_pos ");
-	MAGIC_BREAK;
-}
-
-void get_cursor_pos_handler(regstate_t reg)
-{
-	lprintf("Ignoring get_cursor_pos ");
-	MAGIC_BREAK;
-}
-
-void get_ticks_handler(regstate_t reg)
-{
-	lprintf("Ignoring get_ticks ");
-	MAGIC_BREAK;
-}
-
 void misbehave_handler(regstate_t reg)
 {
 	lprintf("Ignoring misbehave ");
@@ -187,24 +109,6 @@ void halt_handler(regstate_t reg)
 void ls_handler(regstate_t reg)
 {
 	lprintf("Ignoring ls ");
-	MAGIC_BREAK;
-}
-
-void task_vanish_handler(regstate_t reg)
-{
-	lprintf("Ignoring task_vanish ");
-	MAGIC_BREAK;
-}
-
-void set_status_handler(regstate_t reg)
-{
-	lprintf("Ignoring set_status ");
-	MAGIC_BREAK;
-}
-
-void vanish_handler(regstate_t reg)
-{
-	lprintf("Ignoring vanish ");
 	MAGIC_BREAK;
 }
 

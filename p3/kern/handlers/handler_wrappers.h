@@ -67,6 +67,8 @@ void asm_thread_fork_handler(void);
 
 void asm_get_ticks_handler(void);
 
+void asm_yield_handler(void);
+
 void asm_misbehave_handler(void);
 
 void asm_halt_handler(void);

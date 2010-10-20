@@ -45,6 +45,7 @@ int handler_install()
 	INSTALL_USER_HANDLER(tg, asm_get_cursor_pos_handler, GET_CURSOR_POS_INT);
 	INSTALL_USER_HANDLER(tg, asm_thread_fork_handler, THREAD_FORK_INT);
 	INSTALL_USER_HANDLER(tg, asm_get_ticks_handler, GET_TICKS_INT);
+	INSTALL_USER_HANDLER(tg, asm_yield_handler, YIELD_INT);
 	INSTALL_USER_HANDLER(tg, asm_misbehave_handler, MISBEHAVE_INT);
 	INSTALL_USER_HANDLER(tg, asm_halt_handler, HALT_INT);
 	INSTALL_USER_HANDLER(tg, asm_ls_handler, LS_INT);

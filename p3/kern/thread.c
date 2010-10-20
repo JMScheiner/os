@@ -75,12 +75,6 @@ tcb_t *get_tcb()
 	return (tcb_t *)PAGE_OF(esp);
 }
 
-void gettid_handler(volatile regstate_t reg)
-{
-   reg.eax = get_tcb()->tid;
-   //MAGIC_BREAK;
-}
-
 /** 
 * @brief Very similar functionality to initialize_thread, 
 * 

@@ -2,6 +2,7 @@
 #include "console.h"
 #include <video_defines.h>
 #include <asm.h>
+#include <simics.h>
 
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 #define MAX_VALID_COLOR 0x8f
@@ -13,6 +14,54 @@ static int console_color = FGND_WHITE | BGND_BLACK;
 static int console_row = 0;
 static int console_col = 0;
 static int cursor_hidden = 1;
+
+
+/************** Syscall wrappers. **************/
+void getchar_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring getchar");
+	MAGIC_BREAK;
+   //TODO
+}
+
+void readline_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring readline");
+	MAGIC_BREAK;
+   //TODO
+
+}
+
+void print_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring print");
+	MAGIC_BREAK;
+   //TODO
+}
+
+void set_term_color_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring set_term_color");
+	MAGIC_BREAK;
+   //TODO
+}
+
+void set_cursor_pos_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring set_cursor_pos");
+	MAGIC_BREAK;
+   //TODO
+}
+
+void get_cursor_pos_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring get_cursor_pos");
+	MAGIC_BREAK;
+   //TODO
+}
+/************** End Syscall wrappers . **************/
+
+
 
 static void set_cursor_position(int row, int col)
 {

@@ -1,20 +1,3 @@
-/*
- *
- *  #     #
- *  ##    #   ####    #####     #     ####   ######
- *  # #   #  #    #     #       #    #    #  #
- *  #  #  #  #    #     #       #    #       #####
- *  #   # #  #    #     #       #    #       #
- *  #    ##  #    #     #       #    #    #  #
- *  #     #   ####      #       #     ####   ######
- *
- * Now that it's P3 instead of P1 you are allowed
- * to edit this file if it suits you.
- *
- * Please delete this notice.
- *
- */
-
 /** @file console.h
  *  @brief Function prototypes for the console driver.
  *
@@ -29,6 +12,16 @@
 #define _CONSOLE_H
 
 #include <video_defines.h>
+#include <reg.h>
+
+
+/* Wrappers for the system calls associated with the functions below. */
+void getchar_handler(volatile regstate_t reg);
+void readline_handler(volatile regstate_t reg);
+void print_handler(volatile regstate_t reg);
+void set_term_color_handler(volatile regstate_t reg);
+void set_cursor_pos_handler(volatile regstate_t reg);
+void get_cursor_pos_handler(volatile regstate_t reg);
 
 /** @brief Prints character ch at the current location
  *         of the cursor.
