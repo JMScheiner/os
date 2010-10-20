@@ -64,7 +64,6 @@ void fork_handler(volatile regstate_t reg)
    scheduler_register(new_tcb);
    
    reg.eax = newpid;
-   MAGIC_BREAK;
    return /* ! */;
 }
 

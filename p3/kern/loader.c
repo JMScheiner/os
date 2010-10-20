@@ -156,23 +156,23 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
  *
  * @return < 0 on error. Never returns on success.
  */
-int load_new_task(int argc, char *argv, int arg_len) {
+int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	int err;
-	if ((err = elf_check_header(argv)) != ELF_SUCCESS) {
+	if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
 		return err;
 	}
 
 	// TODO checking and loading the elf header should happen separately so exec
 	// can do it before freeing the current process.
 	simple_elf_t elf_hdr;
-	if ((err = elf_load_helper(&elf_hdr, argv)) != ELF_SUCCESS) {
+	if ((err = elf_load_helper(&elf_hdr, exec)) != ELF_SUCCESS) {
 		return err;
 	}
    
 	pcb_t* pcb = initialize_first_process();
    
    set_cr3((int)pcb->page_directory);
-	if ((err = initialize_memory(argv, elf_hdr, pcb)) != 0) {
+	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
 		return err;
 	}
 	tcb_t* tcb = initialize_thread(pcb);
@@ -181,6 +181,8 @@ int load_new_task(int argc, char *argv, int arg_len) {
 
 	unsigned int user_eflags = get_user_eflags();
    scheduler_register(tcb);
+	 lprintf("Running %s", exec);
+	 MAGIC_BREAK;
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here
