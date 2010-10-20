@@ -48,6 +48,27 @@ pcb_t* get_pcb()
    return tcb->pcb;
 }
 
+pcb_t* initialize_first_process() 
+{
+   pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
+	pcb->pid = atomic_add(&next_pid, 1);
+	pcb->ppid = 0;
+	pcb->thread_count = 0;
+   pcb->regions = NULL;
+   
+	pcb->page_directory = mm_new_directory();
+   lprintf("Sanity check: pcb = %p, page_directory = %p", 
+      pcb, pcb->page_directory);
+	mutex_init(&pcb->lock);
+	mutex_init(&pcb->mm_lock);
+   
+   mutex_lock(&pcb_table_lock);
+   HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
+   mutex_unlock(&pcb_table_lock);
+	
+   return pcb;
+}
+
 pcb_t* initialize_process() 
 {
    pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
@@ -105,12 +126,13 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
    allocate_region((char*)elf.e_datstart + elf.e_datlen, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen, PTENT_RW | PTENT_USER | PTENT_ZFOD, 
       bss_fault, bss_free, pcb);
-   
    // Allocate stack region.
    allocate_region((char *)(USER_STACK_BASE - PAGE_SIZE), 
 				(char *)USER_STACK_BASE, PTENT_RW | PTENT_USER, stack_fault, stack_free);
 
-	initialize_region(file, elf.e_txtoff, elf.e_txtlen, elf.e_txtstart, elf.e_rodatstart);
+   lprintf("text 0x%lx, rodat 0x%lx, data 0x%lx, bss 0x%lx", elf.e_txtstart, elf.e_rodatstart, elf.e_datstart, elf.e_datstart + elf.e_datlen);
+	lprintf("rodatend 0x%lx", elf.e_rodatstart + elf.e_rodatlen);
+   initialize_region(file, elf.e_txtoff, elf.e_txtlen, elf.e_txtstart, elf.e_rodatstart);
 	initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, elf.e_rodatstart, elf.e_datstart);
 	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen);

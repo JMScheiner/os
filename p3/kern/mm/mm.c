@@ -110,7 +110,6 @@ void* mm_new_directory()
    
    /* Allocate the new page directory. */
    page_dirent_t* dir = (page_dirent_t*) mm_new_kernel_page();
-   //lprintf("Allocating new directory at %p", dir);
 
    /* The kernel part of every directory should be the same. */
    memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
@@ -150,7 +149,6 @@ void mm_duplicate_address_space(pcb_t* pcb)
    boolean_t copy_page_found = FALSE;
    
    /* Find an unallocated page in an existing directory to copy through. */
-   //lprintf("Searching for free page to use for copy.");
    for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE && !copy_page_found; d_index++)
    {
       current_table = current_dir[d_index];
@@ -189,8 +187,6 @@ void mm_duplicate_address_space(pcb_t* pcb)
       }
    }
 
-   //lprintf("Using 0x%lx for copy.", copy_page);
-   
    for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
    {
       current_table = current_dir[d_index];
@@ -211,7 +207,6 @@ void mm_duplicate_address_space(pcb_t* pcb)
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          
          if(page == copy_page) continue;
-         //lprintf("Copying page 0x%lx", page);
 
          mutex_lock(&mm_lock);
          
@@ -222,17 +217,14 @@ void mm_duplicate_address_space(pcb_t* pcb)
          
          free_block = (free_block_t*)copy_page;
          user_free_list = free_block->next;
-         //lprintf("mm_duplicate_address_space: free_block->next = 0x%lx", 
-            //(unsigned long) free_block->next);
 
          mutex_unlock(&mm_lock);
          
-         //lprintf("memcpying a page from %p -> %p", (void*)page, (void*)copy_page);
-         //lprintf("frames %p -> %p", (void*)current_table[t_index], (void*)new_frame);
          memcpy((void*)copy_page, (void*)page, PAGE_SIZE);
          new_table[t_index] = new_frame | flags;
       }
    }
+   
    /* Unmap the page we used to copy for good measure. */
    copy_table[ TABLE_OFFSET(copy_page) ] = 0;
    invalidate_page((void*)copy_page);
@@ -292,7 +284,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       {
          table = (page_tablent_t*) mm_new_table();
          dir[DIR_OFFSET(page)] = 
-            (page_tablent_t*)((int)table | PDENT_PRESENT | flags);
+            (page_tablent_t*)((int)table | PDENT_PRESENT | PDENT_RW | PDENT_USER);
       }
       else
       {
@@ -313,7 +305,6 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* Allocate the free page, but keep it in supervisor mode for now. */
       mutex_lock(&mm_lock);
       
-      //lprintf("mm_alloc: mapping user_free_list = 0x%lx.", (unsigned long) user_free_list);
       frame = (unsigned long)user_free_list;
       table[ TABLE_OFFSET(page) ] = ( frame | PTENT_PRESENT | flags) & ~PTENT_USER;
          
@@ -322,7 +313,6 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* We can use "page" to access the node now.*/
       free_block = (free_block_t*)page;
       user_free_list = free_block->next;
-      //lprintf("mm_alloc: user_free_list free_block->next = 0x%lx", (unsigned long) free_block->next);
 
       mutex_unlock(&mm_lock);
 
@@ -336,6 +326,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
             ((unsigned long) frame | PTENT_PRESENT | flags);
          invalidate_page((void*)page);
       }
+
    }
    mutex_unlock(&pcb->mm_lock);
 }

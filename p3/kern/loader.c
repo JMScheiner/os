@@ -20,6 +20,7 @@
 #include <elf_410.h>
 #include <simics.h>
 #include <scheduler.h>
+#include <cr.h>
 
 #include <process.h>
 #include <thread.h>
@@ -168,7 +169,9 @@ int load_new_task(int argc, char *argv, int arg_len) {
 		return err;
 	}
    
-	pcb_t* pcb = initialize_process();
+	pcb_t* pcb = initialize_first_process();
+   
+   set_cr3((int)pcb->page_directory);
 	if ((err = initialize_memory(argv, elf_hdr, pcb)) != 0) {
 		return err;
 	}

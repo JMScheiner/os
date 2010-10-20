@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <mm.h>
 #include <process.h>
+#include <simics.h>
 
 int allocate_region( 
    void *start,   
@@ -26,6 +27,7 @@ int allocate_region(
    region->next = pcb->regions;
    pcb->regions = region;
    
+   lprintf("Allocating %p, access %x", start, access_level);
 	mm_alloc(pcb, (void *)start, end - start, access_level);
 	return 0;
 }

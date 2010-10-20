@@ -94,9 +94,11 @@ tcb_t* scheduler_next()
    runnable = LIST_NEXT(runnable, scheduler_node);
 
    set_esp0((int)runnable->kstack);
+   MAGIC_BREAK;
    context_switch(&current->esp, runnable->esp);
+   MAGIC_BREAK;
    enable_interrupts();
-   
+
    return runnable;
 }
 

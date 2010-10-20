@@ -43,7 +43,7 @@
 /**
  * @brief The first program to load.
  */
-#define INIT_PROGRAM "fork_test"
+#define INIT_PROGRAM "coolness"
 
 /*
  * state for kernel memory allocation.

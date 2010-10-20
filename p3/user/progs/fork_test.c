@@ -15,7 +15,7 @@ int main(int argc, const char *argv[])
    {
       pid = fork();
       if(pid == 0) break;
-      else lprintf("Spawned child %d", pid);
+      else lprintf("Spawned child %x", pid);
    }
 
    lprintf("Child back - gettid returns 0x%x.", gettid());

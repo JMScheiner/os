@@ -41,6 +41,7 @@ void init_process_table(void);
 int get_pid(void);
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);
 pcb_t* initialize_process();
+pcb_t* initialize_first_process();
 pcb_t* get_pcb(void);
 
 #endif
