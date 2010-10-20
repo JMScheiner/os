@@ -15,7 +15,7 @@
  * @param eflags The user's eflags register
  *        Bit 1 (reserved) should be set
  *        Bit 9 (IF Interrupt Enable) should be set
- *        Bits 12,13 (IOPL IO Privilege Level) should be set
+ *        Bits 12,13 (IOPL IO Privilege Level) should not be set
  *
  * @param instruction_pointer The next instruction the user will run.
  */

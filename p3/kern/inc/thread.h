@@ -16,8 +16,8 @@ struct thread_control_block {
 	/** @brief Thread id. */
 	int tid;
 
-	/** @brief Process id. */
-	int pid;
+	/** @brief Process control block. */
+	pcb_t *pcb;
 
 	/** @brief Saved kernel stack pointer for this thread. */
 	void *esp;

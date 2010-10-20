@@ -26,13 +26,14 @@
  * %edi     * 0
  * %esi     * 4
  * %ebp     * 8
- * %ebx     * 12
- * %edx     * 16
- * %ecx     * 20
- * %eax     * 24
- * %eip     * 28
- * old_esp  * 32
- * new_esp  * 36
+ * %esp     * 12
+ * %ebx     * 16
+ * %edx     * 20
+ * %ecx     * 24
+ * %eax     * 28
+ * %eip     * 32
+ * old_esp  * 36
+ * new_esp  * 40
  *
  * @param old_esp Address to store the stack pointer of the current thread
  *
@@ -76,9 +77,7 @@ duplicate_thread_context:
    pushl  %ecx            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
-   popl   %eax
-   popl   %eax            // Pop arguments.
-   popl   %eax
+   addl   $12, %esp       // Pop arguments.
    movl   44(%esp), %eax  // Grab the address of the saved %esp
    movl   %ebx,   (%eax)  // %ebx still holds the new stack pointer.
    popa
@@ -97,9 +96,7 @@ duplicate_proc_context:
    pushl  %ecx            // Prepare for memcpy, source. 
    pushl  %ebx            // Prepare for memcpy, target.
    call   memcpy          // Make the call. 
-   popl   %eax
-   popl   %eax            // Pop arguments.
-   popl   %eax
+   addl   $12, %esp       // Pop arguments.
    movl   44(%esp), %eax  // Grab the address of the saved %esp
    movl   %ebx,   (%eax)  // Copy over the new stack pointer.    
    popa

@@ -10,30 +10,42 @@
 #include <thread.h>
 #include <pagefault.h>
 
-static int next_pid = 0;
+/**
+ * @brief Next pid to assign to a process.
+ */
+static int next_pid = 0xc0de0000;
 
 DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
 
+/**
+ * @brief Hashtable mapping pids to pcbs.
+ */
 pcb_table_t pcb_table;
+
+/**
+ * @brief Mutual exclusion lock for pcb_table.
+ */
 mutex_t pcb_table_lock;
 
-void init_process_table(void) 
+/**
+ * @brief Initialize the pcb_table.
+ */
+void init_process_table(void)
 {
    mutex_init(&pcb_table_lock);
 	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash);
 }
 
+/**
+ * @brief Get the pcb of the currently running process.
+ *
+ * @return The pcb.
+ */
 pcb_t* get_pcb()
 {
    tcb_t* tcb = get_tcb();
    assert(tcb);
-   
-   pcb_t* pcb = NULL;
-   mutex_lock(&pcb_table_lock);
-   HASHTABLE_GET(pcb_table_t, pcb_table, tcb->pid, pcb);
-   mutex_unlock(&pcb_table_lock);
-   
-   return pcb;
+   return tcb->pcb;
 }
 
 pcb_t* initialize_process() 
@@ -60,7 +72,7 @@ int get_pid() {
 	if (tcb == NULL) {
 		return 0;
 	}
-	return tcb->pid;
+	return tcb->pcb->pid;
 }
 
 static void initialize_region(const char *file, unsigned long offset, unsigned long len,

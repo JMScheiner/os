@@ -14,9 +14,7 @@
 #include <scheduler.h>
 #include <mutex.h>
 
-#define STACK_TABLE_KEY(addr) ((unsigned int)(addr) / PAGE_SIZE)
-
-static mutex_t stack_table_lock, tcb_table_lock;
+static mutex_t tcb_table_lock;
 
 /** @brief Number of pages per kernel stack. */
 
@@ -26,9 +24,6 @@ DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
 
 /* @brief Maps tids to tcbs.  */
 tcb_table_t tcb_table;
-
-/* @brief Page numbers (addr / PAGE_SIZE) to tcbs.  */
-tcb_table_t stack_table;
 
 /** 
 * @brief Return a unique tid. 
@@ -42,10 +37,8 @@ int new_tid()
 
 void init_thread_table(void) 
 {
-   mutex_init(&stack_table_lock);
    mutex_init(&tcb_table_lock);
 	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash);
-	STATIC_INIT_HASHTABLE(tcb_table_t, stack_table, default_hash);
 }
 
 tcb_t* initialize_thread(pcb_t *pcb) 
@@ -60,11 +53,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
    tcb->kstack = kstack_page + PAGE_SIZE;
 	
    tcb->tid = new_tid();
-	tcb->pid = pcb->pid;
-	
-   mutex_lock(&stack_table_lock);
-	HASHTABLE_PUT(tcb_table_t, stack_table, STACK_TABLE_KEY(kstack_page), tcb);
-	mutex_unlock(&stack_table_lock);
+	tcb->pcb = pcb;
 
    mutex_lock(&tcb_table_lock);
 	HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);

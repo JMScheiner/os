@@ -40,6 +40,9 @@
 #include <loader.h>
 #include <types.h>
 
+/**
+ * @brief The first program to load.
+ */
 #define INIT_PROGRAM "fork_test"
 
 /*

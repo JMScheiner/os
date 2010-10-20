@@ -66,21 +66,40 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
 #define UNSET(bit_vector, flag) \
 	bit_vector &= ~flag
 
+/**
+ * @brief Align an address by rounding up to an alignment boundary.
+ *
+ * @param addr The address to align.
+ * @param align The number of bytes to align to.
+ *
+ * @return The aligned address.
+ */
 #define ALIGN_UP(addr, align) \
-	((((addr) + (align) - 1) / (align)) * (align))
+	(void *)((((unsigned int)(addr) + (align) - 1) / (align)) * (align))
 
+/**
+ * @brief Align an address by rounding down to an alignment boundary.
+ *
+ * @param addr The address to align.
+ * @param align The number of bytes to align to.
+ *
+ * @return The aligned address.
+ */
 #define ALIGN_DOWN(addr, align) \
 	(void *)(((unsigned int)(addr) / (align)) * (align))
 
-/** @brief Get a value for the eflags register suitable for use in user 
- * mode. */
+/**
+ * @brief Get a value for the eflags register suitable for use in user 
+ * mode.
+ *
+ * @return An eflags value.
+ */
 unsigned int get_user_eflags() 
 {
 	unsigned int eflags = get_eflags();
 	SET(eflags, EFL_RESV1);
 	SET(eflags, EFL_IF);
 	UNSET(eflags, EFL_IOPL_RING3);
-	//UNSET(eflags, EFL_NT);
 	UNSET(eflags, EFL_AC);
 	return eflags;
 }
@@ -142,6 +161,8 @@ int load_new_task(int argc, char *argv, int arg_len) {
 		return err;
 	}
 
+	// TODO checking and loading the elf header should happen separately so exec
+	// can do it before freeing the current process.
 	simple_elf_t elf_hdr;
 	if ((err = elf_load_helper(&elf_hdr, argv)) != ELF_SUCCESS) {
 		return err;

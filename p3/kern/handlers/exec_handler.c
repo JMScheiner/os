@@ -6,17 +6,35 @@
 #include <simics.h>
 #include <thread.h>
 
+/**
+ * @brief Return with the given value. Useful for trap handlers to set the eax
+ * return value.
+ *
+ * @param ret The value to return.
+ */
 #define RETURN(ret) \
 	do { \
 		reg.eax = ret; \
 		return; \
 	} while (0)
-
+/** @brief Maxixmum allowed size of the kernel stack to use for exec arguments.
+ * Should be some constant fraction of the kernel stack. */
 #define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 2)
-#define EXEC_ARGS 2
 
+/**
+ * @brief Error code indicating the arguments to exec are not in the user's
+ * memory region.
+ */
 #define EXEC_INVALID_ARGS -1
+/**
+ * @brief Error code indicating one of the string arguments is not in the
+ * user's memory region.
+ */
 #define EXEC_INVALID_ARG -2
+/**
+ * @brief Error code indicating that the total size of the arguments to exec is
+ * too large.
+ */
 #define EXEC_ARGS_TOO_LONG -3
 
 /**
@@ -30,7 +48,7 @@ void exec_handler(volatile regstate_t reg) {
 	char buf[MAX_TOTAL_LENGTH];
 	char *ptr = buf;
 
-
+	/* Verify that the arguments lie in valid memory. */
 	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
 		RETURN(EXEC_INVALID_ARGS);
 	}
@@ -39,13 +57,13 @@ void exec_handler(volatile regstate_t reg) {
 	char *execname = *(char **)arg_addr;
 	char **argvec = *(char ***)(arg_addr + sizeof(char *));
 	int total_bytes = v_strcpy(ptr, execname, MAX_TOTAL_LENGTH);
-	MAGIC_BREAK;
 
 	if (total_bytes < 0) {
 		RETURN(EXEC_INVALID_ARG);
 	}
 	ptr += total_bytes;
-	
+
+	/* Loop over every srgument, copying it to the kernel stack. */
 	SAFE_LOOP(argvec, argc, MAX_TOTAL_LENGTH) {
 		if (total_bytes == MAX_TOTAL_LENGTH) {
 			RETURN(EXEC_ARGS_TOO_LONG);
@@ -65,7 +83,8 @@ void exec_handler(volatile regstate_t reg) {
 	/* execname is an argument too */
 	argc++;
 
-	/* TODO Free user memory regions. */
+	/* TODO Free user memory regions. We should also check that we get a valid
+	 * elf header before freeing. */
 
 	load_new_task(argc, buf, total_bytes);
 }
