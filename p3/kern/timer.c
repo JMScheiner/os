@@ -17,6 +17,7 @@
 #include <simics.h>
 #include <asm.h>
 #include <types.h>
+#include <scheduler.h>
 
 //In reality this is 9.99931276 milliseconds.
 //	Per tick, we lose 687.24ns.
@@ -29,9 +30,6 @@ static volatile unsigned int ticks;
 
 /** 
 * @brief Initializes the timer. 
-* 
-* @param void(*func )(unsigned int) A callback function for 
-* 	every time the timer interrupt is triggered.
 */
 void timer_init()
 {
@@ -47,14 +45,13 @@ void timer_init()
 
 /** 
 * @brief Increments the timer counter. 
-* 	TODO Need to think carefully about what happens after the outb
-* 		and what happens when the handler is interrupted.
 */
 void timer_handler(void)
 {
    atomic_add_volatile(&ticks, 1);
-
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+   scheduler_next();
+
 }
 
 /** 

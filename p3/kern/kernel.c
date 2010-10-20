@@ -97,11 +97,13 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    handler_install();
    locks_enabled = TRUE;
-   enable_interrupts();
+   //enable_interrupts();
    
    clear_console();
-   load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+   //load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
 
+   enable_interrupts();
+   while(1) { } 
    assert(0);
    return 0;
 }

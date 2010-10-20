@@ -14,6 +14,10 @@
 #include <cr.h>
 #include <types.h>
 #include <timer.h>
+#include <loader.h>
+#include <string.h>
+
+#define INIT_PROGRAM "coolness"
 
 /**
  * @brief Circular queue of runnable threads.
@@ -90,13 +94,22 @@ tcb_t* scheduler_next()
 {
    tcb_t* current = runnable;
    
+   if(!runnable)
+   {
+      /* If there is no one in the run queue, we are responsible 
+       * for launching the first task (again if necessary).
+       */
+      lprintf("Launching first task from the timer!");
+      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+   }
+
    disable_interrupts();
    runnable = LIST_NEXT(runnable, scheduler_node);
-
+   
    set_esp0((int)runnable->kstack);
-   MAGIC_BREAK;
+   //MAGIC_BREAK;
    context_switch(&current->esp, runnable->esp);
-   MAGIC_BREAK;
+   //MAGIC_BREAK;
    enable_interrupts();
 
    return runnable;
