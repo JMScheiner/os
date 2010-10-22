@@ -121,7 +121,7 @@ void scheduler_next()
    disable_interrupts();
    runnable = LIST_NEXT(runnable, scheduler_node);
    set_esp0((int)runnable->kstack);
-   context_switch(&current->esp, runnable->esp);
+   context_switch(&current->esp, &runnable->esp);
    enable_interrupts();
 }
 

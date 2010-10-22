@@ -75,31 +75,3 @@ tcb_t *get_tcb()
 	return (tcb_t *)PAGE_OF(esp);
 }
 
-/** 
-* @brief Very similar functionality to initialize_thread, 
-* 
-* @return 
-*/
-tcb_t* kern_threadfork()
-{
-   pcb_t* pcb = get_pcb();
-   
-   tcb_t* current_tcb = get_tcb();
-   tcb_t* new_tcb = initialize_thread(pcb);
-   
-   duplicate_thread_context(current_tcb->kstack, new_tcb->kstack, &new_tcb->esp);
-   
-   /* After registering, the new thread can be context switched to. */
-   scheduler_register(new_tcb);
-   return new_tcb;
-}
-
-
-
-
-
-
-
-
-
-

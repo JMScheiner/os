@@ -175,13 +175,13 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
 		return err;
 	}
-	tcb_t* tcb = initialize_thread(pcb);
-
+	
+   tcb_t* tcb = initialize_thread(pcb);
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();
    scheduler_register(tcb);
-	 lprintf("Running %s", exec);
+	lprintf("Running %s", exec);
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

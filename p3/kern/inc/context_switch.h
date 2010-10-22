@@ -9,7 +9,7 @@
  *
  * @param new_esp Stack address to jump execution to.
  */
-void context_switch(void **old_esp, void *new_esp);
+void context_switch(void **old_esp, void **new_esp);
 
 /** 
 * @brief Creates a new thread context identical to the current one. 
