@@ -384,7 +384,7 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
       invalidate_page((void*)page);
 
    }
-   mutex_unlock(&pcb->mm_lock);
+   mutex_unlock(&pcb->directory_lock);
 }
 
 /** 

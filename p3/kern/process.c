@@ -9,6 +9,7 @@
 #include <region.h>
 #include <thread.h>
 #include <pagefault.h>
+#include <mutex.h>
 
 /**
  * @brief Next pid to assign to a process.

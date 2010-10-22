@@ -3,6 +3,7 @@
 #include <process.h>
 #include <cr.h>
 #include <mutex.h>
+#include <mm.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
@@ -12,7 +13,7 @@
 void page_fault_handler(regstate_error_t reg)
 {
    int ecode; 
-   void* address;
+   void* addr;
    pcb_t* pcb;
    region_t* region;
    boolean_t region_found;
@@ -21,7 +22,7 @@ void page_fault_handler(regstate_error_t reg)
    ecode = reg.ecode;
 
    /* The address that causes a page fault resides in cr2.*/
-   address = (void*)get_cr2();
+   addr = (void*)get_cr2();
    
    assert(!(ecode & PF_ECODE_SUPERVISOR));
    assert(!(ecode & PF_ECODE_RESERVED));
@@ -34,10 +35,10 @@ void page_fault_handler(regstate_error_t reg)
    mutex_lock(&pcb->region_lock);
    for(region = pcb->regions; region; region = region->next)
    {
-      if(region->start < address && address < region->end)
+      if(region->start < addr && addr < region->end)
       {
          region_found = TRUE;
-         handler = region->handler;
+         handler = region->fault;
          mutex_unlock(&pcb->region_lock);
          handler(addr, 0);
       }
@@ -70,7 +71,7 @@ void stack_fault(void* addr, int access_mode)
 {
    /* We should auto allocate the stack region */
    lprintf("Growing Stack!!!");
-   mm_alloc(get_pcb(), PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
+   mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
 }
 
 

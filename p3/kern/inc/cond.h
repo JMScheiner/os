@@ -2,11 +2,7 @@
 #ifndef COND_H_HDGW65321F
 #define COND_H_HDGW65321F
 
-#include <mutex.h>
-
-typedef struct cond {
-	mutex_t lock;
-} cond_t;
+#include <kernel_types.h>
 
 int cond_init(cond_t *cv);
 int cond_destroy(cond_t *cv);

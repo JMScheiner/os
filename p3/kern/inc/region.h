@@ -4,19 +4,8 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-
-typedef struct REGION region_t;
-
 #include <process.h>
-
-struct REGION
-{
-   void* start;
-   void* end;
-
-   void (*fault)(void* addr, int access_mode);
-   struct REGION* next;
-};
+#include <kernel_types.h>
 
 int allocate_region( 
    void *start,   
@@ -26,6 +15,6 @@ int allocate_region(
    pcb_t* pcb;
 ); 
 
-int allocate_stack_region(pcb_t* pcb)
+int allocate_stack_region(pcb_t* pcb);
 
 #endif /* end of include guard: REGION_M98BMIN2 */

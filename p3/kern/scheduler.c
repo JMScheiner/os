@@ -105,10 +105,8 @@ void scheduler_block_me(tcb_t* me)
 
 /**
  * @brief Switch to the next thread in the runnable queue.
- *
- * @return The tcb of the thread that is made to run.
  */
-tcb_t* scheduler_next()
+void scheduler_next()
 {
    tcb_t* current = runnable;
    
@@ -125,8 +123,6 @@ tcb_t* scheduler_next()
    set_esp0((int)runnable->kstack);
    context_switch(&current->esp, runnable->esp);
    enable_interrupts();
-
-   return runnable;
 }
 
 /**

@@ -1,25 +1,24 @@
-
-#include <process.h>
-#include <malloc.h>
 #include <region.h>
+#include <kernel_types.h>
+
 #include <mm.h>
 #include <simics.h>
+#include <malloc.h>
+#include <mutex.h>
+#include <pagefault.h>
 
 int allocate_region( 
    void *start,   
    void *end, 
    int access_level, 
-   void (*fault)(region_t*, void*, int), 
-   void (*free)(region_t*),
+   void (*fault)(void*, int), 
    pcb_t* pcb
 ) 
 {
-   
    /* TODO When does the region list get freed. */
    region_t* region = malloc(sizeof(region_t));
    
    region->fault = fault;
-   region->free = free;
    region->start = start;
    region->end = end;
 
@@ -37,9 +36,8 @@ int allocate_stack_region(pcb_t* pcb)
    region_t* region = malloc(sizeof(region_t));
    
    region->fault = stack_fault;
-   region->free = stack_free;
-   region->start = USER_STACK_START;
-   region->end = USER_STACK_BASE;
+   region->start = (void*)USER_STACK_START;
+   region->end = (void*)USER_STACK_BASE;
 
    mutex_lock(&pcb->region_lock);
    region->next = pcb->regions;
@@ -49,7 +47,6 @@ int allocate_stack_region(pcb_t* pcb)
 	mm_alloc(pcb, (void *)(USER_STACK_BASE - PAGE_SIZE), PAGE_SIZE, PTENT_RW | PTENT_USER);
    return 0;
 }
-
 
 
 

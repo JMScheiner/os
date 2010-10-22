@@ -50,6 +50,8 @@
  */
 extern lmm_t malloc_lmm;
 
+extern boolean_t locks_enabled;
+
 /*
  * Info about system gathered by the boot loader
  */
