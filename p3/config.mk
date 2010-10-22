@@ -35,6 +35,7 @@ UPDATE_METHOD = afs
 # directory.
 #
 STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test tfork_test
+STUDENTTESTS += autostack
 
 ###########################################################################
 # Object files for your thread library

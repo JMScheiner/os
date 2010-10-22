@@ -20,25 +20,25 @@
 #include "handlers/handler.def"
 
 #define NAME double_fault_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME invalid_tss_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME segment_not_present_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME stack_segment_fault_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME general_protection_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME page_fault_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME alignment_check_handler
-#include "handlers/handler.def"
+#include "handlers/ehandler.def"
 
 #define NAME machine_check_handler
 #include "handlers/handler.def"

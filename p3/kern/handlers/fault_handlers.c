@@ -46,37 +46,37 @@ void device_not_available_handler(regstate_t reg)
 	MAGIC_BREAK;
 }
 
-void double_fault_handler(regstate_t reg)
+void double_fault_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring double_fault ");
 	MAGIC_BREAK;
 }
 
-void invalid_tss_handler(regstate_t reg)
+void invalid_tss_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring invalid_tss ");
 	MAGIC_BREAK;
 }
 
-void segment_not_present_handler(regstate_t reg)
+void segment_not_present_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring segment_not_present ");
 	MAGIC_BREAK;
 }
 
-void stack_segment_fault_handler(regstate_t reg)
+void stack_segment_fault_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring stack_segment_fault ");
 	MAGIC_BREAK;
 }
 
-void general_protection_handler(regstate_t reg)
+void general_protection_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring general_protection ");
 	MAGIC_BREAK;
 }
 
-void alignment_check_handler(regstate_t reg)
+void alignment_check_handler(regstate_error_t reg)
 {
 	lprintf("Ignoring alignment_check ");
 	MAGIC_BREAK;

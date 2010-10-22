@@ -7,10 +7,10 @@
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
-#define PF_ECODE_SUPERVISOR 0x4
+#define PF_ECODE_USER 0x4
 #define PF_ECODE_RESERVED 0x8
 
-void page_fault_handler(regstate_error_t reg)
+void page_fault_handler(volatile regstate_error_t reg)
 {
    int ecode; 
    void* addr;
@@ -24,7 +24,7 @@ void page_fault_handler(regstate_error_t reg)
    /* The address that causes a page fault resides in cr2.*/
    addr = (void*)get_cr2();
    
-   assert(!(ecode & PF_ECODE_SUPERVISOR));
+   assert(ecode & PF_ECODE_USER);
    assert(!(ecode & PF_ECODE_RESERVED));
    
    /* Walk the region list, searching for handlers. */
@@ -70,7 +70,7 @@ void bss_fault(void* addr, int access_mode){}
 void stack_fault(void* addr, int access_mode)
 {
    /* We should auto allocate the stack region */
-   lprintf("Growing Stack!!!");
+   lprintf("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
    mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
 }
 

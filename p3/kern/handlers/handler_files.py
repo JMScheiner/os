@@ -1,52 +1,65 @@
+# 
+# @file handler_files.py
+# @brief I am not proud of this. 
+# @author Justin Scheiner
+# @date 2010-10-21
+#
 
 fwrap = open('handler_wrappers.S', 'w')
 fwrapheader = open('handler_wrappers.h', 'w')
 fhandler = open('handler.c', 'w')
 ffaulthandler = open('fault_handlers.c', 'w')
 
+name = 0
+idt_entry = 1
+implemented = 2
+syscall = 3
+ecode = 4
+
+# [name, IDT entry, Implemented, DPL 3, Error code]
 handlers = [
-   ['divide_error', 'IDT_DE', True, False], 
-   ['debug', 'IDT_DB', True, False],
-   ['breakpoint', 'IDT_BP', True, False],
-   ['overflow', 'IDT_OF', True, False],
-   ['bound_range_exceeded','IDT_BR', True, False],
-   ['invalid_opcode', 'IDT_UD', True, False], 
-   ['device_not_available', 'IDT_NM', True, False],
-   ['double_fault', 'IDT_DF', True, False], 
-   ['invalid_tss', 'IDT_TS', True, False],
-   ['segment_not_present', 'IDT_NP', True, False],
-   ['stack_segment_fault', 'IDT_SS', True, False],
-   ['general_protection', 'IDT_GP', True, False],
-   ['page_fault', 'IDT_PF', False, False],
-   ['alignment_check', 'IDT_AC', True, False], 
-   ['machine_check', 'IDT_MC', True, False],
-   ['syscall', 'SYSCALL_INT', True, True], 
-   ['fork', 'FORK_INT', False, True], 
-   ['exec', 'EXEC_INT', False, True], 
-   ['wait', 'WAIT_INT', False, True],
-   ['deschedule', 'DESCHEDULE_INT', False, True], 
-   ['make_runnable', 'MAKE_RUNNABLE_INT', False, True], 
-   ['gettid', 'GETTID_INT', False, True], 
-   ['new_pages', 'NEW_PAGES_INT', False, True], 
-   ['remove_pages', 'REMOVE_PAGES_INT', False, True], 
-   ['sleep', 'SLEEP_INT', False, True], 
-   ['getchar', 'GETCHAR_INT', False, True], 
-   ['readline', 'READLINE_INT', False, True],
-   ['print', 'PRINT_INT', False, True], 
-   ['set_term_color', 'SET_TERM_COLOR_INT', False, True], 
-   ['set_cursor_pos', 'SET_CURSOR_POS_INT', False, True], 
-   ['get_cursor_pos', 'GET_CURSOR_POS_INT', False, True], 
-   ['thread_fork', 'THREAD_FORK_INT', False, True], 
-   ['get_ticks', 'GET_TICKS_INT', False, True], 
-   ['yield', 'YIELD_INT', False, True], 
-   ['misbehave', 'MISBEHAVE_INT', True, True], 
-   ['halt', 'HALT_INT', True, True], 
-   ['ls', 'LS_INT', True, True], 
-   ['task_vanish', 'TASK_VANISH_INT', False, True], 
-   ['set_status', 'SET_STATUS_INT', False, True],
-   ['vanish', 'VANISH_INT', False, True],
-   ['timer', 'TIMER_IDT_ENTRY', False, False],
-   ['keyboard', 'KEY_IDT_ENTRY', False, False]
+   ['divide_error',        'IDT_DE',            True, False, False], 
+   ['debug',               'IDT_DB',            True, False, False],
+   ['breakpoint',          'IDT_BP',            True, False, False],
+   ['overflow',            'IDT_OF',            True, False, False],
+   ['bound_range_exceeded','IDT_BR',            True, False, False],
+   ['invalid_opcode',      'IDT_UD',            True, False, False], 
+   ['device_not_available','IDT_NM',            True, False, False],
+   ['double_fault',        'IDT_DF',            True, False, True], 
+   ['invalid_tss',         'IDT_TS',            True, False, True],
+   ['segment_not_present', 'IDT_NP',            True, False, True],
+   ['stack_segment_fault', 'IDT_SS',            True, False, True],
+   ['general_protection',  'IDT_GP',            True, False, True],
+   ['page_fault',          'IDT_PF',            False, False, True],
+   ['alignment_check',     'IDT_AC',            True, False, True], 
+   ['machine_check',       'IDT_MC',            True, False, False],
+   ['syscall',             'SYSCALL_INT',       True, True, False], 
+   ['fork',                'FORK_INT',          False, True, False], 
+   ['exec',                'EXEC_INT',          False, True, False], 
+   ['wait',                'WAIT_INT',          False, True, False],
+   ['deschedule',          'DESCHEDULE_INT',    False, True, False], 
+   ['make_runnable',       'MAKE_RUNNABLE_INT', False, True, False], 
+   ['gettid',              'GETTID_INT',        False, True, False], 
+   ['new_pages',           'NEW_PAGES_INT',     False, True, False], 
+   ['remove_pages',        'REMOVE_PAGES_INT',  False, True, False], 
+   ['sleep',               'SLEEP_INT',         False, True, False], 
+   ['getchar',             'GETCHAR_INT',       False, True, False], 
+   ['readline',            'READLINE_INT',      False, True, False],
+   ['print',               'PRINT_INT',         False, True, False], 
+   ['set_term_color',      'SET_TERM_COLOR_INT',False, True, False], 
+   ['set_cursor_pos',      'SET_CURSOR_POS_INT',False, True, False], 
+   ['get_cursor_pos',      'GET_CURSOR_POS_INT',False, True, False], 
+   ['thread_fork',         'THREAD_FORK_INT',   False, True, False], 
+   ['get_ticks',           'GET_TICKS_INT',     False, True, False], 
+   ['yield',               'YIELD_INT',         False, True, False], 
+   ['misbehave',           'MISBEHAVE_INT',     True, True, False], 
+   ['halt',                'HALT_INT',          True, True, False], 
+   ['ls',                  'LS_INT',            True, True, False], 
+   ['task_vanish',         'TASK_VANISH_INT',   False, True, False], 
+   ['set_status',          'SET_STATUS_INT',    False, True, False],
+   ['vanish',              'VANISH_INT',        False, True, False],
+   ['timer',               'TIMER_IDT_ENTRY',   False, False, False],
+   ['keyboard',            'KEY_IDT_ENTRY',     False, False, False]
 ]
 
 
@@ -71,21 +84,29 @@ ffaulthandler.write('#include <simics.h>\n')
 ffaulthandler.write('#include <asm.h>\n')
 ffaulthandler.write('#include <reg.h>\n\n')
 
-for l in handlers: 
-   fwrap.write('#define NAME ' + l[0] + '_handler\n')
-   fwrap.write('#include \"handlers/handler.def\"\n\n')
-   fwrapheader.write('void asm_' + l[0] + '_handler(void);\n\n')
+for handler in handlers: 
+   fwrap.write('#define NAME ' + handler[name] + '_handler\n')
+   if handler[ecode]:
+      fwrap.write('#include \"handlers/ehandler.def\"\n\n')
+   else:
+      fwrap.write('#include \"handlers/handler.def\"\n\n')
    
-   if l[3]: 
+   fwrapheader.write('void asm_' + handler[name] + '_handler(void);\n\n')
+   
+   if handler[syscall]: 
       fhandler.write('\tINSTALL_USER_HANDLER(tg, asm_' +   
-         l[0] + '_handler, ' + l[1] + ');\n')
+         handler[name] + '_handler, ' + handler[idt_entry] + ');\n')
    else:
       fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
-         l[0] + '_handler, ' + l[1] + ');\n')
+         handler[name] + '_handler, ' + handler[idt_entry] + ');\n')
 
-   if l[2]:
-      ffaulthandler.write('void ' + l[0] + '_handler(regstate_t reg)\n{\n')
-      ffaulthandler.write('\tlprintf(\"Ignoring ' + l[0] + ' \");\n')
+   if handler[implemented]:
+      if handler[ecode]:
+         ffaulthandler.write('void ' + handler[name] + '_handler(regstate_error_t reg)\n{\n')
+      else:
+         ffaulthandler.write('void ' + handler[name] + '_handler(regstate_t reg)\n{\n')
+      
+      ffaulthandler.write('\tlprintf(\"Ignoring ' + handler[name] + ' \");\n')
       ffaulthandler.write('\tMAGIC_BREAK;\n')
       ffaulthandler.write('}\n\n')
 
