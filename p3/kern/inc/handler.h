@@ -47,7 +47,7 @@ typedef uint8_t trap_gate_t[8];
    memcpy(idt_base() + offset * sizeof(trap_gate_t),  \
       tg, sizeof(trap_gate_t));                        
 
-#define INSTALL_USER_HANDLER(tg, func, offset)             \
+#define INSTALL_USER_HANDLER(tg, func, offset)        \
    IDT_TG_INIT(tg);                                   \
    IDT_TG_SET_OFFSET(tg, func);                       \
    IDT_TG_SET_SS(tg, SEGSEL_KERNEL_CS);               \

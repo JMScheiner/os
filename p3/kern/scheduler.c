@@ -72,16 +72,34 @@ void scheduler_run(tcb_t* tcb)
 	scheduler_next();
 }
 
+void scheduler_make_runnable(tcb_t* tcb)
+{
+   disable_interrupts();
+   LIST_REMOVE(blocked, tcb, scheduler_node);
+   LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+   enable_interrupts();
+
+}
+
 /**
- * @brief Move a thread from the blocked queue to the runnable queue.
+ * @brief Move a thread from the runnable queue to the blocked queue.
  *
- * @param tcb The thread to move to the runnable queue.
+ * @param tcb The thread to move to the blocked queue.
  */
 void scheduler_block(tcb_t* tcb)
 {
    disable_interrupts();
    LIST_REMOVE(runnable, tcb, scheduler_node);
    LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
+   enable_interrupts();
+}
+
+void scheduler_block_me(tcb_t* me)
+{
+   disable_interrupts();
+   LIST_REMOVE(runnable, me, scheduler_node);
+   LIST_INSERT_BEFORE(blocked, me, scheduler_node);
+   scheduler_next();
    enable_interrupts();
 }
 
@@ -99,17 +117,13 @@ tcb_t* scheduler_next()
       /* If there is no one in the run queue, we are responsible 
        * for launching the first task (again if necessary).
        */
-      lprintf("Launching first task from the timer!");
       load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
    }
 
    disable_interrupts();
    runnable = LIST_NEXT(runnable, scheduler_node);
-   
    set_esp0((int)runnable->kstack);
-   //MAGIC_BREAK;
    context_switch(&current->esp, runnable->esp);
-   //MAGIC_BREAK;
    enable_interrupts();
 
    return runnable;
@@ -126,9 +140,5 @@ void scheduler_sleep(tcb_t* tcb, unsigned long ticks)
 {
    //TODO
 }
-
-
-
-
 
 

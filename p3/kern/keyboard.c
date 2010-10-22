@@ -78,7 +78,6 @@ void keyboard_handler(void)
 	}
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
-   
 }
 
 /** 

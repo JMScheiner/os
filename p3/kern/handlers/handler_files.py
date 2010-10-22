@@ -4,7 +4,6 @@ fwrapheader = open('handler_wrappers.h', 'w')
 fhandler = open('handler.c', 'w')
 ffaulthandler = open('fault_handlers.c', 'w')
 
-# handler name, idt index, not implemented, dpl 3
 handlers = [
    ['divide_error', 'IDT_DE', True, False], 
    ['debug', 'IDT_DB', True, False],

@@ -275,7 +275,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    unsigned long frame;
    int i;
    
-   mutex_lock(&pcb->mm_lock);
+   mutex_lock(&pcb->directory_lock);
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table = dir[ DIR_OFFSET(page) ];
@@ -328,7 +328,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       }
 
    }
-   mutex_unlock(&pcb->mm_lock);
+   mutex_unlock(&pcb->directory_lock);
 }
 
 /** 
@@ -349,7 +349,7 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
    assert((unsigned int)addr > USER_MEM_START);
    dir = (page_dirent_t*) get_cr3();
 
-   mutex_lock(&pcb->mm_lock);
+   mutex_lock(&pcb->directory_lock);
    for(page = (unsigned long) addr; page += PAGE_SIZE; n--)
    {
       table = dir[ DIR_OFFSET(page) ]; 

@@ -182,7 +182,6 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	unsigned int user_eflags = get_user_eflags();
    scheduler_register(tcb);
 	 lprintf("Running %s", exec);
-	 MAGIC_BREAK;
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

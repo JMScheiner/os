@@ -18,4 +18,3 @@ void remove_pages_handler(volatile regstate_t reg)
    //TODO
 }
 
-

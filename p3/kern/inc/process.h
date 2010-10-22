@@ -4,16 +4,17 @@
 
 typedef struct process_control_block pcb_t;
 
-#include <region.h>
 #include <mutex.h>
 #include <list.h>
 #include <elf_410.h>
+#include <region.h>
 
 #define USER_STACK_BASE 0xc0000000
+#define USER_STACK_START 0xb0000000
 
 /** @brief Process control block structure. */
-struct process_control_block {
-
+struct process_control_block 
+{
 	/** @brief Process id. */
 	int pid;
 
@@ -30,10 +31,7 @@ struct process_control_block {
    region_t* regions;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
-	mutex_t lock;
-
-   /** @brief Lock for page directory. */
-   mutex_t mm_lock;
+	mutex_t lock, region_lock, directory_lock;
 
 };
 
