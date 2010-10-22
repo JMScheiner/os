@@ -100,15 +100,3 @@ void misbehave_handler(regstate_t reg)
 	MAGIC_BREAK;
 }
 
-void halt_handler(regstate_t reg)
-{
-	lprintf("Ignoring halt ");
-	MAGIC_BREAK;
-}
-
-void ls_handler(regstate_t reg)
-{
-	lprintf("Ignoring ls ");
-	MAGIC_BREAK;
-}
-

@@ -12,11 +12,11 @@ ffaulthandler = open('fault_handlers.c', 'w')
 
 name = 0
 idt_entry = 1
-implemented = 2
+not_implemented = 2
 syscall = 3
 ecode = 4
 
-# [name, IDT entry, Implemented, DPL 3, Error code]
+# [name, IDT entry, Not Implemented, DPL 3, Error code]
 handlers = [
    ['divide_error',        'IDT_DE',            True, False, False], 
    ['debug',               'IDT_DB',            True, False, False],
@@ -53,8 +53,8 @@ handlers = [
    ['get_ticks',           'GET_TICKS_INT',     False, True, False], 
    ['yield',               'YIELD_INT',         False, True, False], 
    ['misbehave',           'MISBEHAVE_INT',     True, True, False], 
-   ['halt',                'HALT_INT',          True, True, False], 
-   ['ls',                  'LS_INT',            True, True, False], 
+   ['halt',                'HALT_INT',          False, True, False], 
+   ['ls',                  'LS_INT',            False, True, False], 
    ['task_vanish',         'TASK_VANISH_INT',   False, True, False], 
    ['set_status',          'SET_STATUS_INT',    False, True, False],
    ['vanish',              'VANISH_INT',        False, True, False],
@@ -100,7 +100,7 @@ for handler in handlers:
       fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
          handler[name] + '_handler, ' + handler[idt_entry] + ');\n')
 
-   if handler[implemented]:
+   if handler[not_implemented]:
       if handler[ecode]:
          ffaulthandler.write('void ' + handler[name] + '_handler(regstate_error_t reg)\n{\n')
       else:

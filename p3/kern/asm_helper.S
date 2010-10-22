@@ -1,5 +1,6 @@
 
 .globl get_esp
+.globl halt
 
 /** @def void *get_esp(void)
  *
@@ -11,3 +12,6 @@ get_esp:
 	movl  %esp, %eax
 	ret
 
+
+halt: 
+   HLT

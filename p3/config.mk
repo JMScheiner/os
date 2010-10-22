@@ -58,7 +58,7 @@ SYSCALL_OBJS = sleep.o print.o fork.o exec.o set_status.o vanish.o
 SYSCALL_OBJS += wait.o task_vanish.o yield.o gettid.o deschedule.o make_runnable.o
 SYSCALL_OBJS += get_ticks.o new_pages.o remove_pages.o getchar.o readline.o
 SYSCALL_OBJS += set_term_color.o set_cursor_pos.o get_cursor_pos.o ls.o
-SYSCALL_OBJS += halt.o misbehave.o 
+SYSCALL_OBJS += halt.o misbehave.o
 
 ###########################################################################
 # Parts of your kernel
@@ -76,7 +76,7 @@ KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
 KERNEL_OBJS += synchro/mutex.o synchro/cond.o validation.o
 KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o keyboard.o timer.o
 KERNEL_OBJS += scheduler.o handlers/pop_stub.o lifecycle.o threadman.o
-KERNEL_OBJS += memman.o
+KERNEL_OBJS += memman.o misc.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your
