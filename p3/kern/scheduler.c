@@ -17,7 +17,7 @@
 #include <loader.h>
 #include <string.h>
 
-#define INIT_PROGRAM "autostack"
+#define INIT_PROGRAM "coolness"
 
 /**
  * @brief Circular queue of runnable threads.

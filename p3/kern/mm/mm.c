@@ -32,8 +32,11 @@
 /* Protects the free list. */
 static mutex_t mm_lock;
 
+
+unsigned long mm_new_frame(unsigned long* table, unsigned long page);
+
 /** 
-* @brief Initialize the user frame list. 
+* @brief Initialize the user frame list, enable paging.
 *  This function should only be called from kernel_main,
 *     before interrupts are enabled.
 * 
@@ -55,8 +58,9 @@ int mm_init(void)
    n_free_user_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
 
    /* Build a very simple link structure on free frames. */
-   for(i = 0, iter = user_free_list; i < n_free_user_frames; i++, iter = iter->next)
+   for(i = 0, iter = user_free_list; i < n_free_user_frames - 1; i++, iter = iter->next)
       iter->next = (free_block_t*)((char*)iter + PAGE_SIZE);
+   iter->next = NULL;
    
    /* Initialize global page directory. */
    global_dir = (page_dirent_t*)mm_new_kernel_page();
@@ -72,7 +76,6 @@ int mm_init(void)
          pt[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
 
       global_dir[i] = (page_dirent_t)((unsigned long)global_dir[i] | (PDENT_RW | PDENT_PRESENT) );
-         
    }
 
    /* Explicitly unmap NULL to prevent NULL dereferences in the kernel. */
@@ -141,7 +144,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
    page_tablent_t *copy_table = NULL, *current_table, *new_table;
    page_tablent_t current_frame, new_frame;
 
-   free_block_t* free_block;
+   //free_block_t* free_block;
 
    current_dir = (page_dirent_t*)get_cr3();
    new_dir = pcb->page_directory;
@@ -207,20 +210,9 @@ void mm_duplicate_address_space(pcb_t* pcb)
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          
          if(page == copy_page) continue;
-
-         mutex_lock(&mm_lock);
          
-         new_frame = (unsigned long)user_free_list;
-         copy_table[ TABLE_OFFSET(copy_page) ] 
-            = ((unsigned long) new_frame | PTENT_PRESENT | PTENT_RW); 
-         invalidate_page((void*)copy_page);
-         
-         free_block = (free_block_t*)copy_page;
-         user_free_list = free_block->next;
-
-         mutex_unlock(&mm_lock);
-         
-         memcpy((void*)copy_page, (void*)page, PAGE_SIZE);
+         new_frame = mm_new_frame((unsigned long*)copy_table, copy_page);
+         memcpy((void*)copy_page, (void*)page, PAGE_SIZE); 
          new_table[t_index] = new_frame | flags;
       }
    }
@@ -268,7 +260,7 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    /* Grab the current page directory. */
    page_dirent_t* dir = (page_dirent_t*) get_cr3();
    page_tablent_t* table;
-   free_block_t* free_block;
+   //free_block_t* free_block;
 
    unsigned int page = PAGE_OF(addr);
    unsigned int npages = (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
@@ -303,30 +295,11 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       }
 
       /* Allocate the free page, but keep it in supervisor mode for now. */
-      mutex_lock(&mm_lock);
+      frame = mm_new_frame((unsigned long*)table, page);
       
-      frame = (unsigned long)user_free_list;
-      table[ TABLE_OFFSET(page) ] = ( frame | PTENT_PRESENT | flags) & ~PTENT_USER;
-         
+      /* Reassign the page with the flags the user originally asked for. */
+      table[ TABLE_OFFSET(page) ] = ((unsigned long) frame | PTENT_PRESENT | flags);
       invalidate_page((void*)page);
-      
-      /* We can use "page" to access the node now.*/
-      free_block = (free_block_t*)page;
-      user_free_list = free_block->next;
-
-      mutex_unlock(&mm_lock);
-
-      /* Wipe the free block part of the page. The rest should already be wiped. */
-      memset((void*)page, 0, sizeof(free_block_t));
-      
-      /* Let the user see the page if appropriate. */
-      if(flags & PTENT_USER)
-      {
-         table[ TABLE_OFFSET(page) ] = 
-            ((unsigned long) frame | PTENT_PRESENT | flags);
-         invalidate_page((void*)page);
-      }
-
    }
    mutex_unlock(&pcb->directory_lock);
 }
@@ -449,4 +422,37 @@ void* mm_new_kernel_page()
    assert(addr);
    return addr;
 }
+
+/** 
+* @brief Safely allocates a new frame.
+*  1. Allocates a new frame for the current process. 
+*  2. Maps that frame to the place indicated by "page" 
+*  3. Uses the new mapping to update the free list.
+* 
+* @param table The page table that "page" belongs to. 
+* @param page The page to map. 
+* 
+* @return The address of the new frame.
+*/
+unsigned long mm_new_frame(unsigned long* table, unsigned long page)
+{
+   unsigned long new_frame;
+   free_block_t* free_block;
+   
+   mutex_lock(&mm_lock);
+   new_frame = (unsigned long)user_free_list;
+   
+   table[ TABLE_OFFSET(page) ] = new_frame | PTENT_PRESENT | PTENT_RW; 
+   invalidate_page((void*)page);
+   
+   free_block = (free_block_t*)page;
+   user_free_list = free_block->next;
+   memset((void*)page, 0, sizeof(free_block_t));
+
+   mutex_unlock(&mm_lock);
+   return new_frame;
+}
+
+
+
 
