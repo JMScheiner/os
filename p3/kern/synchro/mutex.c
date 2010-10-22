@@ -89,7 +89,5 @@ void mutex_unlock(mutex_t *mp) {
    disable_interrupts();
    if(mp->head) scheduler_make_runnable(mp->head->tcb);
    enable_interrupts();
-	assert(mp->locked == TRUE);
-
 }
 
