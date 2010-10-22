@@ -87,7 +87,8 @@ void exec_handler(volatile regstate_t reg) {
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
-	 lprintf("Running %s", execname_buf);
+	lprintf("Running %s", execname_buf);
+   sim_reg_process((void*)get_cr3(), execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
 	assert(0);
@@ -118,7 +119,8 @@ void thread_fork_handler(volatile regstate_t reg)
    
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)get_cr3());
-
+   
+   /* TODO Does something need to happen here for user level debugging? */
    scheduler_register(new_tcb);
    reg.eax = newtid;
 }
@@ -157,6 +159,7 @@ void fork_handler(volatile regstate_t reg)
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->page_directory);
    
    /* Register the first thread in the new TCB. */
+   sim_reg_child(new_pcb->page_directory, current_pcb->page_directory);
    scheduler_register(new_tcb);
    
    reg.eax = newpid;
