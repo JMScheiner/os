@@ -408,7 +408,14 @@ boolean_t mm_validate(void* addr)
 }
 
 /* TODO This definitely isn't the best way of allocating kernel pages. */
-
+/** 
+* @brief Allocates $n$ new pages in direct mapped kernel memory. 
+*  FIXME This definitely isn't the best way of allocating kernel pages. 
+* 
+* @param n The number of new pages to allocate.
+* 
+* @return The base address of the new pages, or NULL on failure. 
+*/
 void* mm_new_kernel_pages(size_t n)
 {
    void* addr = smemalign(PAGE_SIZE, n * PAGE_SIZE);
@@ -416,6 +423,12 @@ void* mm_new_kernel_pages(size_t n)
    return addr;
 }
 
+/** 
+* @brief Allocates a new page in direct mapped kernel memory. 
+*  FIXME This definitely isn't the best way of allocating kernel pages. 
+* 
+* @return The address of the new page, or NULL on failure.
+*/
 void* mm_new_kernel_page()
 {
    void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
@@ -441,6 +454,10 @@ unsigned long mm_new_frame(unsigned long* table, unsigned long page)
    
    mutex_lock(&mm_lock);
    new_frame = (unsigned long)user_free_list;
+   
+   /* When this assertion happens, it's time to do something more
+    *    intelligent. */
+   assert(new_frame);
    
    table[ TABLE_OFFSET(page) ] = new_frame | PTENT_PRESENT | PTENT_RW; 
    invalidate_page((void*)page);

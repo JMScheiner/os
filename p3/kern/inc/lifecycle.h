@@ -8,17 +8,6 @@
 
 /******** Defines for exec *******/
  
-/**
- * @brief Return with the given value. Useful for trap handlers to set the eax
- * return value.
- *
- * @param ret The value to return.
- */
-#define RETURN(ret) \
-	do { \
-		reg.eax = ret; \
-		return; \
-	} while (0)
 /** @brief Maxixmum allowed size of the kernel stack to use for exec arguments.
  * Should be some constant fraction of the kernel stack. */
 #define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 2)

@@ -70,8 +70,28 @@ typedef struct PUSHA
    uint32_t eax;
 } pusha_t;
 
+/** 
+* @brief The argument for the given syscall - either the value itself, 
+*  or the address of a "packet" containing the arguments in user space.
+* 
+* @param regstate The register state on entry to a system call.
+* 
+* @return The argument.
+*/
 #define SYSCALL_ARG(regstate) \
 	((regstate).esi)
+
+/**
+ * @brief Return with the given value. Useful for trap handlers to set the eax
+ * return value.
+ *
+ * @param ret The value to return.
+ */
+#define RETURN(ret) \
+	do { \
+		reg.eax = ret; \
+		return; \
+	} while (0)
 
 #endif /* end of include guard: REG_X239SB19 */
 

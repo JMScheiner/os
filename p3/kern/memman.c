@@ -3,6 +3,8 @@
 #include <reg.h>
 #include <mm.h>
 #include <simics.h>
+#include <pagefault.h>
+#include <process.h>
 
 /** 
 * @brief Allocates new memory to the invoking task, starting at base 
@@ -19,11 +21,33 @@
 */
 void new_pages_handler(volatile regstate_t reg)
 {
-   //void* base;
-   //int len;
-	lprintf("Ignoring new_pages");
-	MAGIC_BREAK;
-   //TODO
+   int len;
+   void* base, *addr, *arg_addr;
+   
+   arg_addr = (void*)SYSCALL_ARG(reg);
+   
+   /* Verify that the arguments lie in valid memory. */
+	if(!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *)))
+		RETURN(NEW_PAGES_INVALID_ARGS);
+   
+   /* Grab the arguments from user space. */
+   base = (void*)arg_addr;
+   len  = (int)(arg_addr + sizeof(void*));
+
+   if((PAGE_OFFSET(base) != 0) || (len % PAGE_SIZE != 0))
+      RETURN(NEW_PAGES_INVALID_ARGS);
+   
+   /* Check that the pages the user is asking for aren't already already allocated. */
+   for(addr = base; addr < base + len; addr += PAGE_SIZE)
+      if(mm_validate(addr))
+         RETURN(NEW_PAGES_INVALID_ARGS);
+   
+   /* Check that the pages aren't in the autostack region. */
+   if(addr >= (void*)USER_STACK_START) 
+      RETURN(NEW_PAGES_INVALID_ARGS);
+   
+   mm_alloc(get_pcb(), base, len, PTENT_USER | PTENT_RW);
+   RETURN(0);
 }
 
 void remove_pages_handler(volatile regstate_t reg)

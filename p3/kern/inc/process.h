@@ -5,7 +5,10 @@
 #include <kernel_types.h>
 #include <elf_410.h>
 
+/* The starting address of the stack in all processes. */
 #define USER_STACK_BASE 0xc0000000
+
+/* The last address we will allocate for the user. */
 #define USER_STACK_START 0xb0000000
 
 void init_process_table(void);

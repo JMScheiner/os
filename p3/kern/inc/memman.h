@@ -4,6 +4,8 @@
 
 #include <reg.h>
 
+#define NEW_PAGES_INVALID_ARGS -1
+
 void new_pages_handler(volatile regstate_t reg);
 void remove_pages_handler(volatile regstate_t reg);
 

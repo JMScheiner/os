@@ -122,7 +122,7 @@ void thread_fork_handler(volatile regstate_t reg)
    
    /* TODO Does something need to happen here for user level debugging? */
    scheduler_register(new_tcb);
-   reg.eax = newtid;
+   RETURN(newtid);
 }
 
 /** 
@@ -162,8 +162,7 @@ void fork_handler(volatile regstate_t reg)
    sim_reg_child(new_pcb->page_directory, current_pcb->page_directory);
    scheduler_register(new_tcb);
    
-   reg.eax = newpid;
-   return /* ! */;
+   RETURN(newpid);
 }
 
 /** 
