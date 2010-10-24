@@ -3,6 +3,7 @@
 #include <thread.h>
 #include <scheduler.h>
 #include <simics.h>
+#include <timer.h>
 
 /** 
 * @brief Returns the TID of the current thread in %eax. 
@@ -11,7 +12,7 @@
 */
 void gettid_handler(volatile regstate_t reg)
 {
-   reg.eax = get_tcb()->tid;
+   RETURN(get_tcb()->tid);
 }
 
 /** 
@@ -88,9 +89,7 @@ void make_runnable_handler(volatile regstate_t reg)
 */
 void get_ticks_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring get_ticks");
-	MAGIC_BREAK;
-   //TODO
+   RETURN(time());
 }
 
 /** 

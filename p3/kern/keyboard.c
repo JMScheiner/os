@@ -16,7 +16,7 @@
 #include <simics.h>
 
 //NOTE: This value must be a power of 2
-//	512 is maybe excessively large for a key buffer, but
+//	512 is may be excessively large for a key buffer, but
 //	it is still relatively tiny.  If at some point we are
 //	hurting for memory, this can be made 256 safely.
 #define KEY_BUF_SIZE 512 
@@ -36,8 +36,8 @@
  *		interrupt cannot r/w keybuf[head] (unless head = tail)
  */
 uint8_t keybuf[KEY_BUF_SIZE];
-unsigned int keybuf_head = 0;
-unsigned int keybuf_tail = 0;
+volatile unsigned int keybuf_head = 0;
+volatile unsigned int keybuf_tail = 0;
 
 /** @brief Returns the next character in the keyboard buffer
  *
@@ -66,16 +66,15 @@ int readchar(void)
 */
 void keyboard_handler(void)
 {
-	keybuf[keybuf_tail++] = inb(KEYBOARD_PORT);
-	keybuf_tail = keybuf_tail & (KEY_BUF_SIZE - 1);
-
-	//Explicitly start dropping keys if we need to.
-	//	The oldest keypresse gets lost first.
-	if(keybuf_tail == keybuf_head)
-	{
-		keybuf_head++;
-		keybuf_head = keybuf_head & (KEY_BUF_SIZE - 1);
-	}
+   int next = (keybuf_tail + 1) & (KEY_BUF_SIZE - 1)
+	
+   //Explicitly start dropping keys if we need to.
+	//	The newest keypresses get lost first.
+	if(next != keybuf_head)
+   {
+	   keybuf[keybuf_tail] = inb(KEYBOARD_PORT);
+      keybuf_tail = next;
+   }
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 }

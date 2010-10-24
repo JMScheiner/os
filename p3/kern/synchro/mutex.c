@@ -50,7 +50,8 @@ void mutex_destroy(mutex_t *mp) {
  *
  * @param mp The mutex to lock.
  */
-void mutex_lock(mutex_t *mp) {
+void mutex_lock(mutex_t *mp) 
+{
 	assert(mp);
 	assert(mp->initialized);
 	if (!locks_enabled) return;
