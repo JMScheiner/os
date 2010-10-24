@@ -3,6 +3,9 @@
 * @brief Scheduler functions for the 410 kernel. 
 * @author Justin Scheiner
 * @author Tim Wilson
+* @bug Should sleepers always be put at the front of the run queue when they wake up?
+* @bug Will launch a new task if every current thread is sleeping. This is undoubtedly
+*  the WRONG behavior - but I haven't worked out what is right yet.
 */
 #include <scheduler.h>
 #include <context_switch.h>
@@ -16,8 +19,9 @@
 #include <timer.h>
 #include <loader.h>
 #include <string.h>
+#include <heap.h>
 
-#define INIT_PROGRAM "coolness"
+#define INIT_PROGRAM "sleep"
 
 /**
  * @brief Circular queue of runnable threads.
@@ -29,11 +33,17 @@ static tcb_t* runnable;
  */
 static tcb_t* blocked;
 
+/** 
+* @brief A min-heap keying on the time the sleeper will run next.
+*/
+static sleep_heap_t sleepers;
+
 /**
  * @brief Initialize the scheduler queues.
  */
 void scheduler_init()
 {
+   heap_init(&sleepers);
    INIT_LIST(runnable);   
    INIT_LIST(blocked); 
 }
@@ -70,6 +80,7 @@ void scheduler_run(tcb_t* tcb)
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	scheduler_next();
+   enable_interrupts();
 }
 
 void scheduler_make_runnable(tcb_t* tcb)
@@ -105,11 +116,31 @@ void scheduler_block_me(tcb_t* me)
 
 /**
  * @brief Switch to the next thread in the runnable queue.
+ *    This function should never be called with interrupts enabled!!!!!!
  */
 void scheduler_next()
 {
-   tcb_t* current = runnable;
+   tcb_t *current, *sleeper;
+   unsigned long now;
    
+   sleeper = heap_peek(&sleepers); 
+   now = time();
+   
+   /* If it is time to wake up a thread, put him first in the run queue. 
+    *
+    *  Is this a good policy? I can see people doing sleep(1) all of the time, 
+    *    and causing starvation.
+    **/
+   if(sleeper && sleeper->wakeup < now)
+   {
+      LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
+   }
+   else if(sleeper && !runnable)
+   {
+      /* Do something useful here!!! */
+   }
+   
+   current = runnable;
    if(!runnable)
    {
       /* If there is no one in the run queue, we are responsible 
@@ -118,23 +149,31 @@ void scheduler_next()
       load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
    }
 
-   disable_interrupts();
    runnable = LIST_NEXT(runnable, scheduler_node);
    set_esp0((int)runnable->kstack);
    context_switch(&current->esp, &runnable->esp);
-   enable_interrupts();
 }
 
 /**
- * @brief Put a thread to sleep for at least a certain period of time.
+ * @brief Put the calling thread to sleep for the given time. 
+ *    
+ *    As of now - only this function calls heap_insert, and only 
+ *    scheduler_next calls heap_peek / heap_pop. heap_remove will
+ *    need to be called by dying processes with interrupts disabled. 
  *
- * @param tcb The tcb of the thread to put to sleep.
  * @param ticks The number of (timer ticks?, milliseconds?, probably should be
  * milliseconds) to sleep for.
  */
-void scheduler_sleep(tcb_t* tcb, unsigned long ticks)
+void scheduler_sleep(unsigned long ticks)
 {
-   //TODO
+   tcb_t* me = get_tcb();
+   me->wakeup = time() + ticks;
+   
+   disable_interrupts();
+   heap_insert(&sleepers, me);
+   LIST_REMOVE(runnable, me, scheduler_node);
+   scheduler_next();
+   enable_interrupts();
 }
 
 

@@ -106,9 +106,13 @@ void get_ticks_handler(volatile regstate_t reg)
 */
 void sleep_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring sleep");
-	MAGIC_BREAK;
-   //TODO
+   int ticks = (int)SYSCALL_ARG(reg);
+   
+   if(ticks < 0) RETURN(-1); 
+   if(ticks == 0) RETURN(0);
+
+   scheduler_sleep(ticks);
+   RETURN(0);
 }
 
 

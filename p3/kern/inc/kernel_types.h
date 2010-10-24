@@ -11,6 +11,7 @@ typedef struct REGION region_t;
 typedef struct PROCESS_CONTROL_BLOCK pcb_t;
 typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct COND cond_t;
+typedef struct SLEEP_HEAP sleep_heap_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 
@@ -79,11 +80,20 @@ struct THREAD_CONTROL_BLOCK{
    tcb_node_t mutex_node;
    int runnable;
 
-   unsigned long sleep_until;
+   unsigned long wakeup;
+   int sleep_index;
 };
 
 struct COND {
 	mutex_t lock;
+};
+
+struct SLEEP_HEAP 
+{
+   /* Refers to the first free slot. */
+   int index;
+   int size; 
+   tcb_t** data; 
 };
 
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */
