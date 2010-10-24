@@ -1,5 +1,5 @@
-#ifndef _HANDLER_WRAPPER_H_
-#define _HANDLER_WRAPPER_H_
+#ifndef _HANDLER_WRAPPERS_H_
+#define _HANDLER_WRAPPERS_H_
 
 void asm_divide_error_handler(void);
 

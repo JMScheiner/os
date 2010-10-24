@@ -1,5 +1,5 @@
 #include <reg.h>
-#include <simics.h>
+#include <debug.h>
 #include <process.h>
 #include <cr.h>
 #include <mutex.h>

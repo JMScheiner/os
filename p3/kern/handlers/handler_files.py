@@ -10,64 +10,78 @@ fwrapheader = open('handler_wrappers.h', 'w')
 fhandler = open('handler.c', 'w')
 ffaulthandler = open('fault_handlers.c', 'w')
 
+# The name of the handler. 
 name = 0
+
+# The name of it's IDT entry (the constant).
 idt_entry = 1
+
+# Whether or not we have implemented it yet. 
 not_implemented = 2
+
+# Whether it is a syscall or not (can be invoked by the user).
 syscall = 3
+
+# Whether it generates an error code or not. 
 ecode = 4
 
-# [name, IDT entry, Not Implemented, DPL 3, Error code]
+# Whether it is an interrupt gate or a trap gate.
+interrupt = 5
+
+# [name, IDT entry, Not Implemented, DPL 3, Error code, Interrupt]
 handlers = [
-   ['divide_error',        'IDT_DE',            True, False, False], 
-   ['debug',               'IDT_DB',            True, False, False],
-   ['breakpoint',          'IDT_BP',            True, False, False],
-   ['overflow',            'IDT_OF',            True, False, False],
-   ['bound_range_exceeded','IDT_BR',            True, False, False],
-   ['invalid_opcode',      'IDT_UD',            True, False, False], 
-   ['device_not_available','IDT_NM',            True, False, False],
-   ['double_fault',        'IDT_DF',            True, False, True], 
-   ['invalid_tss',         'IDT_TS',            True, False, True],
-   ['segment_not_present', 'IDT_NP',            True, False, True],
-   ['stack_segment_fault', 'IDT_SS',            True, False, True],
-   ['general_protection',  'IDT_GP',            True, False, True],
-   ['page_fault',          'IDT_PF',            False, False, True],
-   ['alignment_check',     'IDT_AC',            True, False, True], 
-   ['machine_check',       'IDT_MC',            True, False, False],
-   ['syscall',             'SYSCALL_INT',       True, True, False], 
-   ['fork',                'FORK_INT',          False, True, False], 
-   ['exec',                'EXEC_INT',          False, True, False], 
-   ['wait',                'WAIT_INT',          False, True, False],
-   ['deschedule',          'DESCHEDULE_INT',    False, True, False], 
-   ['make_runnable',       'MAKE_RUNNABLE_INT', False, True, False], 
-   ['gettid',              'GETTID_INT',        False, True, False], 
-   ['new_pages',           'NEW_PAGES_INT',     False, True, False], 
-   ['remove_pages',        'REMOVE_PAGES_INT',  False, True, False], 
-   ['sleep',               'SLEEP_INT',         False, True, False], 
-   ['getchar',             'GETCHAR_INT',       False, True, False], 
-   ['readline',            'READLINE_INT',      False, True, False],
-   ['print',               'PRINT_INT',         False, True, False], 
-   ['set_term_color',      'SET_TERM_COLOR_INT',False, True, False], 
-   ['set_cursor_pos',      'SET_CURSOR_POS_INT',False, True, False], 
-   ['get_cursor_pos',      'GET_CURSOR_POS_INT',False, True, False], 
-   ['thread_fork',         'THREAD_FORK_INT',   False, True, False], 
-   ['get_ticks',           'GET_TICKS_INT',     False, True, False], 
-   ['yield',               'YIELD_INT',         False, True, False], 
-   ['misbehave',           'MISBEHAVE_INT',     True, True, False], 
-   ['halt',                'HALT_INT',          False, True, False], 
-   ['ls',                  'LS_INT',            False, True, False], 
-   ['task_vanish',         'TASK_VANISH_INT',   False, True, False], 
-   ['set_status',          'SET_STATUS_INT',    False, True, False],
-   ['vanish',              'VANISH_INT',        False, True, False],
-   ['timer',               'TIMER_IDT_ENTRY',   False, False, False],
-   ['keyboard',            'KEY_IDT_ENTRY',     False, False, False]
+   ['divide_error',        'IDT_DE',            True, False, False, False], 
+   ['debug',               'IDT_DB',            True, False, False, False],
+   ['breakpoint',          'IDT_BP',            True, False, False, False],
+   ['overflow',            'IDT_OF',            True, False, False, False],
+   ['bound_range_exceeded','IDT_BR',            True, False, False, False],
+   ['invalid_opcode',      'IDT_UD',            True, False, False, False], 
+   ['device_not_available','IDT_NM',            True, False, False, False],
+   ['double_fault',        'IDT_DF',            True, False, True, False], 
+   ['invalid_tss',         'IDT_TS',            True, False, True, False],
+   ['segment_not_present', 'IDT_NP',            True, False, True, False],
+   ['stack_segment_fault', 'IDT_SS',            True, False, True, False],
+   ['general_protection',  'IDT_GP',            True, False, True, False],
+   ['page_fault',          'IDT_PF',            False, False, True, False],
+   ['alignment_check',     'IDT_AC',            True, False, True, False], 
+   ['machine_check',       'IDT_MC',            True, False, False, False],
+   ['syscall',             'SYSCALL_INT',       True, True, False, False], 
+   ['fork',                'FORK_INT',          False, True, False, False], 
+   ['exec',                'EXEC_INT',          False, True, False, False], 
+   ['wait',                'WAIT_INT',          False, True, False, False],
+   ['deschedule',          'DESCHEDULE_INT',    False, True, False, False], 
+   ['make_runnable',       'MAKE_RUNNABLE_INT', False, True, False, False], 
+   ['gettid',              'GETTID_INT',        False, True, False, False], 
+   ['new_pages',           'NEW_PAGES_INT',     False, True, False, False], 
+   ['remove_pages',        'REMOVE_PAGES_INT',  False, True, False, False], 
+   ['sleep',               'SLEEP_INT',         False, True, False, False], 
+   ['getchar',             'GETCHAR_INT',       False, True, False, False], 
+   ['readline',            'READLINE_INT',      False, True, False, False],
+   ['print',               'PRINT_INT',         False, True, False, False], 
+   ['set_term_color',      'SET_TERM_COLOR_INT',False, True, False, False], 
+   ['set_cursor_pos',      'SET_CURSOR_POS_INT',False, True, False, False], 
+   ['get_cursor_pos',      'GET_CURSOR_POS_INT',False, True, False, False], 
+   ['thread_fork',         'THREAD_FORK_INT',   False, True, False, False], 
+   ['get_ticks',           'GET_TICKS_INT',     False, True, False, False], 
+   ['yield',               'YIELD_INT',         False, True, False, False], 
+   ['misbehave',           'MISBEHAVE_INT',     True, True, False, False], 
+   ['halt',                'HALT_INT',          False, True, False, False], 
+   ['ls',                  'LS_INT',            False, True, False, False], 
+   ['task_vanish',         'TASK_VANISH_INT',   False, True, False, False], 
+   ['set_status',          'SET_STATUS_INT',    False, True, False, False],
+   ['vanish',              'VANISH_INT',        False, True, False, False],
+   ['timer',               'TIMER_IDT_ENTRY',   False, False, False, True],
+   ['keyboard',            'KEY_IDT_ENTRY',     False, False, False, True]
 ]
 
 
-fwrapheader.write('#ifndef _HANDLER_WRAPPER_H_\n')
-fwrapheader.write('#define _HANDLER_WRAPPER_H_\n\n')
 
+# Guard for handler_wrappers.h
+fwrapheader.write('#ifndef _HANDLER_WRAPPERS_H_\n')
+fwrapheader.write('#define _HANDLER_WRAPPERS_H_\n\n')
+
+# Includes for handler.c
 fhandler.write('#include \"handler.h\"\n\n')
-
 fhandler.write('#include <timer_defines.h>\n')
 fhandler.write('#include <idt.h>\n')
 fhandler.write('#include <handlers/handler_wrappers.h>\n')
@@ -76,8 +90,13 @@ fhandler.write('#include <keyhelp.h>\n')
 fhandler.write('#include <string.h>\n')
 fhandler.write('#include <asm.h>\n')
 fhandler.write('#include <stdio.h>\n\n')
-fhandler.write('int handler_install()\n{\n\ttrap_gate_t tg;\n')
 
+# Function definition plus the one local variable.
+fhandler.write('int handler_install()\n{\n')
+fhandler.write('\ttrap_gate_t tg;\n')
+fhandler.write('\tvoid* base = idt_base();\n\n')
+
+# Includes for fault_handlers.c 
 ffaulthandler.write('#include <handlers/handler_wrappers.h>\n')
 ffaulthandler.write('#include <interrupt_defines.h>\n')
 ffaulthandler.write('#include <simics.h>\n')
@@ -85,21 +104,30 @@ ffaulthandler.write('#include <asm.h>\n')
 ffaulthandler.write('#include <reg.h>\n\n')
 
 for handler in handlers: 
+   
+   # Write the two lines that expand into the assembly definition of 
+   # the handlers wraper. 
    fwrap.write('#define NAME ' + handler[name] + '_handler\n')
    if handler[ecode]:
       fwrap.write('#include \"handlers/ehandler.def\"\n\n')
    else:
       fwrap.write('#include \"handlers/handler.def\"\n\n')
    
+   # Write the handler wrappers definition into the header. 
    fwrapheader.write('void asm_' + handler[name] + '_handler(void);\n\n')
    
+   # Write the code to install the handler into the IDT 
+   fhandler.write('\ttg = (trap_gate_t)(base + TRAP_GATE_SIZE * ' + handler[idt_entry] + ');\n')
+   fhandler.write('\tINSTALL_HANDLER(tg, asm_' + handler[name] + '_handler);\n')
    if handler[syscall]: 
-      fhandler.write('\tINSTALL_USER_HANDLER(tg, asm_' +   
-         handler[name] + '_handler, ' + handler[idt_entry] + ');\n')
-   else:
-      fhandler.write('\tINSTALL_HANDLER(tg, asm_' +   
-         handler[name] + '_handler, ' + handler[idt_entry] + ');\n')
-
+      fhandler.write('\tIDT_SET_DPL(tg, 0x3)\n')
+   if handler[interrupt]:
+      fhandler.write('\tIDT_MAKE_INTERRUPT(tg);\n')
+   fhandler.write('\n');
+   
+   
+   # If we haven't implemented this handler yet, fill in an arbitrary definition in 
+   #  fault_handlers.c (A simics printout + a magic break.)
    if handler[not_implemented]:
       if handler[ecode]:
          ffaulthandler.write('void ' + handler[name] + '_handler(regstate_error_t reg)\n{\n')
@@ -110,8 +138,9 @@ for handler in handlers:
       ffaulthandler.write('\tMAGIC_BREAK;\n')
       ffaulthandler.write('}\n\n')
 
-
+# Close the guard for the wrapper header file. 
 fwrapheader.write('#endif //_HANDLER_WRAPPER_H_\n')
-fhandler.write('\n\n\treturn 0;\n}\n')
 
+# Write the end of the function that installs all of the handlers. 
+fhandler.write('\treturn 0;\n}\n')
 
