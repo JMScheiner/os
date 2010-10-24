@@ -45,7 +45,7 @@ context_switch:
 	movl   36(%esp), %eax  // Save stack pointer so someone else 
 	movl   %esp, (%eax)    // can context switch back to us
 	movl   40(%esp), %eax  // Switch to someone else
-   movl   (%eax), %esp    // 
+	movl   (%eax), %esp    // 
 	popa                   // Restore general purpose registers
 	pushl  %eax            // Set page directory as argument
 	call   set_cr3         // Restore the page directory

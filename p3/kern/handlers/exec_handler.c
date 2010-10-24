@@ -3,7 +3,7 @@
 #include <mm.h>
 #include <validation.h>
 #include <loader.h>
-#include <simics.h>
+#include <debug.h>
 #include <thread.h>
 #include <mode_switch.h>
 
@@ -19,6 +19,7 @@
 		reg.eax = ret; \
 		return; \
 	} while (0)
+
 /** @brief Maxixmum allowed size of the kernel stack to use for exec arguments.
  * Should be some constant fraction of the kernel stack. */
 #define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 2)
@@ -107,7 +108,7 @@ void exec_handler(volatile regstate_t reg) {
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
-	 lprintf("Running %s", execname_buf);
+	debug_print_exec("Running %s", execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
 	assert(0);

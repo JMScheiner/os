@@ -5,7 +5,7 @@
 #include <scheduler.h>
 #include <context_switch.h>
 #include <atomic.h>
-#include <simics.h>
+#include <debug.h>
 #include <mm.h>
 #include <asm_helper.h>
 #include <string.h>
@@ -28,11 +28,11 @@ void thread_fork_handler(volatile regstate_t reg)
    newtid = new_tcb->tid;
    atomic_add(&pcb->thread_count, 1);
    
-   //lprintf("new_tcb->kstack = %p", new_tcb->kstack);
+   debug_print_fork("new_tcb->kstack = %p", new_tcb->kstack);
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)get_cr3());
    
-   //lprintf("Registering task 0x%x with esp = %p", new_tcb->tid, new_tcb->esp);
+   debug_print_fork("Registering task 0x%x with esp = %p", new_tcb->tid, new_tcb->esp);
 
    scheduler_register(new_tcb);
    reg.eax = newtid;

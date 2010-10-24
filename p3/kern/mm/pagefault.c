@@ -70,7 +70,7 @@ void bss_fault(void* addr, int access_mode){}
 void stack_fault(void* addr, int access_mode)
 {
    /* We should auto allocate the stack region */
-   lprintf("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
+   debug_print_page("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
    mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
 }
 
