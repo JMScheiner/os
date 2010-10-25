@@ -1,11 +1,17 @@
 
-#include "console.h"
+#include <console.h>
 #include <video_defines.h>
 #include <asm.h>
-#include <simics.h>
+#include <debug.h>
+#include <keyboard.h>
+#include <mm.h>
 
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 #define MAX_VALID_COLOR 0x8f
+
+#define READLINE_INVALID_ARGS -1
+#define READLINE_INVALID_LENGTH -2
+#define READLINE_INVALID_BUFFER -3
 
 //Here's the console state: 
 static int console_color = FGND_WHITE | BGND_BLACK;
@@ -26,10 +32,26 @@ void getchar_handler(volatile regstate_t reg)
 
 void readline_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring readline");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(int))) {
+		RETURN(READLINE_INVALID_ARGS);
+	}
 
+	int len = *(int *)arg_addr;
+	if (len < 0 || len > KEY_BUF_SIZE) {
+		RETURN(READLINE_INVALID_LENGTH);
+	}
+
+	char *buf = *(char **)(arg_addr + sizeof(int));
+	if (!mm_validate_write(buf, len)) {
+		RETURN(READLINE_INVALID_BUFFER);
+	}
+
+	debug_print_readline("%0x%x: reading up to %d chars to %p\n", 
+			get_tcb()->tid, len, buf);
+
+	int read = readline(buf, len);
+	RETURN(read);
 }
 
 void print_handler(volatile regstate_t reg)

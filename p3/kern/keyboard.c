@@ -8,18 +8,15 @@
 *
 */
 
-#include "keyboard.h"
+#include <keyboard.h>
 #include <interrupt_defines.h>
 #include <keyhelp.h>
 #include <asm.h>
 #include <stdint.h>
 #include <simics.h>
-
-//NOTE: This value must be a power of 2
-//	512 is maybe excessively large for a key buffer, but
-//	it is still relatively tiny.  If at some point we are
-//	hurting for memory, this can be made 256 safely.
-#define KEY_BUF_SIZE 512 
+#include <cond.h>
+#include <mutex.h>
+#include <atomic.h>
 
 /*********************************************************************/
 /*                                                                   */
@@ -29,15 +26,23 @@
 
 /*
  * Simple ring buffer: 
- * 	If tail = head, the buffer is empty. Otherwise: 
- * 		You can always write to keybuf[tail]
- * 		You can always read from keybuf[head]
- *		readchar cannot r/w keybuf[tail]
- *		interrupt cannot r/w keybuf[head] (unless head = tail)
  */
-uint8_t keybuf[KEY_BUF_SIZE];
-unsigned int keybuf_head = 0;
-unsigned int keybuf_tail = 0;
+static char keybuf[KEY_BUF_SIZE];
+static unsigned int keybuf_head = 0;
+static unsigned int keybuf_tail = 0;
+static int newlines = 0;
+static int line_length = KEY_BUF_SIZE;
+
+static mutex_t keyboard_lock;
+static cond_t keyboard_signal;
+
+#define NEXT(index) \
+	(((index) + 1) & (KEY_BUF_SIZE - 1))
+
+#define NUM_KEYS \
+	((keybuf_tail - keybuf_head + KEY_BUF_SIZE) & (KEY_BUF_SIZE - 1))
+
+#define NO_COMPLETE_LINE -1
 
 /** @brief Returns the next character in the keyboard buffer
  *
@@ -47,6 +52,7 @@ unsigned int keybuf_tail = 0;
  *  @return The next character in the keyboard buffer, or -1 if the keyboard
  *          buffer is currently empty
  **/
+/*
 int readchar(void)
 {
 	kh_type augchar;
@@ -60,24 +66,49 @@ int readchar(void)
 	}
 	return -1;
 }
-
+*/
 /** 
 * @brief Buffers a scancode for processing later.
 */
 void keyboard_handler(void)
 {
-	keybuf[keybuf_tail++] = inb(KEYBOARD_PORT);
-	keybuf_tail = keybuf_tail & (KEY_BUF_SIZE - 1);
-
-	//Explicitly start dropping keys if we need to.
-	//	The oldest keypresse gets lost first.
-	if(keybuf_tail == keybuf_head)
-	{
-		keybuf_head++;
-		keybuf_head = keybuf_head & (KEY_BUF_SIZE - 1);
+	int next_tail = NEXT(keybuf_tail);
+	kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
+	if (next_tail != keybuf_head && 
+			KH_HASDATA(augchar) && 
+			KH_ISMAKE(augchar)) {
+		char c = KH_GETCHAR(augchar);
+		keybuf[keybuf_tail] = c;
+		keybuf_tail = next_tail;
+		if (c == '\n' || NUM_KEYS >= line_length) {
+			atomic_add(&newlines, 1);
+			cond_signal(&keyboard_signal);
+		}
 	}
 
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+}
+
+int readline(char *buf, int len) {
+	mutex_lock(&keyboard_lock);
+	line_length = len;
+	disable_interrupts();
+	if (newlines == 0 && NUM_KEYS < len) {
+		cond_wait(&keyboard_signal, NULL);
+	}
+	enable_interrupts();
+	int read;
+	for (read = 0; read < len; read++) {
+		buf[read] = keybuf[keybuf_head];
+		keybuf_head = NEXT(keybuf_head);
+		if (buf[read] == '\n') {
+			atomic_add(&newlines, -1);
+			break;
+		}
+	}
+	line_length = KEY_BUF_SIZE;
+	mutex_unlock(&keyboard_lock);
+	return read;
 }
 
 /** 
@@ -86,7 +117,8 @@ void keyboard_handler(void)
 */
 void keyboard_init(void)
 {
-
+	mutex_init(&keyboard_lock);
+	cond_init(&keyboard_signal);
 }
 
 
