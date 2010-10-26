@@ -34,15 +34,16 @@ static int newlines = 0;
 static int line_length = KEY_BUF_SIZE;
 
 static mutex_t keyboard_lock;
+
 static cond_t keyboard_signal;
 
+/** @brief Get the index in keybuf following the given index. */
 #define NEXT(index) \
 	(((index) + 1) & (KEY_BUF_SIZE - 1))
 
+/** @brief Get the number of keys currently in the key buffer. */
 #define NUM_KEYS \
 	((keybuf_tail - keybuf_head + KEY_BUF_SIZE) & (KEY_BUF_SIZE - 1))
-
-#define NO_COMPLETE_LINE -1
 
 /** @brief Returns the next character in the keyboard buffer
  *
@@ -68,7 +69,10 @@ int readchar(void)
 }
 */
 /** 
-* @brief Buffers a scancode for processing later.
+* @brief Process a scancode from the keyboard port. If there is space
+* available, store it in the keybuf queue.
+*
+* If a character is read that can unblock a thread waiting for a line, do so.
 */
 void keyboard_handler(void)
 {
@@ -80,8 +84,14 @@ void keyboard_handler(void)
 		char c = KH_GETCHAR(augchar);
 		keybuf[keybuf_tail] = c;
 		keybuf_tail = next_tail;
-		if (c == '\n' || NUM_KEYS >= line_length) {
-			atomic_add(&newlines, 1);
+
+		/* A blocked thread can be released if a full line has been read, or if
+		 * more characters have been read than are currently being waited for. */
+		if (c == '\n') {
+			newlines++;
+			cond_signal(&keyboard_signal);
+		}
+		else if (NUM_KEYS >= line_length) {
 			cond_signal(&keyboard_signal);
 		}
 	}
@@ -90,11 +100,15 @@ void keyboard_handler(void)
 }
 
 int readline(char *buf, int len) {
+	/* Prevent other readers from interfering. They can't accomplish anything
+	 * until we're done anyway. */
 	mutex_lock(&keyboard_lock);
 	line_length = len;
+
 	disable_interrupts();
 	if (newlines == 0 && NUM_KEYS < len) {
-		cond_wait(&keyboard_signal, NULL);
+		/* Wait for the keyboard_handler to process a full line. */
+		cond_wait(&keyboard_signal);
 	}
 	enable_interrupts();
 	int read;
@@ -106,7 +120,6 @@ int readline(char *buf, int len) {
 			break;
 		}
 	}
-	line_length = KEY_BUF_SIZE;
 	mutex_unlock(&keyboard_lock);
 	return read;
 }

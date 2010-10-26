@@ -83,7 +83,12 @@ struct THREAD_CONTROL_BLOCK{
 };
 
 struct COND {
-	mutex_t lock;
+	/** @brief True if this has been passed to cond_init. False if this has been
+	 * passed to cond_destroy. */
+	boolean_t initialized;
+
+	/** @brief The tcb of a thread waiting on this condition variable. */
+	tcb_t *tcb;
 };
 
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */
