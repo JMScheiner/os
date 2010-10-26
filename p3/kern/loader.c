@@ -171,7 +171,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    
 	pcb_t* pcb = initialize_first_process();
    
-   set_cr3((int)pcb->page_directory);
+   set_cr3((int)pcb->dir);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
 		return err;
 	}
@@ -182,7 +182,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	unsigned int user_eflags = get_user_eflags();
    scheduler_register(tcb);
 	lprintf("Running %s", exec);
-   sim_reg_process(pcb->page_directory, exec);
+   sim_reg_process(pcb->dir, exec);
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

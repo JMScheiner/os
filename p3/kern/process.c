@@ -56,10 +56,9 @@ pcb_t* initialize_first_process()
 	pcb->ppid = 0;
 	pcb->thread_count = 0;
    pcb->regions = NULL;
-   
-	pcb->page_directory = mm_new_directory();
-   lprintf("Sanity check: pcb = %p, page_directory = %p", 
-      pcb, pcb->page_directory);
+   pcb->kvm_bottom = KVM_TOP;
+
+	pcb->dir = mm_new_directory();
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
@@ -78,8 +77,9 @@ pcb_t* initialize_process()
 	pcb->ppid = get_pid();
 	pcb->thread_count = 0;
    pcb->regions = NULL;
+   pcb->kvm_bottom = KVM_TOP;
    
-	pcb->page_directory = mm_new_directory();
+	pcb->dir = mm_new_directory();
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);

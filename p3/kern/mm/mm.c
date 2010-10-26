@@ -30,10 +30,11 @@
 #include <string.h>        // memcpy, memset
 
 /* Protects the free list. */
-static mutex_t mm_lock;
+static mutex_t free_list_lock;
 
 
 unsigned long mm_new_frame(unsigned long* table, unsigned long page);
+unsigned long mm_free_frame(unsigned long* table, unsigned long page);
 
 /** 
 * @brief Initialize the user frame list, enable paging.
@@ -55,21 +56,21 @@ int mm_init(void)
    user_free_list = (free_block_t*)USER_MEM_START;
 
    /* This makes an assumption that initially memory is contiguous. */
-   n_free_user_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
+   n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
 
    /* Build a very simple link structure on free frames. */
-   for(i = 0, iter = user_free_list; i < n_free_user_frames - 1; i++, iter = iter->next)
+   for(i = 0, iter = user_free_list; i < n_free_frames - 1; i++, iter = iter->next)
       iter->next = (free_block_t*)((char*)iter + PAGE_SIZE);
    iter->next = NULL;
    
    /* Initialize global page directory. */
-   global_dir = (page_dirent_t*)mm_new_kernel_page();
+   global_dir = (page_dirent_t*)mm_new_kp_page();
    
    /* Iterate over directory entries in the kernel. */
    for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
    {
       /* Allocate a page table for each. */
-      pt = global_dir[i] = (page_tablent_t*) mm_new_kernel_page();
+      pt = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
@@ -88,7 +89,7 @@ int mm_init(void)
    /* Everything else is not present, so doesn't matter. */
    for( ; i < DIR_SIZE; i++) global_dir[i] = 0;
 
-   mutex_init(&mm_lock);
+   mutex_init(&free_list_lock);
 
    /* After this point we give up our direct access to pages in user land.*/
    set_cr3((uint32_t)global_dir);
@@ -112,9 +113,10 @@ void* mm_new_directory()
    int i;
    
    /* Allocate the new page directory. */
-   page_dirent_t* dir = (page_dirent_t*) mm_new_kernel_page();
+   page_dirent_t* dir = (page_dirent_t*) mm_new_kp_page();
 
    /* The kernel part of every directory should be the same. */
+   //memset(dir, 0, DIR_SIZE)
    memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
    
    /* Zero out everything else. */
@@ -147,12 +149,14 @@ void mm_duplicate_address_space(pcb_t* pcb)
    //free_block_t* free_block;
 
    current_dir = (page_dirent_t*)get_cr3();
-   new_dir = pcb->page_directory;
+   new_dir = pcb->dir;
 
    boolean_t copy_page_found = FALSE;
    
    /* Find an unallocated page in an existing directory to copy through. */
-   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE && !copy_page_found; d_index++)
+   for(d_index = USER_MEM_START >> DIR_SHIFT; 
+      d_index < DIR_SIZE && !copy_page_found; 
+      d_index++)
    {
       current_table = current_dir[d_index];
       if(!TABLE_PRESENT(current_table)) continue;
@@ -230,7 +234,7 @@ void mm_duplicate_address_space(pcb_t* pcb)
 void* mm_new_table()
 {
    int i;
-   page_tablent_t* table = (page_tablent_t*)mm_new_kernel_page();
+   page_tablent_t* table = (page_tablent_t*)mm_new_kp_page();
    for(i = 0; i < TABLE_SIZE; i++)
       table[i] = 0;
    
@@ -315,8 +319,6 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
    unsigned long page;
    page_dirent_t* dir;
    page_tablent_t* table;
-   page_tablent_t frame;
-   free_block_t* free_frame;
    
    assert(((unsigned int)addr & PAGE_MASK) == 0);
    assert((unsigned int)addr > USER_MEM_START);
@@ -331,31 +333,10 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
       if(!((unsigned long)table & PDENT_PRESENT)) continue;
    
       table = (page_tablent_t*)PAGE_OF(table);
-      frame = table[ TABLE_OFFSET(page) ];
-      
-      if(!(frame & PTENT_PRESENT)) continue;
-      
-      /* Prevent other user space threads from touching the frame from here on. */
-      table[ TABLE_OFFSET(page) ] = frame & ~PTENT_USER;
-      invalidate_page((void*)page);
-      
-      /* Manage the newly freed frame. Note that we hold a lock to the 
-       *    entire directory while we free this frame. This should only
-       *    affect people who are freeing or allocating memory in this 
-       *    process. 
-       **/
-      memset((void*)page, 0, PAGE_SIZE);
-      free_frame = (free_block_t*) page;
-     
-      mutex_lock(&mm_lock);
-      free_frame->next = user_free_list;
-      user_free_list = (free_block_t*)frame;
-      mutex_unlock(&mm_lock);
 
-      /* This frame should now be invisible to this process. */
-      table[ TABLE_OFFSET(page) ] = 0;
-      invalidate_page((void*)page);
-
+      /* We let mm_free_frame silently return a -1 
+       *    if the page isn't mapped */
+      mm_free_frame(table, page);
    }
    mutex_unlock(&pcb->directory_lock);
 }
@@ -407,29 +388,35 @@ boolean_t mm_validate(void* addr)
    else return FALSE; 
 }
 
-/* TODO This definitely isn't the best way of allocating kernel pages. */
 /** 
-* @brief Allocates $n$ new pages in direct mapped kernel memory. 
-*  FIXME This definitely isn't the best way of allocating kernel pages. 
+* @brief Allocates a new kernel virtual page.  
 * 
-* @param n The number of new pages to allocate.
+* @param pcb The PCB of the calling process. 
 * 
-* @return The base address of the new pages, or NULL on failure. 
+* @return A framed page above USER_MEM_END
 */
-void* mm_new_kernel_pages(size_t n)
+void* mm_new_kv_page(pcb_t* pcb)
 {
-   void* addr = smemalign(PAGE_SIZE, n * PAGE_SIZE);
-   assert(addr);
-   return addr;
+   void* ret = pcb->kvm_bottom;
+   lprintf(" Allocating kernel virtual page %p", ret);
+
+   /* Frame the address at kvm_bottom. */
+   mm_alloc(pcb, ret, PAGE_SIZE, PTENT_RW | PTENT_PRESENT);
+   pcb->kvm_bottom = (pcb->kvm_bottom - PAGE_SIZE);
+   lprintf(" Left with kernel virtual page %p", pcb->kvm_bottom);
+   
+   return ret;
 }
 
 /** 
-* @brief Allocates a new page in direct mapped kernel memory. 
-*  FIXME This definitely isn't the best way of allocating kernel pages. 
+* @brief Allocates a new kernel physical page. 
+*  FIXME Since we have stricter alignment requirements when we are 
+*     calling this, it may be beneficial to take some memory away
+*     from the kernel heap and replace it with our own frame allocator.
 * 
-* @return The address of the new page, or NULL on failure.
+* @return A framed, direct-mapped page below USER_MEM_START
 */
-void* mm_new_kernel_page()
+void* mm_new_kp_page()
 {
    void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
    assert(addr);
@@ -452,7 +439,7 @@ unsigned long mm_new_frame(unsigned long* table, unsigned long page)
    unsigned long new_frame;
    free_block_t* free_block;
    
-   mutex_lock(&mm_lock);
+   mutex_lock(&free_list_lock);
    new_frame = (unsigned long)user_free_list;
    
    /* When this assertion happens, it's time to do something more
@@ -465,11 +452,49 @@ unsigned long mm_new_frame(unsigned long* table, unsigned long page)
    free_block = (free_block_t*)page;
    user_free_list = free_block->next;
    memset((void*)page, 0, sizeof(free_block_t));
+   n_free_frames--;
 
-   mutex_unlock(&mm_lock);
+   mutex_unlock(&free_list_lock);
    return new_frame;
 }
 
+/** 
+* @brief Releases a frame into the free frame pool.
+* 
+* @param table The page table the page occupies. 
+* @param page The page to free from the address space associated with table. 
+* 
+* @return 0 on success, a negative integer on failure. 
+*/
+unsigned long mm_free_frame(unsigned long* table, unsigned long page)
+{
+   free_block_t* node;
+   unsigned long frame;
 
+   frame = table[TABLE_OFFSET(page)];
+   if(!(frame & PTENT_PRESENT)) 
+      return -1;
+   frame = PAGE_OF(frame);
+   
+   /* Take the page away from user threads if necessary. */
+   table[ TABLE_OFFSET(page) ] = frame | PTENT_PRESENT | PTENT_RW; 
+   invalidate_page((void*)page);
+   
+   /* Clear the frame.*/
+   memset((void*)page, 0, PAGE_SIZE);
+   node = (free_block_t*) page;
+  
+   mutex_lock(&free_list_lock);
+   node->next = user_free_list;
+   user_free_list = (free_block_t*)frame;
+   n_free_frames++;
+   mutex_unlock(&free_list_lock);
+
+   /* This frame should now be invisible to the process. */
+   table[ TABLE_OFFSET(page) ] = 0;
+   invalidate_page((void*)page);
+
+   return 0;
+}
 
 

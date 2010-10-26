@@ -45,11 +45,14 @@ tcb_t* initialize_thread(pcb_t *pcb)
 {
 	assert(pcb);
    
-   void* kstack_page = mm_new_kernel_page();
+   void* kstack_page = mm_new_kv_page(pcb);
 
    /* Put the TCB at the bottom of the kernel stack. */
-   tcb_t* tcb = (tcb_t*)kstack_page;
-	tcb->esp = kstack_page + PAGE_SIZE; 
+   tcb_t* tcb = (tcb_t*)malloc(sizeof(tcb_t));
+   tcb_t** tcbp = (tcb_t**)kstack_page;
+   *tcbp = tcb;
+	
+   tcb->esp = kstack_page + PAGE_SIZE; 
    tcb->kstack = kstack_page + PAGE_SIZE;
 	
    tcb->tid = new_tid();
@@ -72,6 +75,6 @@ tcb_t* initialize_thread(pcb_t *pcb)
 tcb_t *get_tcb()
 {
 	void *esp = get_esp();
-	return (tcb_t *)PAGE_OF(esp);
+	return *(tcb_t **)PAGE_OF(esp);
 }
 

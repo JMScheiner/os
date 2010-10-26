@@ -156,10 +156,10 @@ void fork_handler(volatile regstate_t reg)
    
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
-      new_tcb->kstack, (regstate_t*)&reg, new_pcb->page_directory);
+      new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir);
    
    /* Register the first thread in the new TCB. */
-   sim_reg_child(new_pcb->page_directory, current_pcb->page_directory);
+   sim_reg_child(new_pcb->dir, current_pcb->dir);
    scheduler_register(new_tcb);
    
    RETURN(newpid);
@@ -175,12 +175,12 @@ void fork_handler(volatile regstate_t reg)
 * @param reg The register state on entry to the new process. 
 *     - This function is responsible for setting %eax to 0 for new threads.
 *
-* @param page_directory The page directory the new thread will execute with.
+* @param dir The page directory the new thread will execute with.
 * 
 * @return The stack pointer to context switch to. Should be installed into 
 *  the new threads TCB so the context switcher knows where to jump.
 */
-void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory)
+void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
 {
    /* First give it a proper "iret frame" */
    esp -= sizeof(regstate_t);
@@ -188,7 +188,7 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory)
    
    /* Set eax to zero for the iret from either thread_fork or fork. */
    regstate_t* new_reg = (regstate_t*)esp;
-   new_reg->eax = 0;
+   new_reg->pusha.eax = 0;
    
    /* Push the return address for context switches ret */
    esp -= 4; 
@@ -200,7 +200,7 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory)
    /* Set up the context context_switch will popa off the stack. */
    esp -= sizeof(pusha_t);
    pusha_t* pusha = (pusha_t*)esp;
-   pusha->eax = (unsigned long)page_directory;
+   pusha->eax = (unsigned long)dir;
    return esp;
 }
 

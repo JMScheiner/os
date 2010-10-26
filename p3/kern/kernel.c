@@ -75,7 +75,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    /* Everything below 1M  */
    lmm_remove_free( &malloc_lmm, (void*)0, 0x100000 );
-
+   
    /*
     * initialize the PIC so that IRQs and
     * exception handlers don't overlap in the IDT.

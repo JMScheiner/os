@@ -16,7 +16,7 @@
 .globl duplicate_thread_context
 .globl duplicate_proc_context
 
-/** @def void context_switch(void **old_esp, void *new_esp)
+/** @def void context_switch(void **old_esp, void **new_esp, void* pd)
  * 
  * @brief Switch from executing in the current kernel thread to executing
  *        in another kernel thread.
@@ -40,15 +40,13 @@
  * @param new_esp Stack address to jump execution to.
  */
 context_switch:
-	call   get_cr3         // Save the page directory
 	pusha                  // Save general purpose registers
 	movl   36(%esp), %eax  // Save stack pointer so someone else 
 	movl   %esp, (%eax)    // can context switch back to us
 	movl   40(%esp), %eax  // Switch to someone else
-   movl   (%eax), %esp    // 
+	movl   44(%esp), %ebx  // Grab the page directory
+   movl   %ebx,     %cr3  // Switch page directories so we can access the new stack. 
+   movl   (%eax),   %esp  // Jump stacks.
 	popa                   // Restore general purpose registers
-	pushl  %eax            // Set page directory as argument
-	call   set_cr3         // Restore the page directory
-	addl   $4, %esp        // Pop page directory off stack
 	ret
 

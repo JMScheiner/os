@@ -21,7 +21,7 @@
 #include <string.h>
 #include <heap.h>
 
-#define INIT_PROGRAM "sleep"
+#define INIT_PROGRAM "coolness"
 
 /**
  * @brief Circular queue of runnable threads.
@@ -148,10 +148,10 @@ void scheduler_next()
        */
       load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
    }
-
+   
    runnable = LIST_NEXT(runnable, scheduler_node);
    set_esp0((int)runnable->kstack);
-   context_switch(&current->esp, &runnable->esp);
+   context_switch(&current->esp, &runnable->esp, runnable->pcb->dir);
 }
 
 /**

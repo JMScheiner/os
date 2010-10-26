@@ -66,7 +66,7 @@ int readchar(void)
 */
 void keyboard_handler(void)
 {
-   int next = (keybuf_tail + 1) & (KEY_BUF_SIZE - 1)
+   int next = (keybuf_tail + 1) & (KEY_BUF_SIZE - 1);
 	
    //Explicitly start dropping keys if we need to.
 	//	The newest keypresses get lost first.

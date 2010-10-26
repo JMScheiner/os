@@ -1,6 +1,7 @@
 #ifndef MM_INTERNAL_DR6WBXWC
-
 #define MM_INTERNAL_DR6WBXWC
+
+#include <kernel_types.h>
 
 #define DIR_SIZE 1024
 #define TABLE_SIZE 1024
@@ -36,19 +37,10 @@
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
 int n_phys_frames;
-int n_free_user_frames;
+int n_free_frames;
 
 typedef unsigned long page_tablent_t;
 typedef page_tablent_t* page_dirent_t;
-
-/** 
-* @brief A single node in the free frame structure.
-*/
-typedef struct _FREE_BLOCK_T 
-{
-   /* @brief The next free block of physical memory. */
-   struct _FREE_BLOCK_T* next;
-} free_block_t;
 
 free_block_t* user_free_list; 
 page_dirent_t* global_dir;
