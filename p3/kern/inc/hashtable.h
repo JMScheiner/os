@@ -34,6 +34,7 @@ unsigned int default_hash(int key);
 		size_t size; \
 		size_t table_index; \
 		unsigned int (*hash)(key_type); \
+		mutex_t *lock; \
 		struct hashtable_type##_link_struct { \
 			key_type key; \
 			val_type val; \
@@ -58,8 +59,10 @@ unsigned int default_hash(int key);
  *
  * @param hash_function The function to hash keys to integers for this
  *        hashtable.
+ *
+ * @param lock The mutex to protect reads and writes to the hashtable.
  */
-#define STATIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function) \
+#define STATIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function, lock) \
 	do { \
 		(hashtable_name).size = 0; \
 		(hashtable_name).table_index = 0; \
@@ -67,6 +70,7 @@ unsigned int default_hash(int key);
 		(hashtable_name).table = (struct hashtable_type##_link_struct **)calloc( \
 				prime_hashtable_sizes[0], sizeof(struct hashtable_type##_link_struct *)); \
 		assert((hashtable_name).table); \
+		(hashtable_name).lock = lock; \
 	} while (0)
 
 /** @def DYNAMIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function)
@@ -154,6 +158,7 @@ unsigned int default_hash(int key);
 		struct hashtable_type##_link_struct *_LINK_ = NULL; \
 		/* If the hash table has reached load factor 1, double the size of the
 		 * table. */ \
+		mutex_lock(hashtable_name.lock); \
 		if ((hashtable_name).size == prime_hashtable_sizes[(hashtable_name).table_index]) { \
 			/* Allocate a new table. */ \
 			struct hashtable_type##_link_struct **_TABLE_ = \
@@ -201,6 +206,7 @@ unsigned int default_hash(int key);
 			(hashtable_name).table[_HASH_] = _LINK_; \
 			(hashtable_name).size++; \
 		} \
+		mutex_unlock(hashtable_name.lock); \
 	} while (0)
 
 /** @def HASHTABLE_GET(hashtable_type, hashtable_name, key_name, val_name)
@@ -219,6 +225,7 @@ unsigned int default_hash(int key);
 				prime_hashtable_sizes[(hashtable_name).table_index]; \
 		struct hashtable_type##_link_struct *_LINK_; \
 		/* Search for key in the bucket that was hashed to. */ \
+		mutex_lock(hashtable_name.lock); \
 		for (_LINK_ = (hashtable_name).table[_HASH_]; \
 					_LINK_ != NULL; \
 					_LINK_ = _LINK_->next) { \
@@ -227,6 +234,35 @@ unsigned int default_hash(int key);
 				break; \
 			} \
 		} \
+		mutex_unlock(hashtable_name.lock); \
+	} while (0)
+
+/** @def HASHTABLE_GET_ADDR(hashtable_type, hashtable_name, key_name, val_addr)
+ *
+ * @brief Retrieve a value from the hashtable given its key. If the given key
+ *        is not in the table, do not change the given value.
+ *
+ * @param hashtable_type The type of the hashtable.
+ * @param hashtable_name The hashtable.
+ * @param key_name The key to access the table with.
+ * @param val_addr The variable to place the value's address in.
+ */
+#define HASHTABLE_GET_ADDR(hashtable_type, hashtable_name, key_name, val_addr) \
+	do { \
+		size_t _HASH_ = (hashtable_name).hash(key_name) % \
+				prime_hashtable_sizes[(hashtable_name).table_index]; \
+		struct hashtable_type##_link_struct *_LINK_; \
+		/* Search for key in the bucket that was hashed to. */ \
+		mutex_lock(hashtable_name.lock); \
+		for (_LINK_ = (hashtable_name).table[_HASH_]; \
+					_LINK_ != NULL; \
+					_LINK_ = _LINK_->next) { \
+			if (_LINK_->key == (key_name)) { \
+				val_addr = &_LINK_->val; \
+				break; \
+			} \
+		} \
+		mutex_unlock(hashtable_name.lock); \
 	} while (0)
 
 /** @def HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name, val_name)
@@ -243,6 +279,7 @@ unsigned int default_hash(int key);
 	do { \
 		size_t _HASH_ = (hashtable_name).hash(key_name) % \
 				prime_hashtable_sizes[(hashtable_name).table_index]; \
+		mutex_lock(hashtable_name.lock); \
 		struct hashtable_type##_link_struct *_LINK_ = (hashtable_name).table[_HASH_]; \
 		/* If key is the first element in the bucket, remove it and update the
 		 * bucket. */ \
@@ -262,6 +299,7 @@ unsigned int default_hash(int key);
 				} \
 			} \
 		} \
+		mutex_unlock(hashtable_name.lock); \
 	} while (0)
 
 #endif

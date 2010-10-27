@@ -17,24 +17,29 @@
 static int next_pid = 0xc0de0000;
 
 DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
+DEFINE_HASHTABLE(status_table_t, int, status_t);
 
-/**
- * @brief Hashtable mapping pids to pcbs.
- */
+/** @brief Hashtable mapping pids to pcbs. */
 pcb_table_t pcb_table;
 
-/**
- * @brief Mutual exclusion lock for pcb_table.
- */
+/** @brief Hashtable mapping first tid of a process to status_t. */
+status_table_t status_table;
+
+/** @brief Mutual exclusion lock for pcb_table. */
 mutex_t pcb_table_lock;
+
+/** @brief Mutual exclusion lock for status_table. */
+mutex_t status_table_lock;
 
 /**
  * @brief Initialize the pcb_table.
  */
 void init_process_table(void)
 {
-   mutex_init(&pcb_table_lock);
-	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash);
+	mutex_init(&pcb_table_lock);
+	mutex_init(&status_table_lock);
+	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash, &pcb_table_lock);
+	STATIC_INIT_HASHTABLE(status_table_t, status_table, default_hash, &status_table_lock);
 }
 
 /**
@@ -64,9 +69,7 @@ pcb_t* initialize_first_process()
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
    
-   mutex_lock(&pcb_table_lock);
    HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
-   mutex_unlock(&pcb_table_lock);
 	
    return pcb;
 }
@@ -84,9 +87,7 @@ pcb_t* initialize_process()
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
    
-   mutex_lock(&pcb_table_lock);
    HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
-   mutex_unlock(&pcb_table_lock);
 	
    return pcb;
 }

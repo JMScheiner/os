@@ -37,8 +37,8 @@ int new_tid()
 
 void init_thread_table(void) 
 {
-   mutex_init(&tcb_table_lock);
-	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash);
+	mutex_init(&tcb_table_lock);
+	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash, &tcb_table_lock);
 }
 
 tcb_t* initialize_thread(pcb_t *pcb) 
@@ -55,9 +55,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
    tcb->tid = new_tid();
 	tcb->pcb = pcb;
 
-   mutex_lock(&tcb_table_lock);
 	HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);
-	mutex_unlock(&tcb_table_lock);
 
 	return tcb;
 }

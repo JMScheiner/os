@@ -23,6 +23,9 @@
 #include <scheduler.h>
 #include <string.h>
 
+#define WAIT_INVALID_ARGS -1
+#define WAIT_NO_CHILDREN -2
+
 void *zombie_stack = NULL;
 
 /**
@@ -213,21 +216,20 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* page_directory)
 */
 void set_status_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_status ");
-	MAGIC_BREAK;
-   //TODO
+	pcb_t *pcb = get_pcb();
+	pcb->status.status = (int)SYSCALL_ARG(reg);
 }
 
 /** 
 * @brief Terminates execution of the calling thread "immediately."
 *
-*  If the invoking thread is the last thread in its task, the kernel deallocates 
-*     all resources in use by the task and makes the exit status of the task
-*     available to the parent task (the task which created this task using fork())
-*     via wait().
+*  If the invoking thread is the last thread in its task, the kernel 
+*  deallocates all resources in use by the task and makes the exit status 
+*  of the task available to the parent task (the task which created this 
+*  task using fork()) via wait().
 *
-*  If the parent task is no longer running, exit status of the task is made available to 
-*     the kernel-launched "init" task instead. 
+*  If the parent task is no longer running, exit status of the task is 
+*  made available to the kernel-launched "init" task instead. 
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
@@ -239,22 +241,24 @@ void vanish_handler(volatile regstate_t reg)
 	if (pcb->thread_count == 1) {
 		// We are the last thread in our process
 		region_t *region = pcb->regions;
-		
-		pcb_t *parent = get_parent();
+		// Free regions
+		pcb_t *parent = pcb->parent;
 		if (parent == NULL) {
-			parent = init_process();
+			parent = get_init_process();
 		}
-		status_t *status = &pcb->status;
+		status_t *status;
+		HASHTABLE_GET_ADDR(status_table_t, status_table, pcb, status);
 		mutex_lock(&parent->status_lock);
 		status->next = parent->zombie_statuses;
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
+		cond_signal(&parent->wait_signal);
 	}
 
 	mm_free_kernel_page(zombie_stack);
 	zombie_stack = tcb;
-	pcb->thread_count--;
-	mutex_unlock(&pcb_lock);
+	atomic_add(&pcb->thread_count, -1);
+	mutex_unlock(&pcb->lock);
 	scheduler_die();
 }
 
@@ -266,9 +270,38 @@ void vanish_handler(volatile regstate_t reg)
 */
 void wait_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring wait");
-	MAGIC_BREAK;
-   //TODO
+	int *status_addr = (int *)SYSCALL_ARG(reg);
+	if (!mm_validate_write(status_addr)) {
+		RETURN(WAIT_INVALID_ARGS);
+	}
+
+	pcb_t *pcb = get_pcb();
+	int waiters = atomic_add(&pcb->waiter_count, 1);
+	if (waiters >= pcb->child_count) {
+		/* There are threads waiting on every child process. We will not be 
+		 * able to collect a status so return immediately. */
+		RETURN(WAIT_NO_CHILDREN);
+	}
+
+	mutex_lock(&pcb->waiter_lock);
+
+	disable_interrupts();
+	if (pcb->zombie_statuses == NULL) {
+		cond_wait(&pcb->wait_signal);
+	}
+	enable_interrupts();
+
+	mutex_lock(&pcb->status_lock);
+	status_t *status = pcb->zombie_statuses;
+	pcb->zombie_statuses = zombie_statuses->next;
+	mutex_unlock(&pcb->status_lock);
+
+	mutex_unlock(&pcb->waiter_lock);
+
+	*status_addr = status->status;
+	int tid = status->tid;
+	HASHTABLE_REMOVE(status_table_t, status_table, tid, *status);
+	RETURN(tid);
 }
 
 /** 
