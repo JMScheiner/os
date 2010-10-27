@@ -50,11 +50,17 @@ struct PROCESS_CONTROL_BLOCK
 	/** @brief Base address of the process page directory. */
 	void *page_directory;
 
-   /** @brief A list of regions with different page fault and freeing procedures. */
-   region_t* regions;
+	/** @brief A list of regions with different page fault and freeing procedures. */
+	region_t* regions;
+	
+	/** @brief Pointer to the list of exited child statuses. */
+	status_t *zombie_statuses;
+
+	/** @brief Exit status of this process. */
+	status_t status;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
-	mutex_t lock, region_lock, directory_lock;
+	mutex_t lock, region_lock, directory_lock, status_lock;
 };
 
 /** @brief Thread control block structure. */

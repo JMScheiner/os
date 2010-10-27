@@ -23,6 +23,8 @@
 #include <scheduler.h>
 #include <string.h>
 
+void *zombie_stack = NULL;
+
 /**
  * @brief Handle the exec system call.
  *
@@ -231,9 +233,29 @@ void set_status_handler(volatile regstate_t reg)
 */
 void vanish_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring vanish");
-	MAGIC_BREAK;
-   //TODO
+	tcb_t *tcb = get_tcb();
+	pcb_t *pcb = tcb->pcb;
+	mutex_lock(&pcb->lock);
+	if (pcb->thread_count == 1) {
+		// We are the last thread in our process
+		region_t *region = pcb->regions;
+		
+		pcb_t *parent = get_parent();
+		if (parent == NULL) {
+			parent = init_process();
+		}
+		status_t *status = &pcb->status;
+		mutex_lock(&parent->status_lock);
+		status->next = parent->zombie_statuses;
+		parent->zombie_statuses = status;
+		mutex_unlock(&parent->status_lock);
+	}
+
+	mm_free_kernel_page(zombie_stack);
+	zombie_stack = tcb;
+	pcb->thread_count--;
+	mutex_unlock(&pcb_lock);
+	scheduler_die();
 }
 
 /** 
