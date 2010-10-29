@@ -29,6 +29,7 @@
 #include <eflags.h>
 #include <assert.h>
 #include <types.h>
+#include <debug.h>
 
 /* --- Local function prototypes --- */ 
 
@@ -181,9 +182,9 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();
-   scheduler_register(tcb);
-	lprintf("Running %s", exec);
-   sim_reg_process(pcb->dir_p, exec);
+	scheduler_register(tcb);
+	debug_print("loader", "Running %s", exec);
+	sim_reg_process(pcb->dir_p, exec);
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here

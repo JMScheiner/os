@@ -14,6 +14,7 @@
 #include <context_switch.h>
 #include <scheduler.h>
 #include <mutex.h>
+#include <debug.h>
 
 //static mutex_t tcb_table_lock;
 
@@ -47,7 +48,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	assert(pcb);
    
 	void* kstack_page = kvm_new_page();
-	lprintf("new kernel stack page at %p", kstack_page);
+	debug_print("mm", "new kernel stack page at %p", kstack_page);
 
 	/* Put the TCB at the bottom of the kernel stack. */
 	tcb_t* tcb = (tcb_t*)kstack_page;

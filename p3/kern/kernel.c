@@ -88,7 +88,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    /* Give the "null process" a pcb and tcb. */
    global_pcb()->pid = -1;
-   global_pcb()->ppid = -1;
+   global_pcb()->parent = NULL;
    global_pcb()->thread_count = 1;
    global_pcb()->regions = NULL;
 

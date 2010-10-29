@@ -21,8 +21,9 @@
 #include <string.h>
 #include <heap.h>
 #include <global_thread.h>
+#include <debug.h>
 
-#define INIT_PROGRAM "readline_basic"
+#define INIT_PROGRAM "coolness"
 
 /**
  * @brief Circular queue of runnable threads.
@@ -59,7 +60,7 @@ void scheduler_init()
  */
 void scheduler_register(tcb_t* tcb)
 {
-   //lprintf("Adding %x to the scheduler.", tcb->tid);
+   debug_print("scheduler", "Adding %x to the scheduler.", tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);   
    
    disable_interrupts();
@@ -162,7 +163,7 @@ void scheduler_next()
    {
       if(blocked)
       {
-         lprintf("Deadlock!");
+         debug_print("scheduler", "Deadlock!");
          MAGIC_BREAK;
       }
       /* If there is no one in the run queue, we are responsible 

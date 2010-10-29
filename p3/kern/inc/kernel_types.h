@@ -157,17 +157,6 @@ struct THREAD_CONTROL_BLOCK{
    int sleep_index;
 };
 
-<<<<<<< HEAD:p3/kern/inc/kernel_types.h
-=======
-struct COND {
-	/** @brief True if this has been passed to cond_init. False if this has been
-	 * passed to cond_destroy. */
-	boolean_t initialized;
-
-	/** @brief The tcb of a thread waiting on this condition variable. */
-	tcb_t *tcb;
-};
-
 struct SLEEP_HEAP 
 {
    /* Refers to the first free slot. */
@@ -176,7 +165,6 @@ struct SLEEP_HEAP
    tcb_t** data; 
 };
 
->>>>>>> 3dd092de759b2c765c914fc40d10daaa64c717b6:p3/kern/inc/kernel_types.h
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */
 
 

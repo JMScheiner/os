@@ -158,8 +158,8 @@ void fork_handler(volatile regstate_t reg)
    pcb_t *new_pcb; 
    tcb_t *new_tcb;
 
-   current_pcb = get_pcb();
-   current_tcb = get_tcb();
+   tcb_t *current_tcb = get_tcb();
+   pcb_t *current_pcb = current_tcb->pcb;
    
    new_pcb = initialize_process(FALSE);
    new_tcb = initialize_thread(new_pcb);

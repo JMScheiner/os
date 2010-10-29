@@ -21,6 +21,7 @@
 #include <common_kern.h>
 #include <string.h>        // memcpy, memset
 #include <global_thread.h>
+#include <debug.h>
 
 #define COPY_PAGE ((void*)(-PAGE_SIZE))
 
@@ -126,7 +127,7 @@ void mm_new_directory(pcb_t* pcb)
    page_dirent_t* dir_v = kvm_new_page();
    page_dirent_t* virtual_dir_v = kvm_new_page();
    
-   lprintf("Global directory at %p", global_dir);
+   debug_print("mm", "Global directory at %p", global_dir);
    
    /* The global parts of every directory should be the same. */
    memset(dir_v, 0, PAGE_SIZE);
@@ -142,7 +143,7 @@ void mm_new_directory(pcb_t* pcb)
    for(i = (USER_MEM_END >> DIR_SHIFT); i < DIR_SIZE; i++)
       virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
   
-   lprintf("Copying [%p, %d] to [%p, %d]", 
+   debug_print("mm", "Copying [%p, %d] to [%p, %d]", 
       dir_v + DIR_OFFSET(USER_MEM_END), 
       (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
       global_dir + DIR_OFFSET(USER_MEM_END), 
@@ -152,10 +153,9 @@ void mm_new_directory(pcb_t* pcb)
       global_dir + DIR_OFFSET(USER_MEM_END), 
       (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
    
-   lprintf("Global directory at %p", global_pcb()->dir_v);
-   lprintf("pcb = %p, global_pcb = %p", pcb, global_pcb());
+   debug_print("mm", "pcb = %p, global_pcb = %p", pcb, global_pcb());
    
-   lprintf("New directory at %p", dir_v);
+   debug_print("mm", "New directory at %p", dir_v);
 
    pcb->dir_v = dir_v;
    pcb->dir_p = kvm_vtop(dir_v);
@@ -220,7 +220,7 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
          flags = FLAGS_OF(current_frame);
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          
-         lprintf("Copying page 0x%lx", page);
+         debug_print("mm", "Copying page 0x%lx", page);
          
          new_frame = mm_new_frame((unsigned long*)copy_table_v, (unsigned long)COPY_PAGE);
          memcpy((void*)COPY_PAGE, (void*)page, PAGE_SIZE);
@@ -308,8 +308,8 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       frame = mm_new_frame((unsigned long*)table_v, page);
       
       /* Reassign the page with the flags the user originally asked for. */
-      lprintf("Mapping page 0x%x to frame 0x%lx with flags %x", page, frame, flags);
-      lprintf("....in table %p", table_v);
+      debug_print("mm", "Mapping page 0x%x to frame 0x%lx with flags %x", page, frame, flags);
+      debug_print("mm", "....in table %p", table_v);
       table_v[ TABLE_OFFSET(page) ] = 
          ((unsigned long) frame | PTENT_PRESENT | flags);
       invalidate_page((void*)page);
@@ -423,10 +423,9 @@ boolean_t mm_validate_write(void *addr, int len)
 	unsigned int npages = NUM_PAGES(addr, len);
 	int i;
 	for (i = 0; i < npages; i++) {
-		int tflags = mm_getflags((char *)addr + i*PAGE_SIZE);
-		if(tflags <= 0 || !TEST_SET(tflags, 
-					(PTENT_USER | PTENT_PRESENT | PTENT_RW)))
-			return FALSE;
+   int tflags = mm_getflags(get_pcb(), addr);
+   if(!(tflags == (tflags & (PTENT_USER | PTENT_PRESENT | PTENT_RW))))
+      return FALSE;
 	}
 	return TRUE;
 }
