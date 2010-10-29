@@ -49,7 +49,6 @@
  * @brief The first program to load.
  */
 #define INIT_PROGRAM "coolness"
-#define GLOBAL_STACK_SIZE 0x200
 
 /*
  * state for kernel memory allocation.
@@ -88,22 +87,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     */
    interrupt_setup();
 	alloc_init();
-
-   /* Give the "global process" a pcb and tcb. */
-   global_pcb()->pid = -1;
-   global_pcb()->parent = NULL;
-   global_pcb()->thread_count = 1;
-   global_pcb()->regions = NULL;
-   
-   /* It is fine to begin execution wherever we happen to be now
-    *  since we are guaranteed to launch a thread before executing on
-    *  this stack, and this thread of execution should never start up
-    *  again.
-    */
-   global_tcb()->kstack = malloc(GLOBAL_STACK_SIZE) + GLOBAL_STACK_SIZE;
-   global_tcb()->esp = global_tcb()->kstack;
-   global_tcb()->tid = -1;
-   global_tcb()->pcb = global_pcb();
+   global_thread_init();
 
    timer_init();
    keyboard_init();
@@ -115,7 +99,6 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    handler_install();
    clear_console();
    mm_init();
-   arrange_global_context();
 
    locks_enabled = TRUE;
    enable_interrupts();

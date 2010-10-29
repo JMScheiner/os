@@ -18,9 +18,9 @@
 
 #include <kernel_types.h>
 
+void global_thread_init(void);
 pcb_t* global_pcb(void);
 tcb_t* global_tcb(void);
-mutex_t* pcb_list_lock(void);
 
 #endif /* end of include guard: GLOBAL_THREAD_FZQ3AUU8 */
 
