@@ -1,9 +1,9 @@
 #include <reg.h>
-#include <debug.h>
 #include <process.h>
 #include <cr.h>
 #include <mutex.h>
 #include <mm.h>
+#include <simics.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
@@ -70,7 +70,7 @@ void bss_fault(void* addr, int access_mode){}
 void stack_fault(void* addr, int access_mode)
 {
    /* We should auto allocate the stack region */
-   debug_print_page("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
+   lprintf("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
    mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
 }
 

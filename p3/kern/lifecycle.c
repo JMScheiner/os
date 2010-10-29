@@ -10,15 +10,16 @@
 */
 
 #include <lifecycle.h>
+#include <global_thread.h>
 #include <reg.h>
 #include <mm.h>
 #include <validation.h>
 #include <loader.h>
-#include <debug.h>
+#include <simics.h>
 #include <thread.h>
 #include <mode_switch.h>
 #include <atomic.h>
-#include <pop_stub.h>
+#include <stub.h>
 #include <cr.h>
 #include <scheduler.h>
 #include <string.h>
@@ -88,7 +89,7 @@ void exec_handler(volatile regstate_t reg) {
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
-	debug_print_exec("Running %s", execname_buf);
+	lprintf("Running %s", execname_buf);
    sim_reg_process((void*)get_cr3(), execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
@@ -158,6 +159,25 @@ void fork_handler(volatile regstate_t reg)
    scheduler_register(new_tcb);
    
    RETURN(newpid);
+}
+
+void arrange_global_context()
+{
+   void* esp;
+   void (**ret_site)(void);
+   tcb_t* tcb;
+   
+   tcb = global_tcb();
+   esp = tcb->kstack;
+   
+   /* Push the return address for a context switches ret */
+   esp -= 4; 
+   ret_site = esp;
+   (*ret_site) = (loop_stub);
+   
+   /* Set up the context context_switch will popa off the stack. */
+   esp -= sizeof(pusha_t);
+   tcb->esp = esp;
 }
 
 /** 

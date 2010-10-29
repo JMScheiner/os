@@ -134,16 +134,21 @@ void scheduler_next()
     **/
    if(sleeper && sleeper->wakeup < now)
    {
+      heap_pop(&sleepers);
       LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
    }
-   else if(sleeper && !runnable)
-   {
-      /* Do something useful here!!! */
-   }
+
+   /* Identify if we are the global thread, twiddling our thumbs. */
 
    current = runnable;
    if(!runnable)
    {
+      /* There is a sleeping thread, and no one to run - twiddle our thumbs.*/
+      if(sleeper)
+      {
+         context_switch(&current->esp, 
+            global_tcb()->esp, global_tcb()->pcb->dir_p);
+      }
       if(blocked)
       {
          lprintf("Deadlock!");

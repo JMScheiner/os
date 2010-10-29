@@ -2,9 +2,10 @@
 #include <console.h>
 #include <video_defines.h>
 #include <asm.h>
-#include <debug.h>
 #include <keyboard.h>
 #include <mm.h>
+#include <simics.h>
+#include <thread.h>
 
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 #define MAX_VALID_COLOR 0x8f
@@ -47,7 +48,7 @@ void readline_handler(volatile regstate_t reg)
 		RETURN(READLINE_INVALID_BUFFER);
 	}
 
-	debug_print_readline("%0x%x: reading up to %d chars to %p\n", 
+	lprintf("0x%x: reading up to %d chars to %p\n", 
 			get_tcb()->tid, len, buf);
 
 	int read = readline(buf, len);

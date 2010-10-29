@@ -423,7 +423,7 @@ boolean_t mm_validate_write(void *addr, int len)
 	unsigned int npages = NUM_PAGES(addr, len);
 	int i;
 	for (i = 0; i < npages; i++) {
-		int tflags = mm_getflags((char *)addr + i*PAGE_SIZE);
+		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || !TEST_SET(tflags, 
 					(PTENT_USER | PTENT_PRESENT | PTENT_RW)))
 			return FALSE;

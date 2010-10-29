@@ -42,6 +42,7 @@
 #include <types.h>
 #include <global_thread.h>
 #include <asm_helper.h>
+#include <lifecycle.h>
 
 /**
  * @brief The first program to load.
@@ -85,14 +86,19 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     */
    interrupt_setup();
 
-   /* Give the "null process" a pcb and tcb. */
+   /* Give the "global process" a pcb and tcb. */
    global_pcb()->pid = -1;
    global_pcb()->ppid = -1;
    global_pcb()->thread_count = 1;
    global_pcb()->regions = NULL;
-
-   global_tcb()->esp = NULL;
-   global_tcb()->kstack = NULL;
+   
+   /* It is fine to begin execution wherever we happen to be now
+    *  since we are guaranteed to launch a thread before executing on
+    *  this stack, and this thread of execution should never start up
+    *  again.
+    */
+   global_tcb()->kstack = get_esp();
+   global_tcb()->esp = global_tcb()->kstack;
    global_tcb()->tid = -1;
    global_tcb()->pcb = global_pcb();
 
@@ -106,6 +112,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    handler_install();
    clear_console();
    mm_init();
+   arrange_global_context();
 
    locks_enabled = TRUE;
    enable_interrupts();

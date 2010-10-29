@@ -38,6 +38,7 @@ void set_status_handler(volatile regstate_t reg);
 void vanish_handler(volatile regstate_t reg);
 void wait_handler(volatile regstate_t reg);
 void task_vanish_handler(volatile regstate_t reg);
+void arrange_global_context(void);
 
 #endif /* end of include guard: LIFECYCLE_DP4QFXLY */
 
