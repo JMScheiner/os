@@ -119,7 +119,6 @@ void scheduler_block_me()
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Blocking myself, thread %p", tcb);
 	disable_interrupts();
-	MAGIC_BREAK;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
 	scheduler_next(tcb);
@@ -187,7 +186,6 @@ void scheduler_next(tcb_t* tcb)
    }
    runnable = LIST_NEXT(runnable, scheduler_node);
 	 debug_print("scheduler", "now running %p", runnable);
-   MAGIC_BREAK;
    set_esp0((int)runnable->kstack);
    context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);
 }

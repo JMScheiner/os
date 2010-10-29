@@ -29,6 +29,7 @@ static free_block_t* user_free_list;
 static mutex_t user_free_lock;
 
 static void* mm_new_table(pcb_t* pcb, void* addr);
+static void mm_free_table(pcb_t* pcb, void* addr);
 
 /** 
 * @brief Initialize the user frame list, enable paging.
@@ -162,12 +163,43 @@ void mm_new_directory(pcb_t* pcb)
    pcb->virtual_dir = virtual_dir_v;
 }
 
-unsigned long mm_get_copy_page()
+/** 
+* @brief Frees every frame and table that belongs to user space. 
+* 
+* @param pcb The process that points to the relevant address space. 
+*/
+void mm_free_address_space(pcb_t* pcb)
 {
-   /* TODO Separate out the part of address space copying that 
-    * reserves an address to copy through.
-    */
-   return 0;
+   unsigned long d_index;
+   unsigned long t_index;
+   unsigned long frame, page;
+   page_dirent_t* dir_v, *virtual_dir;
+   page_tablent_t *table_v, *table_p;
+   
+   dir_v = pcb->dir_v;
+   virtual_dir = pcb->virtual_dir;
+   
+   for(d_index = (USER_MEM_START >> DIR_SHIFT); 
+      d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
+   {
+      table_v = virtual_dir[d_index];
+      table_p = dir_v[d_index];
+      dir_v[d_index] = 0;
+
+      if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) continue;
+      
+      for(t_index = 0; t_index < TABLE_SIZE; t_index++)
+      {
+         frame = table_v[t_index];
+         if(!(FLAGS_OF(frame) & PTENT_PRESENT)) continue;
+         
+         page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
+         mm_free_frame(table_v, page);
+      }
+      
+      mm_free_table(pcb, (void*)(t_index << TABLE_SHIFT));
+   }
+
 }
 
 /** 
@@ -255,6 +287,19 @@ void* mm_new_table(pcb_t* pcb, void* addr)
       (page_dirent_t)((unsigned long)table_p | PDENT_USER | PDENT_PRESENT | PDENT_RW);
    virtual_dir_v[ DIR_OFFSET(addr) ] = table_v;
    return table_v;
+}
+
+void mm_free_table(pcb_t* pcb, void* addr)
+{
+   void *table_v;
+   
+   page_dirent_t* dir_v = pcb->dir_v;
+   page_dirent_t* virtual_dir_v = pcb->virtual_dir;
+   table_v = virtual_dir_v[ DIR_OFFSET(addr) ];
+   kvm_free_page(table_v);
+   
+   virtual_dir_v[ DIR_OFFSET(addr) ] = 0;
+   dir_v[ DIR_OFFSET(addr) ] = 0;
 }
 
 /** 
