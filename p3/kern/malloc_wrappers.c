@@ -10,6 +10,7 @@
 #include <malloc_internal.h>
 #include <mutex.h>
 #include <malloc_wrappers.h>
+#include <simics.h>
 
 /* safe versions of malloc functions */
 

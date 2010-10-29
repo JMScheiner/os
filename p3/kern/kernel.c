@@ -41,6 +41,8 @@
 #include <loader.h>
 #include <types.h>
 #include <lifecycle.h>
+#include <global_thread.h>
+#include <asm_helper.h>
 
 /**
  * @brief The first program to load.
@@ -77,39 +79,41 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    /* Everything below 1M  */
    lmm_remove_free( &malloc_lmm, (void*)0, 0x100000 );
-
+   
    /*
     * initialize the PIC so that IRQs and
     * exception handlers don't overlap in the IDT.
     */
    interrupt_setup();
 
-   /*
-    * When kernel_main() begins, interrupts are DISABLED.
-    * You should delete this comment, and enable them --
-    * when you are ready.
-    */
-   
-   lprintf( "Hello from a brand new kernel!" );
+   /* Give the "null process" a pcb and tcb. */
+   global_pcb()->pid = -1;
+   global_pcb()->ppid = -1;
+   global_pcb()->thread_count = 1;
+   global_pcb()->regions = NULL;
 
-	 alloc_init();
+   global_tcb()->esp = NULL;
+   global_tcb()->kstack = NULL;
+   global_tcb()->tid = -1;
+   global_tcb()->pcb = global_pcb();
+
+	alloc_init();
    timer_init();
    keyboard_init();
    scheduler_init();
-   mm_init();
 	 lifecycle_init();
    init_process_table();
    init_thread_table();
+   mm_init();
    
    handler_install();
-   locks_enabled = TRUE;
-   //enable_interrupts();
-   
    clear_console();
-   //load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
 
+   locks_enabled = TRUE;
    enable_interrupts();
+
    while(1) { } 
+   
    assert(0);
    return 0;
 }

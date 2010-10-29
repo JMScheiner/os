@@ -12,6 +12,7 @@ typedef struct REGION region_t;
 typedef struct STATUS status_t;
 typedef struct PROCESS_CONTROL_BLOCK pcb_t;
 typedef struct THREAD_CONTROL_BLOCK tcb_t;
+typedef struct SLEEP_HEAP sleep_heap_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 
@@ -115,9 +116,16 @@ struct PROCESS_CONTROL_BLOCK
 	/** @brief Pointer to the list of exited child statuses. */
 	status_t *zombie_statuses;
 
+	/** @brief Base phys and virt addresses of the processes page directory. */
+	void *dir_p;
+	void *dir_v;
+
+	/** @brief Translates addresses to virtual table addresses*/
+	void *virtual_dir;
+	
 	/** @brief Mutual exclusion locks for pcb. */
 	mutex_t lock, region_lock, directory_lock, status_lock, 
-					waiter_lock, check_waiter_lock;
+					waiter_lock, check_waiter_lock, kvm_lock;
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;
@@ -145,9 +153,30 @@ struct THREAD_CONTROL_BLOCK{
    tcb_node_t mutex_node;
    int runnable;
 
-   unsigned long sleep_until;
+   unsigned long wakeup;
+   int sleep_index;
 };
 
+<<<<<<< HEAD:p3/kern/inc/kernel_types.h
+=======
+struct COND {
+	/** @brief True if this has been passed to cond_init. False if this has been
+	 * passed to cond_destroy. */
+	boolean_t initialized;
+
+	/** @brief The tcb of a thread waiting on this condition variable. */
+	tcb_t *tcb;
+};
+
+struct SLEEP_HEAP 
+{
+   /* Refers to the first free slot. */
+   int index;
+   int size; 
+   tcb_t** data; 
+};
+
+>>>>>>> 3dd092de759b2c765c914fc40d10daaa64c717b6:p3/kern/inc/kernel_types.h
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */
 
 

@@ -3,9 +3,9 @@
 
 #define SCHEDULER_JIJV6ZY3
 
-#include <process.h>
+#include <kernel_types.h>
 
-void scheduler_init(void);
+void scheduler_init();
 void scheduler_register(tcb_t* tcb);
 
 void scheduler_run(tcb_t *tcb);
@@ -16,7 +16,7 @@ void scheduler_block_me();
 void scheduler_make_runnable(tcb_t* tcb);
 void scheduler_die();
 
-void scheduler_sleep(tcb_t* tcb, unsigned long ticks);
+void scheduler_sleep(unsigned long ticks);
 
 // heap_t* scheduler_sleep_heap = NULL;
 

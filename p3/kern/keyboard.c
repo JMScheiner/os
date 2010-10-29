@@ -95,7 +95,6 @@ void keyboard_handler(void)
 			cond_signal(&keyboard_signal);
 		}
 	}
-
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 }
 
