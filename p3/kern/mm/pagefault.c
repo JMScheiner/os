@@ -4,6 +4,7 @@
 #include <mutex.h>
 #include <mm.h>
 #include <simics.h>
+#include <debug.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2

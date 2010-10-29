@@ -9,7 +9,7 @@ void scheduler_init();
 void scheduler_register(tcb_t* tcb);
 
 void scheduler_run(tcb_t *tcb);
-void scheduler_next(void);
+void scheduler_next(tcb_t* tcb);
 
 void scheduler_block(tcb_t* tcb);
 void scheduler_block_me();

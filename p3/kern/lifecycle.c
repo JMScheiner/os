@@ -28,6 +28,7 @@
 #include <x86/asm.h>
 #include <simics.h>
 #include <types.h>
+#include <debug.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -182,6 +183,10 @@ void fork_handler(volatile regstate_t reg)
    RETURN(newpid);
 }
 
+/** 
+* @brief Arranges a context we can jump to if we need to 
+*  twiddle our thumbs, and plants it in the global TCB. 
+*/
 void arrange_global_context()
 {
    void* esp;

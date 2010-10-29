@@ -23,10 +23,11 @@
 #include <global_thread.h>
 #include <debug.h>
 
-#define INIT_PROGRAM "coolness"
+#define INIT_PROGRAM "sleep"
 
 /**
- * @brief Circular queue of runnable threads.
+ * @brief Circular queue of runnable threads. 
+ *  Always points to the next runnable thread, if there is one. 
  */
 static tcb_t* runnable;
 
@@ -64,7 +65,7 @@ void scheduler_register(tcb_t* tcb)
    LIST_INIT_NODE(tcb, scheduler_node);   
    
    disable_interrupts();
-   LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+   LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
    enable_interrupts();
 }
 
@@ -80,8 +81,8 @@ void scheduler_run(tcb_t* tcb)
 {
 	disable_interrupts();
 	LIST_REMOVE(runnable, tcb, scheduler_node);
-	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
-	scheduler_next();
+	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+	scheduler_next(get_tcb());
 	enable_interrupts();
 }
 
@@ -89,7 +90,7 @@ void scheduler_make_runnable(tcb_t* tcb)
 {
 	disable_interrupts();
 	LIST_REMOVE(blocked, tcb, scheduler_node);
-	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
 	enable_interrupts();
 }
 
@@ -116,7 +117,7 @@ void scheduler_block_me()
 	disable_interrupts();
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-	scheduler_next();
+	scheduler_next(tcb);
 	enable_interrupts();
 }
 
@@ -128,7 +129,7 @@ void scheduler_die()
 {
 	disable_interrupts();
 	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
-	scheduler_next();
+	scheduler_next(NULL);
 	assert(FALSE);
 }
 
@@ -136,9 +137,9 @@ void scheduler_die()
  * @brief Switch to the next thread in the runnable queue.
  *    This function should never be called with interrupts enabled!!!!!!
  */
-void scheduler_next()
+void scheduler_next(tcb_t* tcb)
 {
-   tcb_t *current, *sleeper;
+   tcb_t *sleeper;
    unsigned long now;
    
    sleeper = heap_peek(&sleepers); 
@@ -153,24 +154,23 @@ void scheduler_next()
    {
       heap_pop(&sleepers);
       LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
+      runnable = sleeper;
    }
 
-   /* Identify if we are the global thread, twiddling our thumbs. */
-
-   current = runnable;
    if(!runnable)
    {
       /* There is a sleeping thread, and no one to run - twiddle our thumbs.*/
       if(sleeper)
       {
-         context_switch(&current->esp, 
-            global_tcb()->esp, global_tcb()->pcb->dir_p);
+         context_switch(&tcb->esp, 
+            &global_tcb()->esp, global_tcb()->pcb->dir_p);
       }
-      if(blocked)
+      else if(blocked)
       {
          debug_print("scheduler", "Deadlock!");
          MAGIC_BREAK;
       }
+      
       /* If there is no one in the run queue, we are responsible 
        * for launching the first task (again if necessary).
        */
@@ -179,7 +179,7 @@ void scheduler_next()
    
    runnable = LIST_NEXT(runnable, scheduler_node);
    set_esp0((int)runnable->kstack);
-   context_switch(&current->esp, &runnable->esp, runnable->pcb->dir_p);
+   context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);
 }
 
 /**
@@ -189,8 +189,7 @@ void scheduler_next()
  *    scheduler_next calls heap_peek / heap_pop. heap_remove will
  *    need to be called by dying processes with interrupts disabled. 
  *
- * @param ticks The number of (timer ticks?, milliseconds?, probably should be
- * milliseconds) to sleep for.
+ * @param ticks The number of timer ticks to sleep for. 
  */
 void scheduler_sleep(unsigned long ticks)
 {
@@ -200,7 +199,7 @@ void scheduler_sleep(unsigned long ticks)
    disable_interrupts();
    heap_insert(&sleepers, me);
    LIST_REMOVE(runnable, me, scheduler_node);
-   scheduler_next();
+   scheduler_next(me);
    enable_interrupts();
 }
 

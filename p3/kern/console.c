@@ -6,6 +6,7 @@
 #include <mm.h>
 #include <simics.h>
 #include <thread.h>
+#include <debug.h>
 
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 #define MAX_VALID_COLOR 0x8f

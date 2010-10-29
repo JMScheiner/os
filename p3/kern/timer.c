@@ -18,6 +18,9 @@
 #include <asm.h>
 #include <types.h>
 #include <scheduler.h>
+#include <global_thread.h>
+#include <asm_helper.h>
+#include <thread.h>
 
 //In reality this is 9.99931276 milliseconds.
 //	Per tick, we lose 687.24ns.
@@ -50,7 +53,14 @@ void timer_handler(void)
 {
    atomic_add_volatile(&ticks, 1);
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
-   scheduler_next();
+   
+   /* Identify ourselves, and run the next thread. */
+   tcb_t* global = global_tcb();
+   if(get_esp() < global->kstack)
+      scheduler_next(global_tcb());
+   else
+      scheduler_next(get_tcb());
+
 
 }
 
