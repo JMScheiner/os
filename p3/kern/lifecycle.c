@@ -62,7 +62,8 @@ void exec_handler(volatile regstate_t reg) {
 	int total_bytes = 0;
 
 	/* Verify that the arguments lie in valid memory. */
-	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *))) {
+	if (!mm_validate_read(arg_addr, sizeof(char *)) || 
+			!mm_validate_read(arg_addr + sizeof(char *), sizeof(char **))) {
 		RETURN(EXEC_INVALID_ARGS);
 	}
 

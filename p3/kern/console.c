@@ -35,7 +35,8 @@ void getchar_handler(volatile regstate_t reg)
 void readline_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	if (!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(int))) {
+	if (!mm_validate_read(arg_addr, sizeof(int)) || 
+			!mm_validate_read(arg_addr + sizeof(int), sizeof(char *))) {
 		RETURN(READLINE_INVALID_ARGS);
 	}
 

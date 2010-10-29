@@ -27,7 +27,8 @@ void new_pages_handler(volatile regstate_t reg)
    arg_addr = (void*)SYSCALL_ARG(reg);
    
    /* Verify that the arguments lie in valid memory. */
-	if(!mm_validate(arg_addr) || !mm_validate(arg_addr + sizeof(void *)))
+	if(!mm_validate_read(arg_addr, sizeof(void *)) || 
+			!mm_validate_read(arg_addr + sizeof(void *), sizeof(int)))
 		RETURN(NEW_PAGES_INVALID_ARGS);
    
    /* Grab the arguments from user space. */
@@ -39,7 +40,7 @@ void new_pages_handler(volatile regstate_t reg)
    
    /* Check that the pages the user is asking for aren't already already allocated. */
    for(addr = base; addr < base + len; addr += PAGE_SIZE)
-      if(mm_validate(addr))
+      if(mm_validate_read(base, PAGE_SIZE))
          RETURN(NEW_PAGES_INVALID_ARGS);
    
    /* Check that the pages aren't in the autostack region. */

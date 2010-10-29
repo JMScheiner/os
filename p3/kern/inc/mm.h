@@ -71,7 +71,7 @@ void mm_new_directory(pcb_t* pcb);
 void mm_duplicate_address_space(pcb_t* pcb);
 
 int mm_getflags(pcb_t* pcb, void* addr);
-boolean_t mm_validate(void* addr);
+boolean_t mm_validate_read(void* addr, int len);
 boolean_t mm_validate_write(void* addr, int len);
 
 #endif /* end of include guard: MM_1PZ6H5QE */

@@ -18,7 +18,7 @@
 	for ((cntr) = 0 ; \
 			((cntr) == (max)) ? 0 : \
          ((cntr) == 0 || !SAME_PAGE(addr, (addr) - 1)) ? \
-            mm_validate(addr) : 1 ; \
+            mm_validate_read(addr, 1) : 1 ; \
          (cntr)++, (addr)++)
 
 #define NOT_NULL_TERMINATED -1

@@ -398,12 +398,17 @@ int mm_getflags(pcb_t* pcb, void* addr)
 * 
 * @return True if the address is safe.
 */
-boolean_t mm_validate(void* addr)
+boolean_t mm_validate_read(void* addr, int len)
 {
-   int tflags = mm_getflags(get_pcb(), addr);
-   if( (tflags & PTENT_USER) && (tflags & PTENT_PRESENT) )
-      return TRUE;
-   return FALSE; 
+	unsigned int npages = NUM_PAGES(addr, len);
+	int i;
+	for (i = 0; i < npages; i++) {
+		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
+		if(tflags <= 0 || 
+				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT)))
+			return FALSE;
+	}
+	return TRUE;
 }
 
 /**
@@ -424,8 +429,8 @@ boolean_t mm_validate_write(void *addr, int len)
 	int i;
 	for (i = 0; i < npages; i++) {
 		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
-		if(tflags <= 0 || !TEST_SET(tflags, 
-					(PTENT_USER | PTENT_PRESENT | PTENT_RW)))
+		if(tflags <= 0 || 
+				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT | PTENT_RW)))
 			return FALSE;
 	}
 	return TRUE;
