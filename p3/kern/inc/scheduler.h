@@ -3,9 +3,9 @@
 
 #define SCHEDULER_JIJV6ZY3
 
-#include <process.h>
+#include <kernel_types.h>
 
-void scheduler_init(void);
+void scheduler_init();
 void scheduler_register(tcb_t* tcb);
 
 void scheduler_run(tcb_t *tcb);

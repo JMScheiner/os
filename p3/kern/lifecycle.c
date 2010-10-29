@@ -83,12 +83,13 @@ void exec_handler(volatile regstate_t reg) {
 	 * elf header before freeing. */
    
 	// TODO This probably shouldn't be an assert.
-	assert(initialize_memory(execname_buf, elf_hdr, get_pcb()) == 0);
+   pcb_t* pcb = get_pcb();
+	assert(initialize_memory(execname_buf, elf_hdr, pcb) == 0);
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
 	lprintf("Running %s", execname_buf);
-   sim_reg_process((void*)get_cr3(), execname_buf);
+   sim_reg_process((void*)pcb->dir_p, execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
 	assert(0);
@@ -108,17 +109,15 @@ void thread_fork_handler(volatile regstate_t reg)
 {
    unsigned long newtid;
    pcb_t* pcb;
-   tcb_t* current_tcb, *new_tcb;
+   tcb_t* new_tcb;
 
    pcb = get_pcb();
-   current_tcb = get_tcb();
-   
    new_tcb = initialize_thread(pcb);
    newtid = new_tcb->tid;
    atomic_add(&pcb->thread_count, 1);
    
    new_tcb->esp = arrange_fork_context(
-      new_tcb->kstack, (regstate_t*)&reg, (void*)get_cr3());
+      new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
    
    /* TODO Does something need to happen here for user level debugging? */
    scheduler_register(new_tcb);
@@ -139,14 +138,10 @@ void thread_fork_handler(volatile regstate_t reg)
 void fork_handler(volatile regstate_t reg)
 {
    unsigned long newpid; 
-   pcb_t *current_pcb, *new_pcb; 
-   tcb_t *current_tcb, *new_tcb;
+   pcb_t *new_pcb; 
+   tcb_t *new_tcb;
 
-   current_pcb = get_pcb();
-   current_tcb = get_tcb();
-   
    new_pcb = initialize_process();
-   
    new_tcb = initialize_thread(new_pcb);
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
@@ -156,10 +151,10 @@ void fork_handler(volatile regstate_t reg)
    
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
-      new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir);
+      new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
    /* Register the first thread in the new TCB. */
-   sim_reg_child(new_pcb->dir, current_pcb->dir);
+   sim_reg_child(new_pcb->dir_p, get_pcb()->dir_p);
    scheduler_register(new_tcb);
    
    RETURN(newpid);

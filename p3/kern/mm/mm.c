@@ -2,53 +2,48 @@
 * @file mm.c
 * @brief Memory management.
 *  
-*  My assumptions so far:
-*     - Free physical pages will be direct mapped, but inaccessible to users.
-*
-*  Problem: 
-*     - When we try to traverse the free list, the addresses are physical - 
-*        but most of the time when we are running on some user threads 
-*        page directory. I need to sleep on it, but I think that turning off VM is 
-*        one of the "bad things" 
-*
 * @author Justin Scheiner
 * @author Tim Wilson
-* @date 2010-10-07
 * @bug Kernel page allocation can probably do better than malloc.
 * @bug We hold on to directory locks for a long time.
 */
 
 #include <mm.h>
+#include <kvm.h>
 #include <mm_internal.h>   
 #include <page.h>          // PAGE_SIZE, PAGE_SHIFT
 #include <cr.h>            // get_cr3
 #include <mutex.h>
 #include <simics.h>
+#include <region.h>
 #include <assert.h>
 
 #include <common_kern.h>
 #include <string.h>        // memcpy, memset
+#include <global_thread.h>
 
-/* Protects the free list. */
-static mutex_t free_list_lock;
+#define COPY_PAGE ((void*)(-PAGE_SIZE))
 
+static free_block_t* user_free_list;
+static mutex_t user_free_lock;
 
-unsigned long mm_new_frame(unsigned long* table, unsigned long page);
-unsigned long mm_free_frame(unsigned long* table, unsigned long page);
+static void* mm_new_table(pcb_t* pcb, void* addr);
 
 /** 
 * @brief Initialize the user frame list, enable paging.
 *  This function should only be called from kernel_main,
-*     before interrupts are enabled.
+*     before interrupts are enabled. It is also responsible 
+*     adding the global directory to the global pcb.
 * 
 * @return 0 on success.
 */
-int mm_init(void)
+int mm_init()
 {
    int i, j;
    uint32_t addr = 0;
    
-   page_tablent_t* pt;
+   page_tablent_t* table;
+   page_dirent_t* global_dir;
    n_phys_frames = machine_phys_frames();
    free_block_t* iter;
    
@@ -59,37 +54,47 @@ int mm_init(void)
    n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
 
    /* Build a very simple link structure on free frames. */
-   for(i = 0, iter = user_free_list; i < n_free_frames - 1; i++, iter = iter->next)
+   for(i = 0, iter = user_free_list; 
+      i < n_free_frames - 1; 
+      i++, iter = iter->next)
+   {
       iter->next = (free_block_t*)((char*)iter + PAGE_SIZE);
+   }
    iter->next = NULL;
    
-   /* Initialize global page directory. */
-   global_dir = (page_dirent_t*)mm_new_kp_page();
+   /* Initialize global page directory. V = P */
+   global_pcb()->dir_v = global_pcb()->dir_p = (void*)mm_new_kp_page();
+   global_dir = (page_dirent_t*)global_pcb()->dir_v;
    
-   /* Iterate over directory entries in the kernel. */
+   /* Iterate over directory entries in direct mapped kernel region. */
    for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
    {
-      /* Allocate a page table for each. */
-      pt = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
+      /* Allocate a direct mapped page table for each. */
+      table = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
+      
+      global_dir[i] = (page_dirent_t)(
+         (unsigned long)global_dir[i] | (PDENT_RW | PDENT_PRESENT) );
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
-         pt[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
-
-      global_dir[i] = (page_dirent_t)((unsigned long)global_dir[i] | (PDENT_RW | PDENT_PRESENT) );
+         table[j] = addr | (PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT);
    }
 
    /* Explicitly unmap NULL to prevent NULL dereferences in the kernel. */
-   pt = (page_tablent_t*)PAGE_OF(global_dir[0]);
-   pt[0] = 0; /* Not present, writable, or global */
+   table = (page_tablent_t*)PAGE_OF(global_dir[0]);
+   table[0] = 0; /* Not present, writable, or global */
    
    assert(addr == USER_MEM_START);
-   assert(i == (USER_MEM_START >> DIR_SHIFT));
    
    /* Everything else is not present, so doesn't matter. */
-   for( ; i < DIR_SIZE; i++) global_dir[i] = 0;
+   for(; i < (USER_MEM_END >> DIR_SHIFT); i++) 
+         global_dir[i] = 0;
 
-   mutex_init(&free_list_lock);
+   mutex_init(&user_free_lock);
+   
+   /* Initialize kernel virtual memory which lives above 
+    * USER_MEM_END and is global. */
+   kvm_init();
 
    /* After this point we give up our direct access to pages in user land.*/
    set_cr3((uint32_t)global_dir);
@@ -99,217 +104,226 @@ int mm_init(void)
 }
 
 /** 
-* @brief Allocates a new empty page directory. 
-*
+* @brief Allocates a new initialized page directory in the given PCB.
+* 
 *  The directory is initialized with: 
 *     - Kernel pages direct mapped and present.
 *     - Supervisory mode everywhere.
 *     - Read only / not present in user land.
+*     - The directory itself mapped in kernel VM
+*
+*  The PCB will be updated with 
+*     - the physical address of the new directory
+*     - the virtual address of the new directory
+*     - the virtual address of the virtual directory.
 * 
-* @return The address of the new directory in kernel space.
+* @param pcb The PCB to endow with a new directory. 
 */
-void* mm_new_directory()
+void mm_new_directory(pcb_t* pcb)
 {
    int i;
+   page_dirent_t* global_dir = global_pcb()->dir_v;
+   page_dirent_t* dir_v = kvm_new_page();
+   page_dirent_t* virtual_dir_v = kvm_new_page();
    
-   /* Allocate the new page directory. */
-   page_dirent_t* dir = (page_dirent_t*) mm_new_kp_page();
+   lprintf("Global directory at %p", global_dir);
+   
+   /* The global parts of every directory should be the same. */
+   memset(dir_v, 0, PAGE_SIZE);
+   memset(virtual_dir_v, 0, PAGE_SIZE);
+   
+   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
+      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
+   
+   memcpy(dir_v, global_dir, 
+      (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
+   
+   /* When we do this copy the directory itself gets mapped as well. */
+   for(i = (USER_MEM_END >> DIR_SHIFT); i < DIR_SIZE; i++)
+      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
+  
+   lprintf("Copying [%p, %d] to [%p, %d]", 
+      dir_v + DIR_OFFSET(USER_MEM_END), 
+      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
+      global_dir + DIR_OFFSET(USER_MEM_END), 
+      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
 
-   /* The kernel part of every directory should be the same. */
-   //memset(dir, 0, DIR_SIZE)
-   memcpy(dir, global_dir, (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
+   memcpy(dir_v + DIR_OFFSET(USER_MEM_END), 
+      global_dir + DIR_OFFSET(USER_MEM_END), 
+      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
    
-   /* Zero out everything else. */
-   for(i = (USER_MEM_START >> DIR_SHIFT); i < DIR_SIZE; i++) dir[i] = 0;
+   lprintf("Global directory at %p", global_pcb()->dir_v);
+   lprintf("pcb = %p, global_pcb = %p", pcb, global_pcb());
    
-   return (void*)dir;
+   lprintf("New directory at %p", dir_v);
+
+   pcb->dir_v = dir_v;
+   pcb->dir_p = kvm_vtop(dir_v);
+   pcb->virtual_dir = virtual_dir_v;
+}
+
+unsigned long mm_get_copy_page()
+{
+   /* TODO Separate out the part of address space copying that 
+    * reserves an address to copy through.
+    */
+   return 0;
 }
 
 /** 
 * @brief Duplicates the current address space in the process
 *  indicated by pcb. 
 *
-*  TODO We also need to copy the region list!   
-*     - if page faults are expected to work correctly.
-* 
 * @param pcb The new process to copy into. The page directory 
 *  should be empty, but allocated.  
 */
-void mm_duplicate_address_space(pcb_t* pcb) 
+void mm_duplicate_address_space(pcb_t* new_pcb) 
 {
    unsigned long d_index;
    unsigned long t_index;
    unsigned long flags;
    unsigned long copy_page = 0, page;
+   pcb_t* current_pcb;
    
-   page_dirent_t *current_dir, *new_dir;
-   page_tablent_t *copy_table = NULL, *current_table, *new_table;
+   page_dirent_t *current_dir_v, *new_dir_v, *current_virtual_dir;
+
+   page_tablent_t *copy_table_v, *current_table_v, *new_table_v, 
+      *current_table_p;
+
    page_tablent_t current_frame, new_frame;
-
-   //free_block_t* free_block;
-
-   current_dir = (page_dirent_t*)get_cr3();
-   new_dir = pcb->dir;
-
-   boolean_t copy_page_found = FALSE;
    
-   /* Find an unallocated page in an existing directory to copy through. */
-   for(d_index = USER_MEM_START >> DIR_SHIFT; 
-      d_index < DIR_SIZE && !copy_page_found; 
-      d_index++)
-   {
-      current_table = current_dir[d_index];
-      if(!TABLE_PRESENT(current_table)) continue;
-      current_table = (page_tablent_t*)PAGE_OF(current_table);
+   current_pcb = get_pcb();
+   current_dir_v = current_pcb->dir_v;
+   new_dir_v = new_pcb->dir_v;
+   current_virtual_dir = current_pcb->virtual_dir;
 
+   copy_table_v = kvm_initial_table();
+
+   for(d_index = (USER_MEM_START >> DIR_SHIFT); 
+      d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
+   {
+      current_table_v = current_virtual_dir[d_index];
+      current_table_p = current_dir_v[d_index];
+      
+      if(!(FLAGS_OF(current_table_p) & PDENT_PRESENT)) continue;
+      
+      flags = FLAGS_OF(current_table_p);
+      
+      /* Also maps the table in the new process's dir / virtual directory. */
+      new_table_v = mm_new_table(new_pcb, (void*)(d_index << DIR_SHIFT));
+      
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
-         current_frame = current_table[t_index];
-         if(!PAGE_PRESENT(current_frame))
-         {
-            copy_table = current_table;
-            copy_page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
-            copy_page_found = TRUE;
-            break;
-         }
-      }
-   }
-   
-   /* If none exist, allocate a new page table for the copy page. */
-   if(!copy_page_found)
-   {
-      for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE && !copy_page_found; d_index++)
-      {
-         current_table = current_dir[d_index];
-         if(!TABLE_PRESENT(current_table))
-         {
-            /* Allocate page table. */
-            copy_table = current_dir[d_index] 
-               = (page_tablent_t*)((int)mm_new_table() | PDENT_PRESENT | PDENT_RW);
-            
-            /* Make copy_page the zero'th page in the new directory. */
-            copy_page = (d_index << DIR_SHIFT);
-            break;
-         }
-      }
-   }
+         current_frame = current_table_v[t_index];
+         if(!(FLAGS_OF(current_frame) & PTENT_PRESENT)) continue;
 
-   for(d_index = USER_MEM_START >> DIR_SHIFT; d_index < DIR_SIZE; d_index++)
-   {
-      current_table = current_dir[d_index];
-      if(!TABLE_PRESENT(current_table)) continue;
-      
-      flags = (int)current_table & PAGE_MASK;
-      current_table = (page_tablent_t*)PAGE_OF(current_table);
-      
-      new_table = mm_new_table();
-      new_dir[d_index] = (page_dirent_t)((int)new_table | flags);
-
-      for(t_index = 0; t_index < TABLE_SIZE; t_index++)
-      {
-         current_frame = current_table[t_index];
-         if(!PAGE_PRESENT(current_frame)) continue;
-
-         flags = current_frame & PAGE_MASK;
+         flags = FLAGS_OF(current_frame);
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          
-         if(page == copy_page) continue;
+         lprintf("Copying page 0x%lx", page);
          
-         new_frame = mm_new_frame((unsigned long*)copy_table, copy_page);
-         memcpy((void*)copy_page, (void*)page, PAGE_SIZE); 
-         new_table[t_index] = new_frame | flags;
+         new_frame = mm_new_frame((unsigned long*)copy_table_v, (unsigned long)COPY_PAGE);
+         memcpy((void*)COPY_PAGE, (void*)page, PAGE_SIZE);
+         new_table_v[t_index] = new_frame | flags;
       }
    }
    
    /* Unmap the page we used to copy for good measure. */
-   copy_table[ TABLE_OFFSET(copy_page) ] = 0;
+   copy_table_v[ TABLE_OFFSET(copy_page) ] = 0;
    invalidate_page((void*)copy_page);
 }
 
 /** 
-* @brief Allocates an empty page. 
-*  
-* @return the newly allocated table. 
+* @brief Allocates a page for a new table. 
+*  1. Initializes all of it's entries as non-present.
+*  2. Maps the table in the PCB's directories, at the address indicated.
+*
+*  @return The virtual address of the new table. 
 */
-void* mm_new_table()
+void* mm_new_table(pcb_t* pcb, void* addr)
 {
-   int i;
-   page_tablent_t* table = (page_tablent_t*)mm_new_kp_page();
-   for(i = 0; i < TABLE_SIZE; i++)
-      table[i] = 0;
+   void *table_v, *table_p;
    
-   return (void*)table;
+   page_dirent_t* dir_v = pcb->dir_v;
+   page_dirent_t* virtual_dir_v = pcb->virtual_dir;
+   
+   table_v = kvm_new_page();
+   table_p = kvm_vtop(table_v); 
+
+   memset(table_v, 0, PAGE_SIZE);
+   dir_v[ DIR_OFFSET(addr) ] = 
+      (page_dirent_t)((unsigned long)table_p | PDENT_USER | PDENT_PRESENT | PDENT_RW);
+   virtual_dir_v[ DIR_OFFSET(addr) ] = table_v;
+   return table_v;
 }
 
 /** 
-* @brief Make the address "addr" available to the current thread
-*  with flags "flags" for len bytes. 
+* @brief Allocates frames for the address range in the given processes 
+*  address space, with flags indicated by "flags".
 *
-*  The page will be filled with zeros initially.
+*  The pages will be filled with zeros initially.
 *
 *  Pages that already belong to the user will be skipped, and the 
 *     "flags" value WILL NOT be applied.
 * 
 * @param addr The address to allocate.
-* @param len Length of the new region.
+* @param len Length of the new region in bytes.
 * @param flags Flags for the region, e.g. PTENT_PRESENT
-* 
-* @return 
 */
 void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 {
    assert(len > 0);
-   assert((unsigned long)addr >= USER_MEM_START);
+   assert((unsigned long)addr >= USER_MEM_START && 
+      (unsigned long)addr < USER_MEM_END);
 
-   /* Grab the current page directory. */
-   page_dirent_t* dir = (page_dirent_t*) get_cr3();
-   page_tablent_t* table;
-   //free_block_t* free_block;
+   page_dirent_t* dir_v = (page_dirent_t*)pcb->dir_v;
+   page_dirent_t* virtual_dir = (page_dirent_t*)pcb->virtual_dir;
+   page_tablent_t* table_p;
+   page_tablent_t* table_v;
 
    unsigned int page = PAGE_OF(addr);
-   unsigned int npages = (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
+   unsigned int npages =   
+      (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
    unsigned long frame;
    int i;
    
    mutex_lock(&pcb->directory_lock);
    for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
-      table = dir[ DIR_OFFSET(page) ];
+      table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
+      if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
+         mm_new_table(pcb, (void*)page);
 
-      if(!((unsigned long)table & PTENT_PRESENT))
-      {
-         table = (page_tablent_t*) mm_new_table();
-         dir[DIR_OFFSET(page)] = 
-            (page_tablent_t*)((int)table | PDENT_PRESENT | PDENT_RW | PDENT_USER);
-      }
-      else
-      {
-         /* Wipe the flags. */
-         table = (page_tablent_t*)PAGE_OF(table);
-      }
+      table_v = (page_tablent_t*)virtual_dir[ DIR_OFFSET(page) ];
    
       /* SKIP Pages that are already allocated to us. 
        *    - The assumption here is that this function will be called 
        *      in order of priority, and that flags set by previous users will 
-       *      be correct. To change flags use mm_setflags(addr, flags)
+       *      be correct. To change flags use TODO mm_setflags(addr, flags)
        */
-      if(table[ TABLE_OFFSET(page) ] & PTENT_PRESENT)
-      {
+      if(FLAGS_OF(table_v[ TABLE_OFFSET(page) ]) & PTENT_PRESENT) 
          continue;
-      }
 
       /* Allocate the free page, but keep it in supervisor mode for now. */
-      frame = mm_new_frame((unsigned long*)table, page);
+      frame = mm_new_frame((unsigned long*)table_v, page);
       
       /* Reassign the page with the flags the user originally asked for. */
-      table[ TABLE_OFFSET(page) ] = ((unsigned long) frame | PTENT_PRESENT | flags);
+      lprintf("Mapping page 0x%x to frame 0x%lx with flags %x", page, frame, flags);
+      lprintf("....in table %p", table_v);
+      table_v[ TABLE_OFFSET(page) ] = 
+         ((unsigned long) frame | PTENT_PRESENT | flags);
       invalidate_page((void*)page);
    }
    mutex_unlock(&pcb->directory_lock);
-}
+} 
+
 
 /** 
 * @brief Removes pages from the currently running processes address space. 
+*
+*  Note that this deliberately asks for the addresses to be page aligned. 
+*     There isn't a great way of freeing non-page aligned memory, without
+*     keeping track of what is "allocated" 
 * 
 * @param addr The page aligned address to free. 
 * @param n The number of pages to remove. 
@@ -317,26 +331,29 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
 {
    unsigned long page;
-   page_dirent_t* dir;
-   page_tablent_t* table;
+   page_dirent_t *dir_v, *virtual_dir_v;
+   page_tablent_t *table_v, *table_p;
    
    assert(((unsigned int)addr & PAGE_MASK) == 0);
    assert((unsigned int)addr > USER_MEM_START);
-   dir = (page_dirent_t*) get_cr3();
-
+   
+   dir_v = (page_dirent_t*)pcb->dir_v;
+   virtual_dir_v = (page_dirent_t*)pcb->virtual_dir;
+   
    mutex_lock(&pcb->directory_lock);
    for(page = (unsigned long) addr; page += PAGE_SIZE; n--)
    {
-      table = dir[ DIR_OFFSET(page) ]; 
+      table_p = dir_v[ DIR_OFFSET(page) ]; 
       
       /* Skip page tables that are not present. */
-      if(!((unsigned long)table & PDENT_PRESENT)) continue;
+      if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) 
+         continue;
    
-      table = (page_tablent_t*)PAGE_OF(table);
+      table_v = (page_tablent_t*)virtual_dir_v[ DIR_OFFSET(page) ];
 
       /* We let mm_free_frame silently return a -1 
        *    if the page isn't mapped */
-      mm_free_frame(table, page);
+      mm_free_frame(table_v, page);
    }
    mutex_unlock(&pcb->directory_lock);
 }
@@ -349,21 +366,22 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
 * @return The flags (page directory and table bits 0).
 *         Or -1 if the page directory entry is not present.
 */
-int mm_getflags(void* addr)
+int mm_getflags(pcb_t* pcb, void* addr)
 {
    unsigned long page;
    long dflags, tflags;
 
-   page = ((unsigned long)addr) & ~PAGE_MASK;
-   page_dirent_t* dir = (page_dirent_t*) get_cr3();
-   page_tablent_t* table = dir[ DIR_OFFSET(page) ];
+   page = PAGE_OF(addr);
+   page_dirent_t* dir_v = (page_dirent_t*) pcb->dir_v;
+   page_dirent_t* virtual_dir_v = (page_dirent_t*) pcb->virtual_dir;
+   page_tablent_t* table_p = dir_v[ DIR_OFFSET(page) ];
+   page_tablent_t* table_v = virtual_dir_v[ DIR_OFFSET(page) ];
    
-   dflags = ((unsigned long)table) & PAGE_MASK;
-   table = (page_tablent_t*)PAGE_OF(table);
+   dflags = ((unsigned long)table_p) & PAGE_MASK;
    
-   if(dflags & PDENT_PRESENT)
+   if(FLAGS_OF(table_p) & PDENT_PRESENT)
    {
-      tflags = (unsigned long)table[ TABLE_OFFSET(page) ]  & PAGE_MASK;
+      tflags = FLAGS_OF(table_v[ TABLE_OFFSET(page) ]);
       return tflags;
    }
    else return -1;
@@ -376,36 +394,16 @@ int mm_getflags(void* addr)
 *     - Readable
 *     - User mode.
 * 
-* @param addr 
+* @param addr The address to validate. 
 * 
-* @return 
+* @return True if the address is safe.
 */
 boolean_t mm_validate(void* addr)
 {
-   int tflags = mm_getflags(addr);
-   if(tflags > 0 && ( tflags & (PTENT_USER | PTENT_PRESENT)))
+   int tflags = mm_getflags(get_pcb(), addr);
+   if( (tflags & PTENT_USER) && (tflags & PTENT_PRESENT) )
       return TRUE;
    else return FALSE; 
-}
-
-/** 
-* @brief Allocates a new kernel virtual page.  
-* 
-* @param pcb The PCB of the calling process. 
-* 
-* @return A framed page above USER_MEM_END
-*/
-void* mm_new_kv_page(pcb_t* pcb)
-{
-   void* ret = pcb->kvm_bottom;
-   lprintf(" Allocating kernel virtual page %p", ret);
-
-   /* Frame the address at kvm_bottom. */
-   mm_alloc(pcb, ret, PAGE_SIZE, PTENT_RW | PTENT_PRESENT);
-   pcb->kvm_bottom = (pcb->kvm_bottom - PAGE_SIZE);
-   lprintf(" Left with kernel virtual page %p", pcb->kvm_bottom);
-   
-   return ret;
 }
 
 /** 
@@ -419,34 +417,36 @@ void* mm_new_kv_page(pcb_t* pcb)
 void* mm_new_kp_page()
 {
    void* addr = smemalign(PAGE_SIZE, PAGE_SIZE);
+   memset(addr, 0, PAGE_SIZE);
+
+   /* When this assertion fails, do something more intelligent. */
    assert(addr);
    return addr;
 }
 
 /** 
 * @brief Safely allocates a new frame.
-*  1. Allocates a new frame for the current process. 
-*  2. Maps that frame to the place indicated by "page" 
+*  1. Allocates a new frame for the current process.
+*  2. Maps that frame to the place indicated by "page" in rw/supervisor mode.
 *  3. Uses the new mapping to update the free list.
 * 
 * @param table The page table that "page" belongs to. 
 * @param page The page to map. 
 * 
-* @return The address of the new frame.
+* @return The physical address of the new frame.
 */
-unsigned long mm_new_frame(unsigned long* table, unsigned long page)
+unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 {
    unsigned long new_frame;
    free_block_t* free_block;
    
-   mutex_lock(&free_list_lock);
+   mutex_lock(&user_free_lock);
    new_frame = (unsigned long)user_free_list;
    
-   /* When this assertion happens, it's time to do something more
-    *    intelligent. */
+   /* When this assertion fails, do something more intelligent. */
    assert(new_frame);
    
-   table[ TABLE_OFFSET(page) ] = new_frame | PTENT_PRESENT | PTENT_RW; 
+   table_v[ TABLE_OFFSET(page) ] = new_frame | PTENT_PRESENT | PTENT_RW; 
    invalidate_page((void*)page);
    
    free_block = (free_block_t*)page;
@@ -454,7 +454,7 @@ unsigned long mm_new_frame(unsigned long* table, unsigned long page)
    memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
 
-   mutex_unlock(&free_list_lock);
+   mutex_unlock(&user_free_lock);
    return new_frame;
 }
 
@@ -466,32 +466,32 @@ unsigned long mm_new_frame(unsigned long* table, unsigned long page)
 * 
 * @return 0 on success, a negative integer on failure. 
 */
-unsigned long mm_free_frame(unsigned long* table, unsigned long page)
+unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
 {
    free_block_t* node;
    unsigned long frame;
 
-   frame = table[TABLE_OFFSET(page)];
-   if(!(frame & PTENT_PRESENT)) 
-      return -1;
+   frame = table_v[ TABLE_OFFSET(page) ];
+   if(!(FLAGS_OF(frame) & PTENT_PRESENT)) return -1;
+      
    frame = PAGE_OF(frame);
    
    /* Take the page away from user threads if necessary. */
-   table[ TABLE_OFFSET(page) ] = frame | PTENT_PRESENT | PTENT_RW; 
+   table_v[ TABLE_OFFSET(page) ] = frame | PTENT_PRESENT | PTENT_RW; 
    invalidate_page((void*)page);
    
    /* Clear the frame.*/
    memset((void*)page, 0, PAGE_SIZE);
    node = (free_block_t*) page;
   
-   mutex_lock(&free_list_lock);
+   mutex_lock(&user_free_lock);
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
    n_free_frames++;
-   mutex_unlock(&free_list_lock);
+   mutex_unlock(&user_free_lock);
 
    /* This frame should now be invisible to the process. */
-   table[ TABLE_OFFSET(page) ] = 0;
+   table_v[ TABLE_OFFSET(page) ] = 0;
    invalidate_page((void*)page);
 
    return 0;

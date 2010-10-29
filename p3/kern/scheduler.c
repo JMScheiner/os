@@ -20,6 +20,7 @@
 #include <loader.h>
 #include <string.h>
 #include <heap.h>
+#include <global_thread.h>
 
 #define INIT_PROGRAM "coolness"
 
@@ -38,9 +39,9 @@ static tcb_t* blocked;
 */
 static sleep_heap_t sleepers;
 
-/**
- * @brief Initialize the scheduler queues.
- */
+/** 
+* @brief Initialize the scheduler.
+*/
 void scheduler_init()
 {
    heap_init(&sleepers);
@@ -139,10 +140,15 @@ void scheduler_next()
    {
       /* Do something useful here!!! */
    }
-   
+
    current = runnable;
    if(!runnable)
    {
+      if(blocked)
+      {
+         lprintf("Deadlock!");
+         MAGIC_BREAK;
+      }
       /* If there is no one in the run queue, we are responsible 
        * for launching the first task (again if necessary).
        */
@@ -151,7 +157,7 @@ void scheduler_next()
    
    runnable = LIST_NEXT(runnable, scheduler_node);
    set_esp0((int)runnable->kstack);
-   context_switch(&current->esp, &runnable->esp, runnable->pcb->dir);
+   context_switch(&current->esp, &runnable->esp, runnable->pcb->dir_p);
 }
 
 /**

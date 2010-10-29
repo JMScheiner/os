@@ -10,6 +10,7 @@
 #include <thread.h>
 #include <pagefault.h>
 #include <mutex.h>
+#include <global_thread.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -56,12 +57,12 @@ pcb_t* initialize_first_process()
 	pcb->ppid = 0;
 	pcb->thread_count = 0;
    pcb->regions = NULL;
-   pcb->kvm_bottom = KVM_TOP;
 
-	pcb->dir = mm_new_directory();
+	mm_new_directory(pcb);
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
+	mutex_init(&pcb->kvm_lock);
    
    mutex_lock(&pcb_table_lock);
    HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
@@ -77,9 +78,8 @@ pcb_t* initialize_process()
 	pcb->ppid = get_pid();
 	pcb->thread_count = 0;
    pcb->regions = NULL;
-   pcb->kvm_bottom = KVM_TOP;
    
-	pcb->dir = mm_new_directory();
+	mm_new_directory(pcb);
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
@@ -99,8 +99,9 @@ int get_pid() {
 	return tcb->pcb->pid;
 }
 
-static void initialize_region(const char *file, unsigned long offset, unsigned long len,
-		unsigned long start, unsigned long end) 
+static void initialize_region(const char *file, unsigned long offset, 
+   unsigned long len, unsigned long start, unsigned long end) 
+		
 {
 	getbytes(file, offset, len, (char *)start);
 	memset((char *)start + len, 0, end - start - len);
@@ -120,22 +121,27 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
       PTENT_RO | PTENT_USER,  rodata_fault, pcb);
    
    //Allocate data region.
-   allocate_region(
-      (char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
+   allocate_region((char*)elf.e_datstart, 
+      (char*)elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
       PTENT_RW | PTENT_USER,  dat_fault, pcb);
       
    //Allocate bss region.
    // TODO Keep a global "zero" read only page for ZFOD regions (like bss).
    allocate_region((char*)elf.e_datstart + elf.e_datlen, 
-      elf.e_datstart + elf.e_datlen + elf.e_bsslen, PTENT_RW | PTENT_USER | PTENT_ZFOD, 
-      bss_fault, pcb);
+      elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
+      PTENT_RW | PTENT_USER | PTENT_ZFOD, bss_fault, pcb);
+      
    
    // Allocate stack region (same for all processes).
    allocate_stack_region(pcb);
 
-   initialize_region(file, elf.e_txtoff, elf.e_txtlen, elf.e_txtstart, elf.e_rodatstart);
-	initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, elf.e_rodatstart, elf.e_datstart);
-	initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
+   initialize_region(file, elf.e_txtoff, elf.e_txtlen, 
+      elf.e_txtstart, elf.e_rodatstart);
+      
+   initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, 
+      elf.e_rodatstart, elf.e_datstart);
+	
+   initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen);
 			
 	return 0;

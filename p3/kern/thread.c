@@ -7,6 +7,7 @@
 #include <atomic.h>
 #include <page.h>
 #include <mm.h>
+#include <kvm.h>
 #include <asm_helper.h>
 #include <reg.h>
 #include <list.h>
@@ -45,12 +46,11 @@ tcb_t* initialize_thread(pcb_t *pcb)
 {
 	assert(pcb);
    
-   void* kstack_page = mm_new_kv_page(pcb);
+   void* kstack_page = kvm_new_page();
+   lprintf("new kernel stack page at %p", kstack_page);
 
    /* Put the TCB at the bottom of the kernel stack. */
-   tcb_t* tcb = (tcb_t*)malloc(sizeof(tcb_t));
-   tcb_t** tcbp = (tcb_t**)kstack_page;
-   *tcbp = tcb;
+   tcb_t* tcb = (tcb_t*)kstack_page;
 	
    tcb->esp = kstack_page + PAGE_SIZE; 
    tcb->kstack = kstack_page + PAGE_SIZE;
@@ -75,6 +75,6 @@ tcb_t* initialize_thread(pcb_t *pcb)
 tcb_t *get_tcb()
 {
 	void *esp = get_esp();
-	return *(tcb_t **)PAGE_OF(esp);
+	return (tcb_t *)PAGE_OF(esp);
 }
 

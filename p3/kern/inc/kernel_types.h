@@ -12,7 +12,6 @@ typedef struct PROCESS_CONTROL_BLOCK pcb_t;
 typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct COND cond_t;
 typedef struct SLEEP_HEAP sleep_heap_t;
-typedef struct FREE_BLOCK free_block_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 
@@ -49,26 +48,18 @@ struct PROCESS_CONTROL_BLOCK
 	/** @brief Number of kernel threads running within the process. */
 	int thread_count;
 
-	/** @brief Base address of the process page directory. */
-	void *dir;
+	/** @brief Base phys and virt addresses of the processes page directory. */
 	void *dir_p;
-
-   /* @brief Virtual address of the virtual directory. 
-    *    Maps addresses to page table virtual addresses. */
 	void *dir_v;
    
-   /* @brief will always point to a page we can allocate. 
-    * FIXME FIXME We also need to keep a free list since when kernel stacks 
-    *  and page tables (if they) get released it will fragment kvm.
-    *
-    * */
-   void* kvm_bottom;
+   /** @brief Translates addresses to virtual table addresses*/
+   void *virtual_dir;
    
-   /** @brief A list of regions with different page fault and freeing procedures. */
+   /** @brief A list of regions with different page fault procedures. */
    region_t* regions;
 
 	/** @brief Mutual exclusion lock for pcb fields. */
-	mutex_t lock, region_lock, directory_lock;
+	mutex_t lock, region_lock, directory_lock, kvm_lock;
 };
 
 /** @brief Thread control block structure. */
@@ -107,15 +98,6 @@ struct SLEEP_HEAP
    int index;
    int size; 
    tcb_t** data; 
-};
-
-/** 
-* @brief A single node in a very simple free list. 
-*/
-struct FREE_BLOCK 
-{
-   /* @brief The next free block of physical memory. */
-   struct FREE_BLOCK* next;
 };
 
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */

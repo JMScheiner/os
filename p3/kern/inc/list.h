@@ -95,13 +95,5 @@
       } \
    } while (0)
 
-#define LIST_DO(list, iter, instance) \
-   iter = list; \
-   do
-
-#define LIST_WHILE(list, iter, instance) \
-   (iter) = LIST_NEXT(iter, instance); \
-	while((iter) != (list))
-
 #endif
 
