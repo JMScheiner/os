@@ -24,7 +24,7 @@
 #include <debug.h>
 #include <mutex.h>
 
-#define INIT_PROGRAM "readline_basic"
+#define INIT_PROGRAM "init"
 
 /**
  * @brief Circular queue of runnable threads. 
@@ -62,8 +62,8 @@ void scheduler_init()
  */
 void scheduler_register(tcb_t* tcb)
 {
-   debug_print("scheduler", "Adding %x to the scheduler.", tcb->tid);
-   LIST_INIT_NODE(tcb, scheduler_node);   
+   debug_print("scheduler", "Adding %p to the scheduler with tid 0x%x", tcb, tcb->tid);
+   LIST_INIT_NODE(tcb, scheduler_node);
    
    disable_interrupts();
    LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
@@ -89,6 +89,7 @@ void scheduler_run(tcb_t* tcb)
 
 void scheduler_make_runnable(tcb_t* tcb)
 {
+	debug_print("scheduler", "Unblocking thread %p", tcb);
 	disable_interrupts();
 	LIST_REMOVE(blocked, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
@@ -102,6 +103,7 @@ void scheduler_make_runnable(tcb_t* tcb)
  */
 void scheduler_block(tcb_t* tcb)
 {
+	debug_print("scheduler", "Blocking thread %p", tcb);
 	disable_interrupts();
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
@@ -115,7 +117,9 @@ void scheduler_block(tcb_t* tcb)
 void scheduler_block_me()
 {
 	tcb_t *tcb = get_tcb();
+	debug_print("scheduler", "Blocking myself, thread %p", tcb);
 	disable_interrupts();
+	MAGIC_BREAK;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
 	scheduler_next(tcb);
@@ -130,6 +134,7 @@ void scheduler_block_me()
  */
 void scheduler_die(mutex_t *lock)
 {
+	debug_print("scheduler", "Dying %p", get_tcb());
 	disable_interrupts();
 	mutex_unlock(lock);
 	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
@@ -143,10 +148,9 @@ void scheduler_die(mutex_t *lock)
  */
 void scheduler_next(tcb_t* tcb)
 {
-   lprintf("Context switch");
    tcb_t *sleeper;
    unsigned long now;
-   
+   debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
    sleeper = heap_peek(&sleepers); 
    now = time();
    
@@ -168,6 +172,7 @@ void scheduler_next(tcb_t* tcb)
       if(sleeper || blocked)
       {
          tcb_t* global = global_tcb();
+				 debug_print("scheduler", "running global thread %p", global);
          set_esp0((int)global_tcb()->kstack);
          context_switch(&tcb->esp, 
             &global->esp, global->pcb->dir_p);
@@ -177,10 +182,12 @@ void scheduler_next(tcb_t* tcb)
       /* If there is no one in the run queue, we are responsible 
        * for launching the first task (again if necessary).
        */
+			debug_print("scheduler", "reloading init");
       load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
    }
-   
    runnable = LIST_NEXT(runnable, scheduler_node);
+	 debug_print("scheduler", "now running %p", runnable);
+   MAGIC_BREAK;
    set_esp0((int)runnable->kstack);
    context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);
 }
@@ -197,6 +204,7 @@ void scheduler_next(tcb_t* tcb)
 void scheduler_sleep(unsigned long ticks)
 {
    tcb_t* me = get_tcb();
+   debug_print("scheduler", "%p going to sleep for %d ticks", me, ticks);
    me->wakeup = time() + ticks;
    
    disable_interrupts();

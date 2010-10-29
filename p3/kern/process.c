@@ -11,6 +11,7 @@
 #include <pagefault.h>
 #include <mutex.h>
 #include <global_thread.h>
+#include <cond.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -75,7 +76,9 @@ pcb_t* initialize_process(boolean_t first_process)
 	mutex_init(&pcb->status_lock);
 	mutex_init(&pcb->waiter_lock);
 	mutex_init(&pcb->check_waiter_lock);
-   
+
+	cond_init(&pcb->wait_signal);
+
 	//HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
 	
 	return pcb;

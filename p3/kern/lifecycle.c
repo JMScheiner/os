@@ -68,6 +68,7 @@ void exec_handler(volatile regstate_t reg) {
 
 	/* TODO Check if there is more than one thread. */
 	char *execname = *(char **)arg_addr;
+	debug_print("exec", "Called with program %s", execname);
 	char **argvec = *(char ***)(arg_addr + sizeof(char *));
 	if (v_strcpy(name_ptr, execname, MAX_NAME_LENGTH) < 0) {
 		RETURN(EXEC_INVALID_NAME);
@@ -82,6 +83,7 @@ void exec_handler(volatile regstate_t reg) {
 			break;
 		}
 		char *arg = *argvec;
+		debug_print("exec", "Arg %d is %s", argc, arg);
 		int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
 		if (arg_len < 0) {
 			RETURN(EXEC_INVALID_ARG);
@@ -96,16 +98,13 @@ void exec_handler(volatile regstate_t reg) {
 		RETURN(err);
 	}
 
-	// TODO checking and loading the elf header should happen separately so exec
-	// can do it before freeing the current process.
 	simple_elf_t elf_hdr;
 	if ((err = elf_load_helper(&elf_hdr, execname_buf)) != ELF_SUCCESS) {
 		RETURN(err);
 	}
 	
-	/* TODO Free user memory regions. We should also check that we get a valid
-	 * elf header before freeing. */
-   
+	/* TODO Free user memory regions. */
+
 	// TODO This probably shouldn't be an assert.
    pcb_t* pcb = get_pcb();
 	assert(initialize_memory(execname_buf, elf_hdr, pcb) == 0);
@@ -136,7 +135,9 @@ void thread_fork_handler(volatile regstate_t reg)
    tcb_t* new_tcb;
 
    pcb = get_pcb();
+	 debug_print("thread_fork", "Called from process %p", pcb);
    new_tcb = initialize_thread(pcb);
+	 debug_print("thread_fork", "New tcb %p", new_tcb);
    newtid = new_tcb->tid;
    atomic_add(&pcb->thread_count, 1);
    
@@ -170,6 +171,8 @@ void fork_handler(volatile regstate_t reg)
    
    new_pcb = initialize_process(FALSE);
    new_tcb = initialize_thread(new_pcb);
+	 debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
+	 debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
 	 atomic_add(&current_pcb->unclaimed_children, 1);
@@ -275,6 +278,7 @@ void set_status_handler(volatile regstate_t reg)
 {
 	pcb_t *pcb = get_pcb();
 	pcb->status.status = (int)SYSCALL_ARG(reg);
+	debug_print("vanish", "Set status of pcb %p to %d", pcb, pcb->status.status);
 }
 
 /** 
@@ -294,6 +298,7 @@ void vanish_handler(volatile regstate_t reg)
 {
 	tcb_t *tcb = get_tcb();
 	pcb_t *pcb = tcb->pcb;
+	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
 		// We are the last thread in our process
@@ -303,6 +308,7 @@ void vanish_handler(volatile regstate_t reg)
 		if (parent == NULL) {
 			parent = init_process;
 		}
+		debug_print("vanish", "Last thread, signalling %p", parent);
 		status_t *status = &pcb->status;
 		mutex_lock(&parent->status_lock);
 		status->next = parent->zombie_statuses;
@@ -312,7 +318,8 @@ void vanish_handler(volatile regstate_t reg)
 	}
 	
 	mutex_lock(&zombie_stack_lock);
-	kvm_free_page(zombie_stack);
+	debug_print("vanish", "Freeing zombie %p", zombie_stack);
+	if (zombie_stack) kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
 	scheduler_die(&zombie_stack_lock);
 	assert(FALSE);
@@ -327,11 +334,13 @@ void vanish_handler(volatile regstate_t reg)
 void wait_handler(volatile regstate_t reg)
 {
 	int *status_addr = (int *)SYSCALL_ARG(reg);
-	if (!mm_validate_write(status_addr, sizeof(int))) {
+	debug_print("wait", "Called with status address %p", status_addr);
+	if (status_addr != NULL && !mm_validate_write(status_addr, sizeof(int))) {
 		RETURN(WAIT_INVALID_ARGS);
 	}
 
 	pcb_t *pcb = get_pcb();
+	debug_print("wait", "pcb = %p", pcb);
 	mutex_lock(&pcb->check_waiter_lock);
 	if (pcb != init_process && pcb->unclaimed_children == 0) {
 		/* There are threads waiting on every child process. We will not be 
@@ -346,12 +355,14 @@ void wait_handler(volatile regstate_t reg)
 	mutex_unlock(&pcb->check_waiter_lock);
 
 	mutex_lock(&pcb->waiter_lock);
+	debug_print("wait", "zombie child status = %p before cond_wait", pcb->zombie_statuses);
 	disable_interrupts();
 	if (pcb->zombie_statuses == NULL) {
 		cond_wait(&pcb->wait_signal);
 	}
 	enable_interrupts();
 
+	debug_print("wait", "zombie child status = %p after cond_wait", pcb->zombie_statuses);
 	mutex_lock(&pcb->status_lock);
 	status_t *status = pcb->zombie_statuses;
 	assert(status != NULL);
@@ -360,7 +371,8 @@ void wait_handler(volatile regstate_t reg)
 
 	mutex_unlock(&pcb->waiter_lock);
 
-	*status_addr = status->status;
+	if (status_addr)
+		*status_addr = status->status;
 	int tid = status->tid;
 	free(pcb);
 	RETURN(tid);

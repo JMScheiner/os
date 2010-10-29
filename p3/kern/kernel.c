@@ -45,11 +45,6 @@
 #include <asm_helper.h>
 #include <lifecycle.h>
 
-/**
- * @brief The first program to load.
- */
-#define INIT_PROGRAM "coolness"
-
 /*
  * state for kernel memory allocation.
  */
