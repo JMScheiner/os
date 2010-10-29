@@ -17,7 +17,7 @@
 #include <kernel_types.h>
 #include <mutex.h>
 #include <global_thread.h>
-#include <simics.h>
+#include <debug.h>
 
 static void* _kvm_initial_table;
 void* kvm_initial_table() { return _kvm_initial_table; }
@@ -86,7 +86,7 @@ void* kvm_alloc_page(void* page)
    if(FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT) 
       return (void*)PAGE_OF(table[ TABLE_OFFSET(page) ]) ;
    
-   lprintf("Mapping %p in table %p", page, table);
+   debug_print("kvm", "Mapping %p in table %p", page, table);
    frame = mm_new_frame((unsigned long*)table, (unsigned long)page);
 
    /* Set appropriate flags for the new frame. */
@@ -200,7 +200,7 @@ void* kvm_vtop(void* vaddr)
    assert(vaddr > (void*)USER_MEM_END);
    
    page_dirent_t* dir = (page_dirent_t*)global_pcb()->dir_v;
-   lprintf("kvm_vtop: dir = %p", dir);
+   debug_print("kvm", "kvm_vtop: dir = %p", dir);
    page_tablent_t* table = dir[ DIR_OFFSET(vaddr) ];
    
    assert(FLAGS_OF(table) & PDENT_PRESENT);

@@ -21,8 +21,9 @@
 #include <string.h>
 #include <heap.h>
 #include <global_thread.h>
+#include <debug.h>
 
-#define INIT_PROGRAM "readline_basic"
+#define INIT_PROGRAM "coolness"
 
 /**
  * @brief Circular queue of runnable threads.
@@ -59,7 +60,7 @@ void scheduler_init()
  */
 void scheduler_register(tcb_t* tcb)
 {
-   //lprintf("Adding %x to the scheduler.", tcb->tid);
+   debug_print("scheduler", "Adding %x to the scheduler.", tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);   
    
    disable_interrupts();
@@ -81,16 +82,15 @@ void scheduler_run(tcb_t* tcb)
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	scheduler_next();
-   enable_interrupts();
+	enable_interrupts();
 }
 
 void scheduler_make_runnable(tcb_t* tcb)
 {
-   disable_interrupts();
-   LIST_REMOVE(blocked, tcb, scheduler_node);
-   LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
-   enable_interrupts();
-
+	disable_interrupts();
+	LIST_REMOVE(blocked, tcb, scheduler_node);
+	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+	enable_interrupts();
 }
 
 /**
@@ -100,19 +100,36 @@ void scheduler_make_runnable(tcb_t* tcb)
  */
 void scheduler_block(tcb_t* tcb)
 {
-   disable_interrupts();
-   LIST_REMOVE(runnable, tcb, scheduler_node);
-   LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-   enable_interrupts();
+	disable_interrupts();
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
+	enable_interrupts();
 }
 
-void scheduler_block_me(tcb_t* me)
+/**
+ * @brief Place ourself on the blocked list to avoid being scheduled and
+ * run the next thread.
+ */
+void scheduler_block_me()
 {
-   disable_interrupts();
-   LIST_REMOVE(runnable, me, scheduler_node);
-   LIST_INSERT_BEFORE(blocked, me, scheduler_node);
-   scheduler_next();
-   enable_interrupts();
+	tcb_t *tcb = get_tcb();
+	disable_interrupts();
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
+	scheduler_next();
+	enable_interrupts();
+}
+
+/**
+ * @brief Remove ourself from the runnable queue, ensuring that we never
+ * run again.
+ */
+void scheduler_die()
+{
+	disable_interrupts();
+	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
+	scheduler_next();
+	assert(FALSE);
 }
 
 /**
@@ -151,7 +168,7 @@ void scheduler_next()
       }
       if(blocked)
       {
-         lprintf("Deadlock!");
+         debug_print("scheduler", "Deadlock!");
          MAGIC_BREAK;
       }
       /* If there is no one in the run queue, we are responsible 

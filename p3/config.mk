@@ -76,7 +76,7 @@ KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
 KERNEL_OBJS += synchro/mutex.o synchro/cond.o validation.o
 KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o keyboard.o timer.o
 KERNEL_OBJS += scheduler.o stub.o lifecycle.o threadman.o
-KERNEL_OBJS += memman.o misc.o util/heap.o global_thread.o
+KERNEL_OBJS += memman.o misc.o util/heap.o global_thread.o debug.o
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your

@@ -17,25 +17,26 @@
  */
 static int next_pid = 0xc0de0000;
 
-DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
+/** @brief pcb of the init process. */
+pcb_t *init_process;
 
-/**
- * @brief Hashtable mapping pids to pcbs.
- */
-pcb_table_t pcb_table;
+//DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
 
-/**
- * @brief Mutual exclusion lock for pcb_table.
- */
-mutex_t pcb_table_lock;
+/** @brief Hashtable mapping pids to pcbs. */
+//pcb_table_t pcb_table;
+
+/** @brief Mutual exclusion lock for pcb_table. */
+//mutex_t pcb_table_lock;
 
 /**
  * @brief Initialize the pcb_table.
  */
 void init_process_table(void)
 {
-   mutex_init(&pcb_table_lock);
-	STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash);
+	//mutex_init(&pcb_table_lock);
+	//mutex_init(&status_table_lock);
+	//STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash, 
+	//		&pcb_table_lock);
 }
 
 /**
@@ -50,45 +51,34 @@ pcb_t* get_pcb()
    return tcb->pcb;
 }
 
-pcb_t* initialize_first_process() 
+pcb_t* initialize_process(boolean_t first_process) 
 {
-   pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
+	pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
 	pcb->pid = atomic_add(&next_pid, 1);
-	pcb->ppid = 0;
+	if (first_process) {
+		pcb->parent = NULL;
+		init_process = pcb;
+	}
+	else {
+		pcb->parent = get_pcb();
+	}
 	pcb->thread_count = 0;
-   pcb->regions = NULL;
-
+	pcb->regions = NULL;
+	pcb->status.status = 0;
+	pcb->unclaimed_children = 0;
+   
 	mm_new_directory(pcb);
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
-	mutex_init(&pcb->region_lock);
 	mutex_init(&pcb->kvm_lock);
-   
-   mutex_lock(&pcb_table_lock);
-   HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
-   mutex_unlock(&pcb_table_lock);
-	
-   return pcb;
-}
-
-pcb_t* initialize_process() 
-{
-   pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
-	pcb->pid = atomic_add(&next_pid, 1);
-	pcb->ppid = get_pid();
-	pcb->thread_count = 0;
-   pcb->regions = NULL;
-   
-	mm_new_directory(pcb);
-	mutex_init(&pcb->lock);
-	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
+	mutex_init(&pcb->status_lock);
+	mutex_init(&pcb->waiter_lock);
+	mutex_init(&pcb->check_waiter_lock);
    
-   mutex_lock(&pcb_table_lock);
-   HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
-   mutex_unlock(&pcb_table_lock);
+	//HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
 	
-   return pcb;
+	return pcb;
 }
 
 int get_pid() {
@@ -100,8 +90,7 @@ int get_pid() {
 }
 
 static void initialize_region(const char *file, unsigned long offset, 
-   unsigned long len, unsigned long start, unsigned long end) 
-		
+		unsigned long len, unsigned long start, unsigned long end) 
 {
 	getbytes(file, offset, len, (char *)start);
 	memset((char *)start + len, 0, end - start - len);

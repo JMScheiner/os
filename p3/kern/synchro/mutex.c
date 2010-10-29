@@ -54,10 +54,7 @@ void mutex_lock(mutex_t *mp)
 {
 	assert(mp);
 	assert(mp->initialized);
-	if (!locks_enabled) {
-		mp->locked = TRUE;
-		return;
-	}
+	if (!locks_enabled) return;
 
 	mutex_node_t node;
 	node.tcb = get_tcb();
@@ -71,7 +68,7 @@ void mutex_lock(mutex_t *mp)
 		mp->tail = &node;
 	}
 	while (mp->locked || mp->head != &node) {
-		scheduler_block_me(node.tcb);
+		scheduler_block_me();
 		disable_interrupts();
 	}
 	mp->locked = TRUE;
@@ -87,10 +84,9 @@ void mutex_lock(mutex_t *mp)
 void mutex_unlock(mutex_t *mp) {
 	assert(mp);
 	assert(mp->initialized);
-
-	mp->locked = FALSE;
 	if (!locks_enabled) return;
 
+	mp->locked = FALSE;
 	disable_interrupts();
 	if(mp->head) scheduler_make_runnable(mp->head->tcb);
 	enable_interrupts();

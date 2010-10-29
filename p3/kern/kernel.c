@@ -40,6 +40,7 @@
 #include <thread.h>
 #include <loader.h>
 #include <types.h>
+#include <lifecycle.h>
 #include <global_thread.h>
 #include <asm_helper.h>
 #include <lifecycle.h>
@@ -88,7 +89,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    /* Give the "global process" a pcb and tcb. */
    global_pcb()->pid = -1;
-   global_pcb()->ppid = -1;
+   global_pcb()->parent = NULL;
    global_pcb()->thread_count = 1;
    global_pcb()->regions = NULL;
    
@@ -106,6 +107,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    timer_init();
    keyboard_init();
    scheduler_init();
+	lifecycle_init();
    init_process_table();
    init_thread_table();
    

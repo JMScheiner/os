@@ -23,6 +23,23 @@
 #include <cr.h>
 #include <scheduler.h>
 #include <string.h>
+#include <mutex.h>
+#include <cond.h>
+#include <x86/asm.h>
+#include <simics.h>
+#include <types.h>
+
+void *zombie_stack = NULL;
+mutex_t zombie_stack_lock;
+
+extern pcb_t *init_process;
+
+/**
+ * @brief Initialize the lifecycle handler data structures.
+ */
+void lifecycle_init() {
+	mutex_init(&zombie_stack_lock);
+}
 
 /**
  * @brief Handle the exec system call.
@@ -89,8 +106,8 @@ void exec_handler(volatile regstate_t reg) {
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
-	lprintf("Running %s", execname_buf);
-   sim_reg_process((void*)get_cr3(), execname_buf);
+	debug_print("exec", "Running %s", execname_buf);
+	sim_reg_process((void*)pcb->dir_p, execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
 	assert(0);
@@ -142,10 +159,14 @@ void fork_handler(volatile regstate_t reg)
    pcb_t *new_pcb; 
    tcb_t *new_tcb;
 
-   new_pcb = initialize_process();
+   tcb_t *current_tcb = get_tcb();
+   pcb_t *current_pcb = current_tcb->pcb;
+   
+   new_pcb = initialize_process(FALSE);
    new_tcb = initialize_thread(new_pcb);
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
+	 atomic_add(&current_pcb->unclaimed_children, 1);
   
    /* Duplicate the current address space in the new process. */
    mm_duplicate_address_space(new_pcb);
@@ -226,42 +247,99 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
 */
 void set_status_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_status ");
-	MAGIC_BREAK;
-   //TODO
+	pcb_t *pcb = get_pcb();
+	pcb->status.status = (int)SYSCALL_ARG(reg);
 }
 
 /** 
 * @brief Terminates execution of the calling thread "immediately."
 *
-*  If the invoking thread is the last thread in its task, the kernel deallocates 
-*     all resources in use by the task and makes the exit status of the task
-*     available to the parent task (the task which created this task using fork())
-*     via wait().
+*  If the invoking thread is the last thread in its task, the kernel 
+*  deallocates all resources in use by the task and makes the exit status 
+*  of the task available to the parent task (the task which created this 
+*  task using fork()) via wait().
 *
-*  If the parent task is no longer running, exit status of the task is made available to 
-*     the kernel-launched "init" task instead. 
+*  If the parent task is no longer running, exit status of the task is 
+*  made available to the kernel-launched "init" task instead. 
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
 void vanish_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring vanish");
-	MAGIC_BREAK;
-   //TODO
+	tcb_t *tcb = get_tcb();
+	pcb_t *pcb = tcb->pcb;
+	int remaining_threads = atomic_add(&pcb->thread_count, -1);
+	if (remaining_threads == 1) {
+		// We are the last thread in our process
+		//region_t *region = pcb->regions;
+		// Free regions
+		pcb_t *parent = pcb->parent;
+		if (parent == NULL) {
+			parent = init_process;
+		}
+		status_t *status = &pcb->status;
+		mutex_lock(&parent->status_lock);
+		status->next = parent->zombie_statuses;
+		parent->zombie_statuses = status;
+		mutex_unlock(&parent->status_lock);
+		cond_signal(&parent->wait_signal);
+	}
+
+	mutex_lock(&zombie_stack_lock);
+	// TODO 
+	// mm_free_kernel_page(zombie_stack);
+	zombie_stack = tcb;
+	mutex_unlock(&zombie_stack_lock);
+	scheduler_die();
+	assert(FALSE);
 }
 
 /** 
-* @brief Collects the exit status of a task and stores it in the integer referenced
-*  in %esi.
+* @brief Collects the exit status of a task and stores it in the 
+* integer referenced in %esi.
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
 void wait_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring wait");
-	MAGIC_BREAK;
-   //TODO
+	int *status_addr = (int *)SYSCALL_ARG(reg);
+	if (!mm_validate_write(status_addr, sizeof(int))) {
+		RETURN(WAIT_INVALID_ARGS);
+	}
+
+	pcb_t *pcb = get_pcb();
+	mutex_lock(&pcb->check_waiter_lock);
+	if (pcb != init_process && pcb->unclaimed_children == 0) {
+		/* There are threads waiting on every child process. We will not be 
+		 * able to collect a status so return immediately. */
+		mutex_unlock(&pcb->check_waiter_lock);
+		RETURN(WAIT_NO_CHILDREN);
+	}
+
+	/* The unclaimed_children field will be meaningless for init_process. */
+	atomic_add(&pcb->unclaimed_children, -1);
+	assert(pcb == init_process || pcb->unclaimed_children >= 0);
+	mutex_unlock(&pcb->check_waiter_lock);
+
+	mutex_lock(&pcb->waiter_lock);
+	disable_interrupts();
+	if (pcb->zombie_statuses == NULL) {
+		cond_wait(&pcb->wait_signal);
+	}
+	enable_interrupts();
+
+	mutex_lock(&pcb->status_lock);
+	status_t *status = pcb->zombie_statuses;
+	assert(status != NULL);
+	pcb->zombie_statuses = pcb->zombie_statuses->next;
+	mutex_unlock(&pcb->status_lock);
+
+	mutex_unlock(&pcb->waiter_lock);
+
+	*status_addr = status->status;
+	int tid = status->tid;
+	free(pcb);
+	RETURN(tid);
 }
 
 /** 

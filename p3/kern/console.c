@@ -48,7 +48,7 @@ void readline_handler(volatile regstate_t reg)
 		RETURN(READLINE_INVALID_BUFFER);
 	}
 
-	lprintf("0x%x: reading up to %d chars to %p\n", 
+	debug_print("readline", "%0x%x: reading up to %d chars to %p\n", 
 			get_tcb()->tid, len, buf);
 
 	int read = readline(buf, len);

@@ -12,8 +12,9 @@ void scheduler_run(tcb_t *tcb);
 void scheduler_next(void);
 
 void scheduler_block(tcb_t* tcb);
-void scheduler_block_me(tcb_t* me);
+void scheduler_block_me();
 void scheduler_make_runnable(tcb_t* tcb);
+void scheduler_die();
 
 void scheduler_sleep(unsigned long ticks);
 

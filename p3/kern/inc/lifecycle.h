@@ -27,6 +27,10 @@
 #define EXEC_ARGS_TOO_LONG -3
 #define EXEC_INVALID_NAME -4
 
+#define WAIT_INVALID_ARGS -1
+#define WAIT_NO_CHILDREN -2
+
+void lifecycle_init();
 
 void exec_handler(volatile regstate_t reg);
 
