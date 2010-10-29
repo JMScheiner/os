@@ -35,6 +35,7 @@ void gettid_handler(volatile regstate_t reg)
 */
 void yield_handler(volatile regstate_t reg)
 {
+   int tid = (int)SYSCALL_ARG(reg);
 	lprintf("Ignoring yield");
 	MAGIC_BREAK;
    //TODO
