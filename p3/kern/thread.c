@@ -14,16 +14,16 @@
 #include <scheduler.h>
 #include <mutex.h>
 
-static mutex_t tcb_table_lock;
+//static mutex_t tcb_table_lock;
 
 /** @brief Number of pages per kernel stack. */
 
 static int next_tid = 0xdeadbeef;
 
-DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
+//DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
 
 /* @brief Maps tids to tcbs.  */
-tcb_table_t tcb_table;
+//tcb_table_t tcb_table;
 
 /** 
 * @brief Return a unique tid. 
@@ -37,25 +37,28 @@ int new_tid()
 
 void init_thread_table(void) 
 {
-	mutex_init(&tcb_table_lock);
-	STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash, &tcb_table_lock);
+	//mutex_init(&tcb_table_lock);
+	//STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash, &tcb_table_lock);
 }
 
 tcb_t* initialize_thread(pcb_t *pcb) 
 {
 	assert(pcb);
-   
-   void* kstack_page = mm_new_kernel_page();
+	void* kstack_page = mm_new_kernel_page();
 
-   /* Put the TCB at the bottom of the kernel stack. */
-   tcb_t* tcb = (tcb_t*)kstack_page;
+	/* Put the TCB at the bottom of the kernel stack. */
+	tcb_t* tcb = (tcb_t*)kstack_page;
 	tcb->esp = kstack_page + PAGE_SIZE; 
-   tcb->kstack = kstack_page + PAGE_SIZE;
+	tcb->kstack = kstack_page + PAGE_SIZE;
 	
-   tcb->tid = new_tid();
+	tcb->tid = new_tid();
 	tcb->pcb = pcb;
+	int siblings = atomic_add(&pcb->thread_count, 1);
+	if (siblings == 0) {
+		pcb->status.tid = tcb->tid;
+	}
 
-	HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);
+	//HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);
 
 	return tcb;
 }

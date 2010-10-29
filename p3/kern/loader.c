@@ -28,6 +28,7 @@
 #include <mode_switch.h>
 #include <eflags.h>
 #include <assert.h>
+#include <types.h>
 
 /* --- Local function prototypes --- */ 
 
@@ -169,7 +170,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 		return err;
 	}
    
-	pcb_t* pcb = initialize_first_process();
+	pcb_t* pcb = initialize_process(TRUE);
    
    set_cr3((int)pcb->page_directory);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {

@@ -40,6 +40,7 @@
 #include <thread.h>
 #include <loader.h>
 #include <types.h>
+#include <lifecycle.h>
 
 /**
  * @brief The first program to load.
@@ -96,6 +97,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    keyboard_init();
    scheduler_init();
    mm_init();
+	 lifecycle_init();
    init_process_table();
    init_thread_table();
    

@@ -70,15 +70,15 @@ void scheduler_run(tcb_t* tcb)
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	scheduler_next();
+	enable_interrupts();
 }
 
 void scheduler_make_runnable(tcb_t* tcb)
 {
-   disable_interrupts();
-   LIST_REMOVE(blocked, tcb, scheduler_node);
-   LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
-   enable_interrupts();
-
+	disable_interrupts();
+	LIST_REMOVE(blocked, tcb, scheduler_node);
+	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+	enable_interrupts();
 }
 
 /**
@@ -88,19 +88,36 @@ void scheduler_make_runnable(tcb_t* tcb)
  */
 void scheduler_block(tcb_t* tcb)
 {
-   disable_interrupts();
-   LIST_REMOVE(runnable, tcb, scheduler_node);
-   LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-   enable_interrupts();
+	disable_interrupts();
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
+	enable_interrupts();
 }
 
-void scheduler_block_me(tcb_t* me)
+/**
+ * @brief Place ourself on the blocked list to avoid being scheduled and
+ * run the next thread.
+ */
+void scheduler_block_me()
 {
-   disable_interrupts();
-   LIST_REMOVE(runnable, me, scheduler_node);
-   LIST_INSERT_BEFORE(blocked, me, scheduler_node);
-   scheduler_next();
-   enable_interrupts();
+	tcb_t *tcb = get_tcb();
+	disable_interrupts();
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
+	scheduler_next();
+	enable_interrupts();
+}
+
+/**
+ * @brief Remove ourself from the runnable queue, ensuring that we never
+ * run again.
+ */
+void scheduler_die()
+{
+	disable_interrupts();
+	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
+	scheduler_next();
+	assert(FALSE);
 }
 
 /**

@@ -49,13 +49,13 @@ void page_fault_handler(volatile regstate_error_t reg)
       mutex_unlock(&pcb->region_lock);
       /* TODO These lprintf's should be turned into printf's when appropriate */
       if(ecode & PF_ECODE_NOT_PRESENT)
-         lprintf("Page Fault: Page of %p not present.", addr);
+         debug_print("page", "Page Fault: Page of %p not present.", addr);
       else if(ecode & PF_ECODE_WRITE)
-         lprintf("Page Fault: Illegal write to %p.", addr);
+         debug_print("page", "Page Fault: Illegal write to %p.", addr);
       else assert(0);
 
       /* TODO The user should be killed!!! */
-      MAGIC_BREAK;
+      debug_break("page");
    }
 }
 
@@ -70,7 +70,7 @@ void bss_fault(void* addr, int access_mode){}
 void stack_fault(void* addr, int access_mode)
 {
    /* We should auto allocate the stack region */
-   debug_print_page("Growing Stack to %p!!!", (void*)PAGE_OF(addr));
+   debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
    mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
 }
 
