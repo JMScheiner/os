@@ -22,6 +22,7 @@
 #include <heap.h>
 #include <global_thread.h>
 #include <debug.h>
+#include <mutex.h>
 
 #define INIT_PROGRAM "coolness"
 
@@ -123,10 +124,13 @@ void scheduler_block_me()
 /**
  * @brief Remove ourself from the runnable queue, ensuring that we never
  * run again.
+ *
+ * @param A locked mutex we're holding before we die.
  */
-void scheduler_die()
+void scheduler_die(mutex_t *lock)
 {
 	disable_interrupts();
+	mutex_unlock(lock);
 	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
 	scheduler_next();
 	assert(FALSE);
