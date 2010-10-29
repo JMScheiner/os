@@ -41,8 +41,29 @@
 #define SAME_PAGE(addr1, addr2) \
 	(PAGE_OF(addr1) == PAGE_OF(addr2))
 
-int mm_init(); 
+/** @brief Test whether a mask is completely set in the page given 
+ * by addr. */
+#define TEST_SET(addr, mask) \
+	(((addr) & (mask)) == (mask))
 
+/** @brief Test whether a mask is completely unset in the page given 
+ * by addr. */
+#define TEST_UNSET(addr, mask) \
+	(((addr) & (mask)) == 0)
+
+/**
+ * @brief Count the number of pages spanned by the range [addr, addr+len]
+ *
+ * @param addr The base address
+ * @param len The number of bytes in the range
+ *
+ * @return The number of pages in the range
+ */
+#define NUM_PAGES(addr, len) \
+	((PAGE_OF((unsigned long)(addr) + (len) - 1) \
+		- PAGE_OF(addr)) / PAGE_SIZE + 1)
+
+int mm_init(void); 
 void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
 void mm_free_pages(pcb_t* pcb, void* addr, size_t n);
 void* mm_new_kp_page();
@@ -51,6 +72,7 @@ void mm_duplicate_address_space(pcb_t* pcb);
 
 int mm_getflags(pcb_t* pcb, void* addr);
 boolean_t mm_validate(void* addr);
+boolean_t mm_validate_write(void* addr, int len);
 
 #endif /* end of include guard: MM_1PZ6H5QE */
 

@@ -20,6 +20,7 @@
 #include <timer.h>
 #include <console.h>
 #include <scheduler.h>
+#include <keyboard.h>
 
 /* multiboot header file */
 #include <multiboot.h>              /* boot_info */
@@ -97,6 +98,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
 	alloc_init();
    timer_init();
+   keyboard_init();
    scheduler_init();
    init_process_table();
    init_thread_table();

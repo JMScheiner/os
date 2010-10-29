@@ -403,7 +403,32 @@ boolean_t mm_validate(void* addr)
    int tflags = mm_getflags(get_pcb(), addr);
    if( (tflags & PTENT_USER) && (tflags & PTENT_PRESENT) )
       return TRUE;
-   else return FALSE; 
+   return FALSE; 
+}
+
+/**
+ * @brief Validate that a user's write buffer has sufficient permissions,
+ *        namely, that each page overlapping buf is 
+ *        - Present
+ *        - User mode
+ *        - Read/Write
+ *
+ * @param addr The base address
+ * @param len The number of bytes to check
+ *
+ * @return Whether len bytes can safely by written to addr
+ */
+boolean_t mm_validate_write(void *addr, int len)
+{
+	unsigned int npages = NUM_PAGES(addr, len);
+	int i;
+	for (i = 0; i < npages; i++) {
+		int tflags = mm_getflags((char *)addr + i*PAGE_SIZE);
+		if(tflags <= 0 || !TEST_SET(tflags, 
+					(PTENT_USER | PTENT_PRESENT | PTENT_RW)))
+			return FALSE;
+	}
+	return TRUE;
 }
 
 /** 

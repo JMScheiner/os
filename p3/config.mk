@@ -26,7 +26,7 @@ UPDATE_METHOD = afs
 # A list of the test programs you want compiled in from the 410user/progs
 # directory.
 #
-410TESTS = ck1 knife peon coolness merchant
+410TESTS = ck1 knife peon coolness merchant readline_basic
 
 ###########################################################################
 # Test programs you have written which you wish to run

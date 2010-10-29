@@ -22,7 +22,7 @@
 #include <heap.h>
 #include <global_thread.h>
 
-#define INIT_PROGRAM "coolness"
+#define INIT_PROGRAM "readline_basic"
 
 /**
  * @brief Circular queue of runnable threads.

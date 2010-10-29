@@ -14,7 +14,7 @@
 #include <mm.h>
 #include <validation.h>
 #include <loader.h>
-#include <simics.h>
+#include <debug.h>
 #include <thread.h>
 #include <mode_switch.h>
 #include <atomic.h>
@@ -88,8 +88,8 @@ void exec_handler(volatile regstate_t reg) {
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
-	lprintf("Running %s", execname_buf);
-   sim_reg_process((void*)pcb->dir_p, execname_buf);
+	debug_print_exec("Running %s", execname_buf);
+   sim_reg_process((void*)get_cr3(), execname_buf);
 	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 	// Never get here
 	assert(0);
