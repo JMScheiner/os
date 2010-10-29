@@ -49,6 +49,7 @@
  * @brief The first program to load.
  */
 #define INIT_PROGRAM "coolness"
+#define GLOBAL_STACK_SIZE 0x200
 
 /*
  * state for kernel memory allocation.
@@ -86,6 +87,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     * exception handlers don't overlap in the IDT.
     */
    interrupt_setup();
+	alloc_init();
 
    /* Give the "global process" a pcb and tcb. */
    global_pcb()->pid = -1;
@@ -98,12 +100,11 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     *  this stack, and this thread of execution should never start up
     *  again.
     */
-   global_tcb()->kstack = get_esp();
+   global_tcb()->kstack = malloc(GLOBAL_STACK_SIZE) + GLOBAL_STACK_SIZE;
    global_tcb()->esp = global_tcb()->kstack;
    global_tcb()->tid = -1;
    global_tcb()->pcb = global_pcb();
 
-	alloc_init();
    timer_init();
    keyboard_init();
    scheduler_init();

@@ -24,7 +24,7 @@
 #include <debug.h>
 #include <mutex.h>
 
-#define INIT_PROGRAM "sleep"
+#define INIT_PROGRAM "readline_basic"
 
 /**
  * @brief Circular queue of runnable threads. 
@@ -143,6 +143,7 @@ void scheduler_die(mutex_t *lock)
  */
 void scheduler_next(tcb_t* tcb)
 {
+   lprintf("Context switch");
    tcb_t *sleeper;
    unsigned long now;
    
@@ -164,15 +165,13 @@ void scheduler_next(tcb_t* tcb)
    if(!runnable)
    {
       /* There is a sleeping thread, and no one to run - twiddle our thumbs.*/
-      if(sleeper)
+      if(sleeper || blocked)
       {
+         tcb_t* global = global_tcb();
+         set_esp0((int)global_tcb()->kstack);
          context_switch(&tcb->esp, 
-            &global_tcb()->esp, global_tcb()->pcb->dir_p);
-      }
-      else if(blocked)
-      {
-         debug_print("scheduler", "Deadlock!");
-         MAGIC_BREAK;
+            &global->esp, global->pcb->dir_p);
+          return;
       }
       
       /* If there is no one in the run queue, we are responsible 

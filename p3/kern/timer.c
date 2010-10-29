@@ -56,10 +56,14 @@ void timer_handler(void)
    
    /* Identify ourselves, and run the next thread. */
    tcb_t* global = global_tcb();
-   if(get_esp() < global->kstack)
+   if(get_esp() <= global->kstack)
+   {
       scheduler_next(global_tcb());
+   }
    else
+   {
       scheduler_next(get_tcb());
+   }
 
 
 }

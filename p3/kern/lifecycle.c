@@ -30,6 +30,10 @@
 #include <simics.h>
 #include <types.h>
 #include <debug.h>
+#include <eflags.h>
+#include <cr.h>
+#include <seg.h>
+
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -197,13 +201,29 @@ void arrange_global_context()
    tcb = global_tcb();
    esp = tcb->kstack;
    
+   /* First give it a proper "iret frame" */
+   /* Register contents do not matter. */
+   regstate_t reg;
+   reg.eip = (uint32_t)(loop_stub);
+   reg.cs = SEGSEL_KERNEL_CS;
+   reg.eflags = get_eflags() | EFL_IF;
+   reg.esp = (uint32_t)tcb->kstack;
+   reg.ss = SEGSEL_KERNEL_DS;
+   
+   esp -= sizeof(regstate_t);
+   memcpy(esp, (void*)&reg, sizeof(regstate_t));
+   
    /* Push the return address for a context switches ret */
    esp -= 4; 
    ret_site = esp;
-   (*ret_site) = (loop_stub);
+   debug_print("lifecycle", "ret_site = %p", ret_site);
+   (*ret_site) = (pop_stub);
    
    /* Set up the context context_switch will popa off the stack. */
+   debug_print("lifecycle", "global thread before pusha = %p", esp);
    esp -= sizeof(pusha_t);
+   debug_print("lifecycle", "global thread esp = %p", esp);
+   debug_print("lifecycle", "global thread kernel stack = %p", tcb->kstack);
    tcb->esp = esp;
 }
 

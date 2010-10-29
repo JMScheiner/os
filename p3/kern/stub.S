@@ -7,5 +7,7 @@ pop_stub:
 	iret        /* Return from interrupt */
 
 loop_stub: 
-   jmp loop_stub
+   sti
+loop_forever:
+   jmp loop_forever 
 
