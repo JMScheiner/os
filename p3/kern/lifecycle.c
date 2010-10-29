@@ -13,6 +13,7 @@
 #include <global_thread.h>
 #include <reg.h>
 #include <mm.h>
+#include <kvm.h>
 #include <validation.h>
 #include <loader.h>
 #include <simics.h>
@@ -289,13 +290,11 @@ void vanish_handler(volatile regstate_t reg)
 		mutex_unlock(&parent->status_lock);
 		cond_signal(&parent->wait_signal);
 	}
-
+	
 	mutex_lock(&zombie_stack_lock);
-	// TODO 
-	// mm_free_kernel_page(zombie_stack);
+	kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
-	mutex_unlock(&zombie_stack_lock);
-	scheduler_die();
+	scheduler_die(&zombie_stack_lock);
 	assert(FALSE);
 }
 

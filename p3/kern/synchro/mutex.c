@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <scheduler.h>
 #include <simics.h>
+#include <eflags.h>
 
 /**
  * @brief Global flag indicating whether locks have been enabled yet. Locks
@@ -87,8 +88,14 @@ void mutex_unlock(mutex_t *mp) {
 	if (!locks_enabled) return;
 
 	mp->locked = FALSE;
-	disable_interrupts();
-	if(mp->head) scheduler_make_runnable(mp->head->tcb);
-	enable_interrupts();
+	unsigned int eflags = get_eflags();
+	if (eflags & EFL_IF) {
+		disable_interrupts();
+		if(mp->head) scheduler_make_runnable(mp->head->tcb);
+		enable_interrupts();
+	}
+	else {
+		if(mp->head) scheduler_make_runnable(mp->head->tcb);
+	}
 }
 
