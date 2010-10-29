@@ -57,8 +57,22 @@ void readline_handler(volatile regstate_t reg)
 	RETURN(read);
 }
 
+/** 
+* @brief Prints len bytes of memory, starting at buf, to the console. 
+*  The calling thread should block until all characters have been 
+*     printed to the console. 
+*  
+*  Output of two concurrent print()s should not be intermixed. 
+*  If len is larger than some reasonable maximum or if buf is not a 
+*     valid memory address, an integer error code less than zero should be 
+*     returned.
+*  Characters printed to the console invoke standard newline, backspace, and scrolling behaviors.
+* 
+* @param reg The register state on entry to print.
+*/
 void print_handler(volatile regstate_t reg)
 {
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	lprintf("Ignoring print");
 	MAGIC_BREAK;
    //TODO

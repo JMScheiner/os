@@ -90,6 +90,10 @@
       } \
       else \
       { \
+         if( (list) == (node) ) \
+         { \
+            (list) = LIST_NEXT(node, instance); \
+         } \
          LIST_NEXT(LIST_PREV(node, instance), instance) = LIST_NEXT(node, instance); \
          LIST_PREV(LIST_NEXT(node, instance), instance) = LIST_PREV(node, instance); \
       } \
