@@ -24,7 +24,7 @@
 #include <debug.h>
 #include <mutex.h>
 
-#define INIT_PROGRAM "init"
+#define INIT_PROGRAM "sleep"
 
 /**
  * @brief Circular queue of runnable threads. 
@@ -160,6 +160,7 @@ void scheduler_next(tcb_t* tcb)
     **/
    if(sleeper && sleeper->wakeup < now)
    {
+		 debug_print("sleep", "Waking tcb %p from %p", sleeper, tcb);
       heap_pop(&sleepers);
       LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
       runnable = sleeper;
@@ -202,7 +203,7 @@ void scheduler_next(tcb_t* tcb)
 void scheduler_sleep(unsigned long ticks)
 {
    tcb_t* me = get_tcb();
-   debug_print("scheduler", "%p going to sleep for %d ticks", me, ticks);
+   debug_print("sleep", "%p going to sleep for %d ticks", me, ticks);
    me->wakeup = time() + ticks;
    
    disable_interrupts();

@@ -15,16 +15,12 @@
 
 #include <kernel_types.h>
 #include <malloc.h>
+#include <limits.h>
 
 #define DEFAULT_HEAP_SIZE 128
-#define HEAP_LEFT(index) (index * 2)
-#define HEAP_RIGHT(index) ((index * 2) + 1)
-
-#define HEAP_SWAP(x, y) {  \
-   (x) = (tcb_t*)(((int)(x)) ^ ((int)(y)));        \
-   (y) = (tcb_t*)(((int)(x)) ^ ((int)(y)));        \
-   (x) = (tcb_t*)(((int)(x)) ^ ((int)(y)));        \
-}
+#define PARENT(index) ((index) / 2)
+#define LCHILD(index) (2*(index))
+#define RCHILD(index) ((2*(index)) + 1)
 
 /** 
 * @brief Initialize the sleepers heap.
@@ -33,10 +29,72 @@
 */
 void heap_init(sleep_heap_t* heap)
 {
-   heap->data = (tcb_t**)malloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
-   heap->data[0] = NULL;
-   heap->index = 1;
-   heap->size = DEFAULT_HEAP_SIZE;
+	heap->data = (tcb_t**)malloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
+	// TODO Think about memory issues
+	assert(heap->data != NULL);
+	heap->data[0] = NULL;
+	heap->index = 1;
+	heap->size = DEFAULT_HEAP_SIZE;
+}
+
+/**
+ * @brief Restore heap ordering by moving the element at the given
+ * index up the heap.
+ *
+ * @param heap The heap to operate on.
+ * @param index The element to bubble up the heap.
+ */
+void bubble_up(sleep_heap_t *heap, int index) {
+	tcb_t *tcb = heap->data[index];
+	int wakeup = tcb->wakeup;
+	while (1) {
+		int p_index = PARENT(index);
+		tcb_t *parent = heap->data[p_index];
+		if (p_index > 0 && parent->wakeup > wakeup)
+		{
+			heap->data[index] = parent;
+			parent->sleep_index = index;
+		}
+		else {
+			break;
+		}
+		index = p_index;
+	}
+	heap->data[index] = tcb;
+	tcb->sleep_index = index;
+}
+
+/**
+ * @brief Restore heap ordering by moving the element at the given
+ * index down the heap.
+ *
+ * @param heap The heap to operate on.
+ * @param index The element to bubble down the heap.
+ */
+void bubble_down(sleep_heap_t *heap, int index) {
+	tcb_t *tcb = heap->data[index];
+	int wakeup = tcb->wakeup;
+	while (1) {
+		int wake1 = LCHILD(index) < heap->index ? 
+			heap->data[LCHILD(index)]->wakeup : INT_MAX;
+		int wake2 = RCHILD(index) < heap->index ? 
+			heap->data[RCHILD(index)]->wakeup : INT_MAX;
+		if (wake1 < wakeup && wake1 <= wake2) {
+			heap->data[index] = heap->data[LCHILD(index)];
+			heap->data[index]->sleep_index = index;
+			index = LCHILD(index);
+		}
+		else if (wake2 < wakeup && wake2 <= wake1) {
+			heap->data[index] = heap->data[RCHILD(index)];
+			heap->data[index]->sleep_index = index;
+			index = RCHILD(index);
+		}
+		else {
+			break;
+		}
+	}
+	heap->data[index] = tcb;
+	tcb->sleep_index = index;
 }
 
 /** 
@@ -47,30 +105,15 @@ void heap_init(sleep_heap_t* heap)
 */
 void heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
-   if(heap->index == (heap->size - 1))
-   {
-      heap->size = 2 * heap->size;
-      heap->data = realloc(heap->data, heap->size * sizeof(tcb_t*));
-   }
-   
-   tcb_t** data;
-   int index, parent;
-   
-   data = heap->data;
-   index = heap->index;
-   parent = index / 2;
-   data[index] = key;
-   
-   for(index = heap->index; 
-       index > 0 && parent > 0 && data[index]->wakeup < data[parent]->wakeup; 
-       index = parent, parent = index / 2)
-   {
-      HEAP_SWAP(data[index], data[parent]);
-      data[index]->sleep_index = index;
-      data[parent]->sleep_index = parent;
-   }
-   
-   heap->index++;
+	if(heap->index == (heap->size - 1))
+	{
+		heap->size = 2 * heap->size;
+		heap->data = realloc(heap->data, heap->size * sizeof(tcb_t*));
+		// TODO Think about memory issues
+		assert(heap->data != NULL);
+	}
+	heap->data[heap->index] = key;
+	bubble_up(heap, heap->index++);
 }
 
 /** 
@@ -82,47 +125,10 @@ void heap_insert(sleep_heap_t* heap, tcb_t* key)
 */
 tcb_t* heap_pop(sleep_heap_t* heap)
 {
-   tcb_t** data = heap->data;
-   tcb_t* ret;
-   
-   int top, index, next, leftchild, rightchild;
-   
-   top = heap->index - 1;
-   
-   index = 1;
-   leftchild = HEAP_LEFT(index); 
-   rightchild = HEAP_RIGHT(index);
-   
-   ret = data[1];
-   data[1] = data[top];
-   
-   while(rightchild < top && 
-      ((data[index]->wakeup > data[leftchild]->wakeup) || 
-       (data[index]->wakeup > data[rightchild]->wakeup)))
-   {
-      /* Bubble down left or right */
-      next = data[leftchild]->wakeup < data[rightchild]->wakeup ? leftchild : rightchild;
-   
-      /* Swap into the next spot. */
-      HEAP_SWAP(data[index], data[next]);
-      data[index]->sleep_index = index;
-      data[next]->sleep_index = next;
-      
-      /* Update indexes */
-      index = next;
-      leftchild = HEAP_LEFT(index); 
-      rightchild = HEAP_RIGHT(index); 
-   }
-
-   if((leftchild < top) && (data[index] > data[leftchild]))
-   {
-      HEAP_SWAP(data[index], data[leftchild]);
-      data[index]->sleep_index = index;
-      data[leftchild]->sleep_index = leftchild;
-   }
-
-   heap->index = top;
-   return ret;
+	tcb_t *tcb = heap->data[1];
+	heap->data[1] = heap->data[--(heap->index)];
+	bubble_down(heap, 1);
+	return tcb;
 }
 
 /** 
@@ -130,7 +136,8 @@ tcb_t* heap_pop(sleep_heap_t* heap)
 * 
 * @param heap The sleepers heap.
 * 
-* @return The TCB with the earliest wakeup time.
+* @return The TCB with the earliest wakeup time, or NULL if there are no
+*         sleeping tcbs.
 */
 tcb_t* heap_peek(sleep_heap_t* heap)
 {
@@ -145,43 +152,13 @@ tcb_t* heap_peek(sleep_heap_t* heap)
 */
 void heap_remove(sleep_heap_t* heap, tcb_t* key)
 {
-   tcb_t** data = heap->data;
-   int top, index, next, leftchild, rightchild;
-   
-   top = heap->index - 1;
-   
-   index = key->sleep_index;
-   leftchild = HEAP_LEFT(index); 
-   rightchild = HEAP_RIGHT(index);
-   
-   data[index] = data[top];
-   
-   while(rightchild < top && 
-      ((data[index]->wakeup > data[leftchild]->wakeup) || 
-       (data[index]->wakeup > data[rightchild]->wakeup)))
-   {
-      /* Bubble down left or right */
-      next = data[leftchild]->wakeup < data[rightchild]->wakeup ? leftchild : rightchild;
-   
-      /* Swap into the next spot. */
-      HEAP_SWAP(data[index], data[next]);
-      data[index]->sleep_index = index;
-      data[next]->sleep_index = next;
-      
-      /* Update indexes */
-      index = next;
-      leftchild = HEAP_LEFT(index); 
-      rightchild = HEAP_RIGHT(index); 
-   }
-
-   if((leftchild < top) && (data[index] > data[leftchild]))
-   {
-      HEAP_SWAP(data[index], data[leftchild]);
-      data[index]->sleep_index = index;
-      data[leftchild]->sleep_index = leftchild;
-   }
-
-   heap->index = top;
+	int index = key->sleep_index;
+	int wakeup = key->wakeup;
+	heap->data[index] = heap->data[--(heap->index)];
+	if (heap->data[index]->wakeup < wakeup)
+		bubble_up(heap, index);
+	else
+		bubble_down(heap, index);
 }
 
 

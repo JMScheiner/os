@@ -4,15 +4,19 @@
 
 int main(int argc, const char *argv[])
 {
-   if(fork()) while(1){}
-   else{
-      while(1)
-      {
-         sleep(100);
-         lprintf("Back!");
-      }
-   }
-   return 0;
+	int sleep_time = 10;
+	if (fork() == 0)
+		sleep_time += 7;
+	if (fork() == 0)
+		sleep_time += 7;
+	if (fork() == 0)
+		sleep_time += 7;
+	while(1)
+	{
+		sleep(sleep_time);
+		lprintf("Back!");
+	}
+	return 0;
 }
 
 

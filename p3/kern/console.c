@@ -72,7 +72,7 @@ void readline_handler(volatile regstate_t reg)
 */
 void print_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	//char *arg_addr = (char *)SYSCALL_ARG(reg);
 	lprintf("Ignoring print");
 	MAGIC_BREAK;
    //TODO
