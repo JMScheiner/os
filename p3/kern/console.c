@@ -114,7 +114,7 @@ void set_cursor_pos_handler(volatile regstate_t reg)
       RETURN(-1);
    
    /* TODO What constitutes an invalid cursor position? */
-   set_cursor_pos(row, col);
+   set_cursor(row, col);
    RETURN(0);
 }
 
@@ -131,13 +131,13 @@ void get_cursor_pos_handler(volatile regstate_t reg)
    if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < sizeof(int*))
       RETURN(-1);
    
-   get_cursor_pos(&myrow, &mycol);
+   get_cursor(&myrow, &mycol);
    
    /* Copy out row and column. */
-   if(v_memcpy((char*)row, &myrow, sizeof(int)) < sizeof(int))
+   if(v_memcpy((char*)row, (char*)&myrow, sizeof(int)) < sizeof(int))
       RETURN(-1);
    
-   if(v_memcpy((char*)col, &mycol, sizeof(int)) < sizeof(int))
+   if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
       RETURN(-1);
 
    RETURN(0); 

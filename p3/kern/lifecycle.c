@@ -319,6 +319,8 @@ void vanish_handler(volatile regstate_t reg)
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
 		cond_signal(&parent->wait_signal);
+      
+      mm_free_address_space(pcb);
 	}
 	
 	mutex_lock(&zombie_stack_lock);
