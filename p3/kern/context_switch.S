@@ -3,18 +3,11 @@
 * @brief Context switching code for the 410 kernel.
 * @author Tim Wilson
 * @author Justin Scheiner
-* @bug Care has to be taken as to when duplicate_thread_context is called. 
-*  In particulare, local references to "my tcb" become inaccurate when we 
-*  eventually context switch to the child. We should put more thought into
-*  whether there is anything "bad" on the stack in the new childs thread.
-* @date 2010-10-16
 */
 
 #include <x86/cr.h>
 
 .globl context_switch
-.globl duplicate_thread_context
-.globl duplicate_proc_context
 
 /** @def void context_switch(void **old_esp, void **new_esp, void* pd)
  * 
@@ -34,6 +27,7 @@
  * %eip     * 32
  * old_esp  * 36
  * new_esp  * 40
+ * pd       * 44
  *
  * @param old_esp Address to store the stack pointer of the current thread
  *
@@ -42,11 +36,11 @@
 context_switch:
 	pusha                  // Save general purpose registers
 	movl   36(%esp), %eax  // Save stack pointer so someone else 
-	movl   %esp, (%eax)    // can context switch back to us
+	movl   %esp, (%eax)    //   can context switch back to us
 	movl   40(%esp), %eax  // Switch to someone else
 	movl   44(%esp), %ebx  // Grab the page directory
-   movl   %ebx,     %cr3  // Switch page directories so we can access the new stack. 
-   movl   (%eax),   %esp  // Jump stacks.
+	movl   %ebx,     %cr3  // Switch page directories. 
+	movl   (%eax),   %esp  // Jump stacks.
 	popa                   // Restore general purpose registers
 	ret
 

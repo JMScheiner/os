@@ -7,21 +7,29 @@
 #include <simics.h>
 #include <thread.h>
 #include <debug.h>
+#include <types.h>
 
-#define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
+/** @brief Index of the first byte after console memory. */
+#define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
+			2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
+
+/** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR 0x8f
 
+/** @brief Readline error codes. */
 #define READLINE_INVALID_ARGS -1
 #define READLINE_INVALID_LENGTH -2
 #define READLINE_INVALID_BUFFER -3
 
-//Here's the console state: 
+/** @brief Current color of the console. */ 
 static int console_color = FGND_WHITE | BGND_BLACK;
 
-//Invariant: Always on the next position to write.
+/** @brief Location to print the next character to on the console. */
 static int console_row = 0;
 static int console_col = 0;
-static int cursor_hidden = 1;
+
+/** @brief Is the cursor currently hidden? */
+static boolean_t cursor_hidden = FALSE;
 
 
 /************** Syscall wrappers. **************/
@@ -32,6 +40,38 @@ void getchar_handler(volatile regstate_t reg)
    //TODO
 }
 
+/** @brief Reads the next line from the console and copies it into the
+ * buffer pointed to by buf. 
+ *
+ * If there is no line of input currently available, the calling thread 
+ * is descheduled until one is. If some other thread is descheduled on a 
+ * readline() or a getchar(), then the calling thread must block and 
+ * wait its turn to access the input stream. The length of the buffer 
+ * is indicated by len. If the line is smaller than the buffer, then the 
+ * complete line including the newline character is copied into the 
+ * buffer. If the length of the line exceeds the length of the buffer, 
+ * only len characters should be copied into buf. Available characters 
+ * should not be committed into buf until there is a newline character 
+ * available, so the user has a chance to backspace over typing mistakes. 
+ *
+ * Characters that will be consumed by a readline() should be echoed to 
+ * the console as soon as possible. If there is no outstanding call to 
+ * readline() no characters should be echoed. Echoed user input may be 
+ * interleaved with output due to calls to print(). Characters not
+ * placed in the buffer should remain available for other calls to
+ * readline() and/or getchar(). Some kernel implementations may choose to
+ * regard characters which have been echoed to the screen but which have
+ * not been placed into a user buffer to be "dedicated" to readline() and
+ * not available to getchar(). 
+ *
+ * The readline system call returns the number of bytes copied into the 
+ * buffer. An integer error code less than zero is returned if buf is 
+ * not a valid memory address, if buf falls in a read-only memory region 
+ * of the task, or if len is "unreasonably" large.
+ *
+ * @param reg The register state on entry containing the buffer to read to
+ * and the maximum length to read.
+ */
 void readline_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
@@ -66,7 +106,8 @@ void readline_handler(volatile regstate_t reg)
 *  If len is larger than some reasonable maximum or if buf is not a 
 *     valid memory address, an integer error code less than zero should be 
 *     returned.
-*  Characters printed to the console invoke standard newline, backspace, and scrolling behaviors.
+*  Characters printed to the console invoke standard newline, backspace, 
+*  and scrolling behaviors.
 * 
 * @param reg The register state on entry to print.
 */
@@ -102,6 +143,13 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 
 
 
+/**
+ * @brief Change the position of the cursor to the given row and column
+ * without checking for validity.
+ *
+ * @param row The row to move the cursor to.
+ * @param col The column to move the cursor to.
+ */
 static void set_cursor_position(int row, int col)
 {
 	int address = row * CONSOLE_WIDTH + col;
@@ -306,7 +354,8 @@ void get_term_color(int* color)
  */
 int set_cursor(int row, int col)
 {
-	if(row < CONSOLE_HEIGHT && col < CONSOLE_WIDTH)
+	if(0 <= row && row < CONSOLE_HEIGHT && 
+			0 <= col && col < CONSOLE_WIDTH)
 	{
 		console_row = row;
 		console_col = col;
@@ -345,7 +394,7 @@ void hide_cursor()
 {
 	if(!cursor_hidden)
 	{
-		cursor_hidden = 1;
+		cursor_hidden = TRUE;
 		set_cursor_position(CONSOLE_WIDTH, CONSOLE_HEIGHT);
 	}
 }
@@ -360,7 +409,7 @@ void show_cursor()
 {
 	if(cursor_hidden)
 	{
-		cursor_hidden = 0;
+		cursor_hidden = FALSE;
 		set_cursor_position(console_row, console_col);
 	}
 }

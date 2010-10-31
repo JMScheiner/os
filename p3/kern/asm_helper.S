@@ -12,6 +12,9 @@ get_esp:
 	movl  %esp, %eax
 	ret
 
-
+/** @def void halt(void)
+ *
+ * @brief Halt the system
+ */
 halt: 
    HLT
