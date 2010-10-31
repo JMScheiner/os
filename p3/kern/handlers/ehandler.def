@@ -16,7 +16,7 @@ ASM_NAME:
 	pusha                /* Save user registers */
 	call NAME            /* Call handler function */
 	popa                 /* Restore user registers */
-   addl $4, %esp        /* Pop the error code off the stack. */
+	addl $4, %esp        /* Pop the error code off the stack. */
 	iret                 /* Return from interrupt */
 
 #undef ASM_NAME

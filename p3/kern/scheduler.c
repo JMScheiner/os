@@ -4,8 +4,6 @@
 * @author Justin Scheiner
 * @author Tim Wilson
 * @bug Should sleepers always be put at the front of the run queue when they wake up?
-* @bug Will launch a new task if every current thread is sleeping. This is undoubtedly
-*  the WRONG behavior - but I haven't worked out what is right yet.
 */
 #include <scheduler.h>
 #include <context_switch.h>
@@ -24,7 +22,7 @@
 #include <debug.h>
 #include <mutex.h>
 
-#define INIT_PROGRAM "sleep"
+#define INIT_PROGRAM "init"
 
 /**
  * @brief Circular queue of runnable threads. 
@@ -87,6 +85,12 @@ void scheduler_run(tcb_t* tcb)
 	enable_interrupts();
 }
 
+/**
+ * @brief Move the given thread from the blocked list to the runnable
+ * queue.
+ *
+ * @param tcb The thread to move to the runnable queue.
+ */
 void scheduler_make_runnable(tcb_t* tcb)
 {
 	debug_print("scheduler", "Unblocking thread %p", tcb);
@@ -133,11 +137,12 @@ void scheduler_block_me()
  */
 void scheduler_die(mutex_t *lock)
 {
+	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Dying %p", get_tcb());
 	disable_interrupts();
 	mutex_unlock(lock);
 	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
-	scheduler_next(NULL);
+	scheduler_next(tcb);
 	assert(FALSE);
 }
 
@@ -155,8 +160,8 @@ void scheduler_next(tcb_t* tcb)
    
    /* If it is time to wake up a thread, put him first in the run queue. 
     *
-    *  Is this a good policy? I can see people doing sleep(1) all of the time, 
-    *    and causing starvation.
+    *  Is this a good policy? I can see people doing sleep(1) all of the 
+		*  time, and causing starvation.
     **/
    if(sleeper && sleeper->wakeup < now)
    {
@@ -168,7 +173,8 @@ void scheduler_next(tcb_t* tcb)
 
    if(!runnable)
    {
-      /* There is a sleeping thread, and no one to run - twiddle our thumbs.*/
+      /* There is a sleeping thread, and no one to run - 
+			 * twiddle our thumbs.*/
       if(sleeper || blocked)
       {
          tcb_t* global = global_tcb();
@@ -183,7 +189,8 @@ void scheduler_next(tcb_t* tcb)
        * for launching the first task (again if necessary).
        */
 			debug_print("scheduler", "reloading init");
-      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, 
+					strlen(INIT_PROGRAM) + 1);
    }
    runnable = LIST_NEXT(runnable, scheduler_node);
 	 debug_print("scheduler", "now running %p", runnable);

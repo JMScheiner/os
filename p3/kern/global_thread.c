@@ -25,11 +25,11 @@ void global_thread_init()
    arrange_global_context();
 }
 
-pcb_t* global_pcb() { 
+inline pcb_t* global_pcb() { 
    return &_global_pcb; 
 } 
 
-tcb_t* global_tcb() { 
+inline tcb_t* global_tcb() { 
    return _global_tcb; 
 } 
 

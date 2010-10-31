@@ -145,9 +145,9 @@ void mm_new_directory(pcb_t* pcb)
       virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
   
    debug_print("mm", "Copying [%p, %d] to [%p, %d]", 
-      dir_v + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
       global_dir + DIR_OFFSET(USER_MEM_END), 
+      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
+      dir_v + DIR_OFFSET(USER_MEM_END), 
       (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
 
    memcpy(dir_v + DIR_OFFSET(USER_MEM_END), 
@@ -165,6 +165,7 @@ void mm_new_directory(pcb_t* pcb)
 
 /** 
 * @brief Frees every frame and table that belongs to user space. 
+*  Releases the directory, and continues execution in the global directory.  
 * 
 * @param pcb The process that points to the relevant address space. 
 */
@@ -173,9 +174,11 @@ void mm_free_address_space(pcb_t* pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long frame, page;
+   pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
    page_tablent_t *table_v, *table_p;
    
+   global = global_pcb();
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
    
@@ -184,7 +187,6 @@ void mm_free_address_space(pcb_t* pcb)
    {
       table_v = virtual_dir[d_index];
       table_p = dir_v[d_index];
-      dir_v[d_index] = 0;
 
       if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) continue;
       
@@ -196,10 +198,17 @@ void mm_free_address_space(pcb_t* pcb)
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          mm_free_frame(table_v, page);
       }
-      
-      mm_free_table(pcb, (void*)(t_index << TABLE_SHIFT));
+      mm_free_table(pcb, (void*)(d_index << DIR_SHIFT));
+      dir_v[d_index] = 0;
    }
-
+   
+   pcb->dir_v = global->dir_v;
+   pcb->dir_p = global->dir_p;
+   pcb->virtual_dir = global->virtual_dir;
+   set_cr3((int)pcb->dir_p);
+   
+   kvm_free_page(dir_v);
+   kvm_free_page(virtual_dir);
 }
 
 /** 
@@ -296,6 +305,8 @@ void mm_free_table(pcb_t* pcb, void* addr)
    page_dirent_t* dir_v = pcb->dir_v;
    page_dirent_t* virtual_dir_v = pcb->virtual_dir;
    table_v = virtual_dir_v[ DIR_OFFSET(addr) ];
+
+   debug_print("mm", "About to free table %p for address %p", table_v, addr);
    kvm_free_page(table_v);
    
    virtual_dir_v[ DIR_OFFSET(addr) ] = 0;
@@ -433,11 +444,9 @@ int mm_getflags(pcb_t* pcb, void* addr)
 }
 
 /** 
-* @brief Used specifically to validate user arguments in system calls. 
-*  For TRUE the page must be 
+* @brief Used to validate a memory region for reading.
+*     For TRUE every page in the region must be 
 *     - Present
-*     - Readable
-*     - User mode.
 * 
 * @param addr The address to validate. 
 * 
@@ -450,23 +459,22 @@ boolean_t mm_validate_read(void* addr, int len)
 	for (i = 0; i < npages; i++) {
 		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || 
-				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT)))
+				!TEST_SET(tflags, (PTENT_PRESENT)))
 			return FALSE;
 	}
 	return TRUE;
 }
 
 /**
- * @brief Validate that a user's write buffer has sufficient permissions,
- *        namely, that each page overlapping buf is 
+ * @brief Used to validate a memory region for writing.
+*     For TRUE every page in the region must be 
  *        - Present
- *        - User mode
- *        - Read/Write
+ *        - Writable
  *
  * @param addr The base address
  * @param len The number of bytes to check
  *
- * @return Whether len bytes can safely by written to addr
+ * @return True if the address is safe.
  */
 boolean_t mm_validate_write(void *addr, int len)
 {
@@ -475,7 +483,7 @@ boolean_t mm_validate_write(void *addr, int len)
 	for (i = 0; i < npages; i++) {
 		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || 
-				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT | PTENT_RW)))
+				!TEST_SET(tflags, (PTENT_PRESENT | PTENT_RW)))
 			return FALSE;
 	}
 	return TRUE;

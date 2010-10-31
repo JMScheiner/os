@@ -20,7 +20,7 @@
 
 /** @brief Number of pages per kernel stack. */
 
-static int next_tid = 0xdeadbeef;
+static int next_tid = 1;
 
 //DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
 

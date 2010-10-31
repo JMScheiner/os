@@ -4,6 +4,7 @@
 #include <scheduler.h>
 #include <simics.h>
 #include <timer.h>
+#include <syscall_codes.h>
 
 /** 
 * @brief Returns the TID of the current thread in %eax. 
@@ -108,11 +109,11 @@ void sleep_handler(volatile regstate_t reg)
 {
    int ticks = (int)SYSCALL_ARG(reg);
    
-   if(ticks < 0) RETURN(-1); 
-   if(ticks == 0) RETURN(0);
+   if(ticks < 0) RETURN(SYSCALL_INVALID_ARGS); 
+   if(ticks == 0) RETURN(SYSCALL_SUCCESS);
 
    scheduler_sleep(ticks);
-   RETURN(0);
+   RETURN(SYSCALL_SUCCESS);
 }
 
 

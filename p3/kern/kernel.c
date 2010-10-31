@@ -21,6 +21,7 @@
 #include <console.h>
 #include <scheduler.h>
 #include <keyboard.h>
+#include <memman.h>
 
 /* multiboot header file */
 #include <multiboot.h>              /* boot_info */
@@ -83,11 +84,13 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    interrupt_setup();
 	alloc_init();
    global_thread_init();
-
+   
    timer_init();
+   console_init();
    keyboard_init();
    scheduler_init();
 	lifecycle_init();
+   memman_init();
    init_process_table();
    init_thread_table();
    

@@ -8,6 +8,9 @@
 #include <thread.h>
 #include <debug.h>
 #include <types.h>
+#include <vstring.h>
+#include <mutex.h>
+#include <syscall_codes.h>
 
 /** @brief Index of the first byte after console memory. */
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
@@ -16,10 +19,11 @@
 /** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR 0x8f
 
-/** @brief Readline error codes. */
-#define READLINE_INVALID_ARGS -1
-#define READLINE_INVALID_LENGTH -2
-#define READLINE_INVALID_BUFFER -3
+/* This may seem rather large, but it is manageable, and actually the 
+ * largest amount of data that can be on the screen. */
+#define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
+
+/***************** Console State:  ****************/
 
 /** @brief Current color of the console. */ 
 static int console_color = FGND_WHITE | BGND_BLACK;
@@ -31,70 +35,12 @@ static int console_col = 0;
 /** @brief Is the cursor currently hidden? */
 static boolean_t cursor_hidden = FALSE;
 
+/** @brief Mutex to prevent interleaving of console output. */
+mutex_t print_lock;
 
-/************** Syscall wrappers. **************/
-void getchar_handler(volatile regstate_t reg)
+void console_init()
 {
-	lprintf("Ignoring getchar");
-	MAGIC_BREAK;
-   //TODO
-}
-
-/** @brief Reads the next line from the console and copies it into the
- * buffer pointed to by buf. 
- *
- * If there is no line of input currently available, the calling thread 
- * is descheduled until one is. If some other thread is descheduled on a 
- * readline() or a getchar(), then the calling thread must block and 
- * wait its turn to access the input stream. The length of the buffer 
- * is indicated by len. If the line is smaller than the buffer, then the 
- * complete line including the newline character is copied into the 
- * buffer. If the length of the line exceeds the length of the buffer, 
- * only len characters should be copied into buf. Available characters 
- * should not be committed into buf until there is a newline character 
- * available, so the user has a chance to backspace over typing mistakes. 
- *
- * Characters that will be consumed by a readline() should be echoed to 
- * the console as soon as possible. If there is no outstanding call to 
- * readline() no characters should be echoed. Echoed user input may be 
- * interleaved with output due to calls to print(). Characters not
- * placed in the buffer should remain available for other calls to
- * readline() and/or getchar(). Some kernel implementations may choose to
- * regard characters which have been echoed to the screen but which have
- * not been placed into a user buffer to be "dedicated" to readline() and
- * not available to getchar(). 
- *
- * The readline system call returns the number of bytes copied into the 
- * buffer. An integer error code less than zero is returned if buf is 
- * not a valid memory address, if buf falls in a read-only memory region 
- * of the task, or if len is "unreasonably" large.
- *
- * @param reg The register state on entry containing the buffer to read to
- * and the maximum length to read.
- */
-void readline_handler(volatile regstate_t reg)
-{
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	if (!mm_validate_read(arg_addr, sizeof(int)) || 
-			!mm_validate_read(arg_addr + sizeof(int), sizeof(char *))) {
-		RETURN(READLINE_INVALID_ARGS);
-	}
-
-	int len = *(int *)arg_addr;
-	if (len < 0 || len > KEY_BUF_SIZE) {
-		RETURN(READLINE_INVALID_LENGTH);
-	}
-
-	char *buf = *(char **)(arg_addr + sizeof(int));
-	if (!mm_validate_write(buf, len)) {
-		RETURN(READLINE_INVALID_BUFFER);
-	}
-
-	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
-			get_tcb()->tid, len, buf);
-
-	int read = readline(buf, len);
-	RETURN(read);
+   mutex_init(&print_lock);
 }
 
 /** 
@@ -113,35 +59,97 @@ void readline_handler(volatile regstate_t reg)
 */
 void print_handler(volatile regstate_t reg)
 {
-	//char *arg_addr = (char *)SYSCALL_ARG(reg);
-	lprintf("Ignoring print");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	int len;
+	char* buf;
+
+	if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int)) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+	if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
+			sizeof(char*)) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+
+	if (len < 0 || len > PRINT_BUF_SIZE) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+
+	char printbuf[PRINT_BUF_SIZE];
+
+	/* Copy buf to prevent the memory it lies in from being freed during the
+	 * call to putbytes. */
+	if (v_memcpy(printbuf, buf, len) != len) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+
+	/* Ensure sequential access to the console screen. */
+	mutex_lock(&print_lock);
+	putbytes(printbuf, len);
+	mutex_unlock(&print_lock);
+	RETURN(SYSCALL_SUCCESS);
 }
 
+/** 
+* @brief Sets the terminal print color for any future output to the 
+* console. If color does not specify a valid color, an integer error 
+* code less than zero should be returned. Zero is returned on success.
+* 
+* @param reg The register state on entry to the handler.
+*/
 void set_term_color_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_term_color");
-	MAGIC_BREAK;
-   //TODO
+	int color = (int)SYSCALL_ARG(reg);
+	if(0 < color || color > MAX_VALID_COLOR)
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	set_term_color(color); 
+	RETURN(SYSCALL_SUCCESS);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_cursor_pos");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	int row, col;
+
+	if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < 
+			sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	/* TODO What constitutes an invalid cursor position? */
+	set_cursor(row, col);
+	RETURN(SYSCALL_SUCCESS);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring get_cursor_pos");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	int *row, *col;
+	int myrow, mycol;
+
+	/* Copy in user space addresses. */
+	if(v_memcpy((char*)&row, arg_addr, sizeof(int*)) < sizeof(int*))
+		RETURN(SYSCALL_INVALID_ARGS);
+   
+	if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < 
+			sizeof(int*))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	get_cursor(&myrow, &mycol);
+
+	/* Copy out row and column. */
+	if(v_memcpy((char*)row, (char*)&myrow, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	RETURN(SYSCALL_SUCCESS);
 }
 /************** End Syscall wrappers . **************/
-
-
 
 /**
  * @brief Change the position of the cursor to the given row and column
