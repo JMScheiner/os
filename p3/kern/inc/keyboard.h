@@ -5,11 +5,9 @@
 #include <reg.h>
 
 //NOTE: This value must be a power of 2
-//	512 is maybe excessively large for a key buffer, but
-//	it is still relatively tiny.  If at some point we are
-//	hurting for memory, this can be made 256 safely.
-#define KEY_BUF_SIZE 512 
-
+//	2048 is maybe excessively large for a key buffer, but
+//	it matches the size of the console.
+#define KEY_BUF_SIZE 2048
 
 int readchar(void);
 

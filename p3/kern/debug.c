@@ -20,11 +20,11 @@ char *debug_print_strings[] = {
    "fork", 
    "exec", 
    //"thread_fork",
-   "mm", 
+   //"mm", 
    //"kvm", 
    "page", 
    "readline", 
-   //"lifecycle", 
+   "lifecycle", 
    NULL};
 char *debug_break_strings[] = {"page", NULL};
 

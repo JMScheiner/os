@@ -67,12 +67,19 @@ void readline_handler(volatile regstate_t reg)
    char* buf;
    
    if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
+   {
+      debug_print("readline", "Failing readline - arg len unreadable.");
       RETURN(READLINE_INVALID_ARGS);
+   }
    
    if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < sizeof(char*))
+   {
+      debug_print("readline", "Failing readline - arg buf unreadable.");
       RETURN(READLINE_INVALID_ARGS);
+   }
    
 	if (len < 0 || len > KEY_BUF_SIZE) {
+      debug_print("readline", "Failing readline - len %d unreasonable.", len);
 		RETURN(READLINE_INVALID_LENGTH);
 	}
    
@@ -80,6 +87,7 @@ void readline_handler(volatile regstate_t reg)
     *  a race condition with remove_pages
     * */
 	if (!mm_validate_write(buf, len)) {
+      debug_print("readline", "Failing readline - buf unwritable.");
 		RETURN(READLINE_INVALID_BUFFER);
 	}
 
@@ -160,6 +168,8 @@ int readline(char *buf, int len) {
 	}
 	enable_interrupts();
 	int read;
+   
+   debug_print("readline", "Beginning read!.");
 	for (read = 0; read < len; read++) {
 		buf[read] = keybuf[keybuf_head];
 		keybuf_head = NEXT(keybuf_head);
@@ -168,6 +178,7 @@ int readline(char *buf, int len) {
 			break;
 		}
 	}
+   debug_print("readline", "Read complete!.");
 	mutex_unlock(&keyboard_lock);
 	return read;
 }
