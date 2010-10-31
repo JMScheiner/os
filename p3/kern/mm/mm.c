@@ -187,7 +187,6 @@ void mm_free_address_space(pcb_t* pcb)
    {
       table_v = virtual_dir[d_index];
       table_p = dir_v[d_index];
-      dir_v[d_index] = 0;
 
       if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) continue;
       
@@ -199,8 +198,8 @@ void mm_free_address_space(pcb_t* pcb)
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          mm_free_frame(table_v, page);
       }
-      
-      mm_free_table(pcb, (void*)(t_index << TABLE_SHIFT));
+      mm_free_table(pcb, (void*)(d_index << DIR_SHIFT));
+      dir_v[d_index] = 0;
    }
    
    pcb->dir_v = global->dir_v;
@@ -306,6 +305,8 @@ void mm_free_table(pcb_t* pcb, void* addr)
    page_dirent_t* dir_v = pcb->dir_v;
    page_dirent_t* virtual_dir_v = pcb->virtual_dir;
    table_v = virtual_dir_v[ DIR_OFFSET(addr) ];
+
+   debug_print("mm", "About to free table %p for address %p", table_v, addr);
    kvm_free_page(table_v);
    
    virtual_dir_v[ DIR_OFFSET(addr) ] = 0;
