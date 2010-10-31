@@ -24,7 +24,7 @@
 #include <debug.h>
 #include <mutex.h>
 
-#define INIT_PROGRAM "sleep"
+#define INIT_PROGRAM "init"
 
 /**
  * @brief Circular queue of runnable threads. 

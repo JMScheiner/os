@@ -2,10 +2,14 @@
 
 #define MEMMAN_ZSQTJ8CD
 
+#include <kernel_types.h>
 #include <reg.h>
 
 #define NEW_PAGES_INVALID_ARGS -1
 
+mutex_t* remove_pages_lock(void);
+
+void memman_init(void);
 void new_pages_handler(volatile regstate_t reg);
 void remove_pages_handler(volatile regstate_t reg);
 

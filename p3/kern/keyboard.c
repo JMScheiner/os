@@ -17,6 +17,14 @@
 #include <cond.h>
 #include <mutex.h>
 #include <atomic.h>
+#include <mm.h>
+#include <debug.h>
+#include <thread.h>
+#include <vstring.h>
+
+#define READLINE_INVALID_ARGS -1
+#define READLINE_INVALID_LENGTH -2
+#define READLINE_INVALID_BUFFER -3
 
 /*********************************************************************/
 /*                                                                   */
@@ -45,6 +53,44 @@ static cond_t keyboard_signal;
 #define NUM_KEYS \
 	((keybuf_tail - keybuf_head + KEY_BUF_SIZE) & (KEY_BUF_SIZE - 1))
 
+void getchar_handler(volatile regstate_t reg)
+{
+	lprintf("Ignoring getchar");
+	MAGIC_BREAK;
+   //TODO
+}
+
+void readline_handler(volatile regstate_t reg)
+{
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int len;
+   char* buf;
+   
+   if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
+      RETURN(READLINE_INVALID_ARGS);
+   
+   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < sizeof(char*))
+      RETURN(READLINE_INVALID_ARGS);
+   
+	if (len < 0 || len > KEY_BUF_SIZE) {
+		RETURN(READLINE_INVALID_LENGTH);
+	}
+   
+   /* FIXME We copy a string here - and so should use v_strcpy to avoid
+    *  a race condition with remove_pages
+    * */
+	if (!mm_validate_write(buf, len)) {
+		RETURN(READLINE_INVALID_BUFFER);
+	}
+
+	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
+			get_tcb()->tid, len, buf);
+
+	int read = readline(buf, len);
+	RETURN(read);
+}
+
+
 /** @brief Returns the next character in the keyboard buffer
  *
  *  This function does not block if there are no characters in the keyboard
@@ -68,6 +114,9 @@ int readchar(void)
 	return -1;
 }
 */
+
+
+
 /** 
 * @brief Process a scancode from the keyboard port. If there is space
 * available, store it in the keybuf queue.

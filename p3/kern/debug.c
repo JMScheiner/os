@@ -11,7 +11,21 @@
 #define DEBUG_PRINT
 #define DEBUG_BREAK
 
-char *debug_print_strings[] = {/*"scheduler", */"sleep", "loader", "wait", "vanish", "fork", "exec", "thread_fork",/*"mm", "kvm",*/ "page", "readline", "lifecycle", NULL};
+char *debug_print_strings[] = {
+   /*"scheduler", */
+   //"sleep", 
+   "loader", 
+   //"wait", 
+   //"vanish", 
+   "fork", 
+   "exec", 
+   //"thread_fork",
+   "mm", 
+   //"kvm", 
+   "page", 
+   "readline", 
+   //"lifecycle", 
+   NULL};
 char *debug_break_strings[] = {"page", NULL};
 
 #ifdef DEBUG_PRINT

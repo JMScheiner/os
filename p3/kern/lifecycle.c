@@ -14,7 +14,7 @@
 #include <reg.h>
 #include <mm.h>
 #include <kvm.h>
-#include <validation.h>
+#include <vstring.h>
 #include <loader.h>
 #include <simics.h>
 #include <thread.h>
@@ -54,41 +54,48 @@ void lifecycle_init() {
  */
 void exec_handler(volatile regstate_t reg) {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	int argc;
-	char execname_buf[MAX_NAME_LENGTH];
+   char* execname;
+   char** argvec;
+	
+   char execname_buf[MAX_NAME_LENGTH];
 	char execargs_buf[MAX_TOTAL_LENGTH];
-	char *name_ptr = execname_buf;
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
+	int argc;
 
 	/* Verify that the arguments lie in valid memory. */
-	if (!mm_validate_read(arg_addr, sizeof(char *)) || 
-			!mm_validate_read(arg_addr + sizeof(char *), sizeof(char **))) {
+   if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
 		RETURN(EXEC_INVALID_ARGS);
-	}
+   
+   if(v_memcpy((char*)&argvec, 
+      arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
+		RETURN(EXEC_INVALID_ARGS);
 
 	/* TODO Check if there is more than one thread. */
-	char *execname = *(char **)arg_addr;
-	debug_print("exec", "Called with program %s", execname);
-	char **argvec = *(char ***)(arg_addr + sizeof(char *));
-	if (v_strcpy(name_ptr, execname, MAX_NAME_LENGTH) < 0) {
+   
+   if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
 		RETURN(EXEC_INVALID_NAME);
-	}
+
+   debug_print("exec", "Called with program %s", execname_buf);
 
 	/* Loop over every srgument, copying it to the kernel stack. */
-	SAFE_LOOP(argvec, argc, MAX_TOTAL_LENGTH) {
-		if (total_bytes == MAX_TOTAL_LENGTH) {
+   for(argc = 0 ;; argc++, argvec++)
+   {
+      char* arg;
+		if (total_bytes == MAX_TOTAL_LENGTH) 
 			RETURN(EXEC_ARGS_TOO_LONG);
-		}
-		if (*argvec == NULL) {
-			break;
-		}
-		char *arg = *argvec;
-		debug_print("exec", "Arg %d is %s", argc, arg);
-		int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
-		if (arg_len < 0) {
+	   
+      if(v_memcpy((char*)&arg, (char*)argvec, sizeof(char*)) < 0)
 			RETURN(EXEC_INVALID_ARG);
-		}
+
+      if(arg == NULL)
+         break;
+		
+		int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
+      if (arg_len < 0) 
+			RETURN(EXEC_INVALID_ARG);
+		
+      debug_print("exec", "Arg %d is %s", argc, args_ptr);
 		total_bytes += arg_len;
 		args_ptr += arg_len;
 	}
@@ -220,14 +227,10 @@ void arrange_global_context()
    /* Push the return address for a context switches ret */
    esp -= 4; 
    ret_site = esp;
-   debug_print("lifecycle", "ret_site = %p", ret_site);
    (*ret_site) = (pop_stub);
    
    /* Set up the context context_switch will popa off the stack. */
-   debug_print("lifecycle", "global thread before pusha = %p", esp);
    esp -= sizeof(pusha_t);
-   debug_print("lifecycle", "global thread esp = %p", esp);
-   debug_print("lifecycle", "global thread kernel stack = %p", tcb->kstack);
    tcb->esp = esp;
 }
 

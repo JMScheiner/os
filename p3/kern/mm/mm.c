@@ -145,9 +145,9 @@ void mm_new_directory(pcb_t* pcb)
       virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
   
    debug_print("mm", "Copying [%p, %d] to [%p, %d]", 
-      dir_v + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
       global_dir + DIR_OFFSET(USER_MEM_END), 
+      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
+      dir_v + DIR_OFFSET(USER_MEM_END), 
       (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
 
    memcpy(dir_v + DIR_OFFSET(USER_MEM_END), 
@@ -433,11 +433,9 @@ int mm_getflags(pcb_t* pcb, void* addr)
 }
 
 /** 
-* @brief Used specifically to validate user arguments in system calls. 
-*  For TRUE the page must be 
+* @brief Used to validate a memory region for reading.
+*     For TRUE every page in the region must be 
 *     - Present
-*     - Readable
-*     - User mode.
 * 
 * @param addr The address to validate. 
 * 
@@ -450,23 +448,22 @@ boolean_t mm_validate_read(void* addr, int len)
 	for (i = 0; i < npages; i++) {
 		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || 
-				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT)))
+				!TEST_SET(tflags, (PTENT_PRESENT)))
 			return FALSE;
 	}
 	return TRUE;
 }
 
 /**
- * @brief Validate that a user's write buffer has sufficient permissions,
- *        namely, that each page overlapping buf is 
+ * @brief Used to validate a memory region for writing.
+*     For TRUE every page in the region must be 
  *        - Present
- *        - User mode
- *        - Read/Write
+ *        - Writable
  *
  * @param addr The base address
  * @param len The number of bytes to check
  *
- * @return Whether len bytes can safely by written to addr
+ * @return True if the address is safe.
  */
 boolean_t mm_validate_write(void *addr, int len)
 {
@@ -475,7 +472,7 @@ boolean_t mm_validate_write(void *addr, int len)
 	for (i = 0; i < npages; i++) {
 		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || 
-				!TEST_SET(tflags, (PTENT_USER | PTENT_PRESENT | PTENT_RW)))
+				!TEST_SET(tflags, (PTENT_PRESENT | PTENT_RW)))
 			return FALSE;
 	}
 	return TRUE;

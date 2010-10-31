@@ -5,6 +5,18 @@
 #include <simics.h>
 #include <pagefault.h>
 #include <process.h>
+#include <mutex.h>
+#include <vstring.h>
+
+/* @brief Protects us from the user removing pages while we try 
+ *  to execute a validated copy from user space. */
+mutex_t _remove_pages_lock;
+inline mutex_t* remove_pages_lock(){ return &_remove_pages_lock; }
+
+void memman_init()
+{
+   mutex_init(&_remove_pages_lock);
+}
 
 /** 
 * @brief Allocates new memory to the invoking task, starting at base 
@@ -22,18 +34,14 @@
 void new_pages_handler(volatile regstate_t reg)
 {
    int len;
-   void* base, *addr, *arg_addr;
+   char* base, *addr, *arg_addr;
    
    arg_addr = (void*)SYSCALL_ARG(reg);
+   if(v_memcpy((char*)&base, arg_addr, sizeof(char*)) < sizeof(char*))
+      RETURN(NEW_PAGES_INVALID_ARGS);
    
-   /* Verify that the arguments lie in valid memory. */
-	if(!mm_validate_read(arg_addr, sizeof(void *)) || 
-			!mm_validate_read(arg_addr + sizeof(void *), sizeof(int)))
-		RETURN(NEW_PAGES_INVALID_ARGS);
-   
-   /* Grab the arguments from user space. */
-   base = (void*)arg_addr;
-   len  = (int)(arg_addr + sizeof(void*));
+   if(v_memcpy((char*)&len, arg_addr + sizeof(char*), sizeof(int)) < sizeof(int))
+      RETURN(NEW_PAGES_INVALID_ARGS);
 
    if((PAGE_OFFSET(base) != 0) || (len % PAGE_SIZE != 0))
       RETURN(NEW_PAGES_INVALID_ARGS);
@@ -43,8 +51,11 @@ void new_pages_handler(volatile regstate_t reg)
       if(mm_validate_read(base, PAGE_SIZE))
          RETURN(NEW_PAGES_INVALID_ARGS);
    
-   /* Check that the pages aren't in the autostack region. */
-   if(addr >= (void*)USER_STACK_START) 
+   /* Check that the pages aren't in the autostack region. 
+    *  Or in reserved kernel virtual memory. */
+   if((addr > (char*)USER_STACK_START && addr < (char*)USER_STACK_BASE) || 
+      (base > (char*)USER_STACK_START && base < (char*)USER_STACK_BASE) ||
+      (addr > (char*)USER_MEM_END))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
    mm_alloc(get_pcb(), base, len, PTENT_USER | PTENT_RW);
@@ -53,8 +64,9 @@ void new_pages_handler(volatile regstate_t reg)
 
 void remove_pages_handler(volatile regstate_t reg)
 {
+   mutex_lock(&_remove_pages_lock);
 	lprintf("Ignoring remove_pages");
 	MAGIC_BREAK;
-   //TODO
+   mutex_unlock(&_remove_pages_lock);
 }
 

@@ -7,55 +7,35 @@
 #include <simics.h>
 #include <thread.h>
 #include <debug.h>
+#include <vstring.h>
+#include <mutex.h>
 
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 #define MAX_VALID_COLOR 0x8f
+   
+#define PRINT_INVALID_ARGS -1
 
-#define READLINE_INVALID_ARGS -1
-#define READLINE_INVALID_LENGTH -2
-#define READLINE_INVALID_BUFFER -3
+/* This may seem rather large, but it is manageable, and actually the largest 
+ *    amount of data that can be on the screen. */
+#define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
 
-//Here's the console state: 
+/***************** Console State:  ****************/
+/* Invariant: Always points to the next position to write. */
 static int console_color = FGND_WHITE | BGND_BLACK;
-
-//Invariant: Always on the next position to write.
 static int console_row = 0;
 static int console_col = 0;
 static int cursor_hidden = 1;
 
+/* Print buffer protects us from printing from an invalid 
+ *  user space buffer. */
+static char printbuf[PRINT_BUF_SIZE];
+mutex_t print_lock;
 
-/************** Syscall wrappers. **************/
-void getchar_handler(volatile regstate_t reg)
+void console_init()
 {
-	lprintf("Ignoring getchar");
-	MAGIC_BREAK;
-   //TODO
+   mutex_init(&print_lock);
 }
 
-void readline_handler(volatile regstate_t reg)
-{
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	if (!mm_validate_read(arg_addr, sizeof(int)) || 
-			!mm_validate_read(arg_addr + sizeof(int), sizeof(char *))) {
-		RETURN(READLINE_INVALID_ARGS);
-	}
-
-	int len = *(int *)arg_addr;
-	if (len < 0 || len > KEY_BUF_SIZE) {
-		RETURN(READLINE_INVALID_LENGTH);
-	}
-
-	char *buf = *(char **)(arg_addr + sizeof(int));
-	if (!mm_validate_write(buf, len)) {
-		RETURN(READLINE_INVALID_BUFFER);
-	}
-
-	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
-			get_tcb()->tid, len, buf);
-
-	int read = readline(buf, len);
-	RETURN(read);
-}
 
 /** 
 * @brief Prints len bytes of memory, starting at buf, to the console. 
@@ -72,10 +52,37 @@ void readline_handler(volatile regstate_t reg)
 */
 void print_handler(volatile regstate_t reg)
 {
-	//char *arg_addr = (char *)SYSCALL_ARG(reg);
-	lprintf("Ignoring print");
-	MAGIC_BREAK;
-   //TODO
+   /* The interface and code is very similar to readline 
+    *    i.e. forgive copy and paste code. */
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int len;
+   char* buf;
+   
+   if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
+      RETURN(PRINT_INVALID_ARGS);
+   
+   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < sizeof(char*))
+      RETURN(PRINT_INVALID_ARGS);
+
+	if (len < 0 || len > PRINT_BUF_SIZE)
+		RETURN(PRINT_INVALID_ARGS);
+
+   /* Copy buffer. TODO We could potentially put a much smaller
+    *    buffer on the stack, and not have to hold this lock through
+    *    the copying process.  Alternatively, we can write a version
+    *    of putbytes that does validated copying, but in that case 
+    *    we would probably end up putting only part of the input on
+    *    the console. 
+    **/
+   mutex_lock(&print_lock);
+   if(v_memcpy((char*)printbuf, buf, len) != len)
+   {
+      mutex_unlock(&print_lock);
+      RETURN(PRINT_INVALID_ARGS);
+   }
+   putbytes(printbuf, len);
+   mutex_unlock(&print_lock);
+   RETURN(0);
 }
 
 void set_term_color_handler(volatile regstate_t reg)

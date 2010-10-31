@@ -16,8 +16,7 @@
 
 
 /* Wrappers for the system calls associated with the functions below. */
-void getchar_handler(volatile regstate_t reg);
-void readline_handler(volatile regstate_t reg);
+void console_init();
 void print_handler(volatile regstate_t reg);
 void set_term_color_handler(volatile regstate_t reg);
 void set_cursor_pos_handler(volatile regstate_t reg);
