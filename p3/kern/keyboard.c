@@ -21,6 +21,7 @@
 #include <debug.h>
 #include <thread.h>
 #include <vstring.h>
+#include <console.h>
 
 #define READLINE_INVALID_ARGS -1
 #define READLINE_INVALID_LENGTH -2
@@ -142,7 +143,9 @@ void keyboard_handler(void)
 		keybuf[keybuf_tail] = c;
 		keybuf_tail = next_tail;
 
-		/* A blocked thread can be released if a full line has been read, or if
+      putbyte(c);
+		
+      /* A blocked thread can be released if a full line has been read, or if
 		 * more characters have been read than are currently being waited for. */
 		if (c == '\n') {
 			newlines++;

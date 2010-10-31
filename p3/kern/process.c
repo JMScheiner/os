@@ -16,7 +16,7 @@
 /**
  * @brief Next pid to assign to a process.
  */
-static int next_pid = 0xc0de0000;
+static int next_pid = 1;
 
 /** @brief pcb of the init process. */
 pcb_t *init_process;

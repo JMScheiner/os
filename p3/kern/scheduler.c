@@ -133,11 +133,12 @@ void scheduler_block_me()
  */
 void scheduler_die(mutex_t *lock)
 {
+	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Dying %p", get_tcb());
 	disable_interrupts();
 	mutex_unlock(lock);
 	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
-	scheduler_next(NULL);
+	scheduler_next(tcb);
 	assert(FALSE);
 }
 
