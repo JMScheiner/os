@@ -165,6 +165,7 @@ void mm_new_directory(pcb_t* pcb)
 
 /** 
 * @brief Frees every frame and table that belongs to user space. 
+*  Releases the directory, and continues execution in the global directory.  
 * 
 * @param pcb The process that points to the relevant address space. 
 */
@@ -173,9 +174,11 @@ void mm_free_address_space(pcb_t* pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long frame, page;
+   pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
    page_tablent_t *table_v, *table_p;
    
+   global = global_pcb();
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
    
@@ -199,7 +202,14 @@ void mm_free_address_space(pcb_t* pcb)
       
       mm_free_table(pcb, (void*)(t_index << TABLE_SHIFT));
    }
-
+   
+   pcb->dir_v = global->dir_v;
+   pcb->dir_p = global->dir_p;
+   pcb->virtual_dir = global->virtual_dir;
+   set_cr3((int)pcb->dir_p);
+   
+   kvm_free_page(dir_v);
+   kvm_free_page(virtual_dir);
 }
 
 /** 

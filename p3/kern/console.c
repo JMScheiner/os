@@ -72,7 +72,7 @@ void print_handler(volatile regstate_t reg)
     *    the copying process.  Alternatively, we can write a version
     *    of putbytes that does validated copying, but in that case 
     *    we would probably end up putting only part of the input on
-    *    the console. 
+    *    the console if we were to fail.
     **/
    mutex_lock(&print_lock);
    if(v_memcpy((char*)printbuf, buf, len) != len)
@@ -85,29 +85,64 @@ void print_handler(volatile regstate_t reg)
    RETURN(0);
 }
 
+/** 
+* @brief Sets the terminal print color for any future output to the console. 
+*  If color does not specify a valid color, an integer error code less than 
+*  zero should be returned. Zero is returned on success.
+* 
+* @param reg The register state on entry to the handler.
+*/
 void set_term_color_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_term_color");
-	MAGIC_BREAK;
-   //TODO
+	int color = (int)SYSCALL_ARG(reg);
+	if(0 < color || color > MAX_VALID_COLOR)
+      RETURN(-1);
+   
+   set_term_color(color); 
+   RETURN(0);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring set_cursor_pos");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int row, col;
+   
+   if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
+      RETURN(-1);
+   
+   if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < sizeof(int))
+      RETURN(-1);
+   
+   /* TODO What constitutes an invalid cursor position? */
+   set_cursor_pos(row, col);
+   RETURN(0);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring get_cursor_pos");
-	MAGIC_BREAK;
-   //TODO
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int *row, *col;
+   int myrow, mycol;
+   
+   /* Copy in user space addresses. */
+   if(v_memcpy((char*)&row, arg_addr, sizeof(int*)) < sizeof(int*))
+      RETURN(-1);
+   
+   if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < sizeof(int*))
+      RETURN(-1);
+   
+   get_cursor_pos(&myrow, &mycol);
+   
+   /* Copy out row and column. */
+   if(v_memcpy((char*)row, &myrow, sizeof(int)) < sizeof(int))
+      RETURN(-1);
+   
+   if(v_memcpy((char*)col, &mycol, sizeof(int)) < sizeof(int))
+      RETURN(-1);
+
+   RETURN(0); 
 }
 /************** End Syscall wrappers . **************/
-
-
 
 static void set_cursor_position(int row, int col)
 {
