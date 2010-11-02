@@ -33,6 +33,8 @@
 #include <eflags.h>
 #include <cr.h>
 #include <seg.h>
+#include <vstring.h>
+#include <syscall_codes.h>
 
 
 void *zombie_stack = NULL;
@@ -65,11 +67,11 @@ void exec_handler(volatile regstate_t reg) {
 
 	/* Verify that the arguments lie in valid memory. */
    if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
-		RETURN(EXEC_INVALID_ARGS);
+		RETURN(SYSCALL_INVALID_ARGS);
    
    if(v_memcpy((char*)&argvec, 
       arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
-		RETURN(EXEC_INVALID_ARGS);
+		RETURN(SYSCALL_INVALID_ARGS);
 
 	/* TODO Check if there is more than one thread. */
    
@@ -282,7 +284,8 @@ void set_status_handler(volatile regstate_t reg)
 {
 	pcb_t *pcb = get_pcb();
 	pcb->status.status = (int)SYSCALL_ARG(reg);
-	debug_print("vanish", "Set status of pcb %p to %d", pcb, pcb->status.status);
+	debug_print("vanish", "Set status of pcb %p to %d", pcb, 
+			pcb->status.status);
 }
 
 /** 
@@ -347,8 +350,9 @@ void wait_handler(volatile regstate_t reg)
 {
 	int *status_addr = (int *)SYSCALL_ARG(reg);
 	debug_print("wait", "Called with status address %p", status_addr);
-	if (status_addr != NULL && !mm_validate_write(status_addr, sizeof(int))) {
-		RETURN(WAIT_INVALID_ARGS);
+	if (status_addr != NULL && 
+			!mm_validate_write(status_addr, sizeof(int))) {
+		RETURN(SYSCALL_INVALID_ARGS);
 	}
 
 	pcb_t *pcb = get_pcb();
@@ -367,14 +371,16 @@ void wait_handler(volatile regstate_t reg)
 	mutex_unlock(&pcb->check_waiter_lock);
 
 	mutex_lock(&pcb->waiter_lock);
-	debug_print("wait", "zombie child status = %p before cond_wait", pcb->zombie_statuses);
+	debug_print("wait", "zombie child status = %p before cond_wait", 
+			pcb->zombie_statuses);
 	disable_interrupts();
 	if (pcb->zombie_statuses == NULL) {
 		cond_wait(&pcb->wait_signal);
 	}
 	enable_interrupts();
 
-	debug_print("wait", "zombie child status = %p after cond_wait", pcb->zombie_statuses);
+	debug_print("wait", "zombie child status = %p after cond_wait", 
+			pcb->zombie_statuses);
 	mutex_lock(&pcb->status_lock);
 	status_t *status = pcb->zombie_statuses;
 	assert(status != NULL);
@@ -383,8 +389,10 @@ void wait_handler(volatile regstate_t reg)
 
 	mutex_unlock(&pcb->waiter_lock);
 
-	if (status_addr)
-		*status_addr = status->status;
+	if (status_addr) {
+		// There's nothing we can do if the copy fails, but don't crash. */
+		v_memcpy((char *)status_addr, (char *)status->status, sizeof(int));
+	}
 	int tid = status->tid;
 	RETURN(tid);
 }

@@ -7,35 +7,41 @@
 #include <simics.h>
 #include <thread.h>
 #include <debug.h>
+#include <types.h>
 #include <vstring.h>
 #include <mutex.h>
+#include <syscall_codes.h>
 
-#define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
+/** @brief Index of the first byte after console memory. */
+#define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
+			2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
+
+/** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR 0x8f
-   
-#define PRINT_INVALID_ARGS -1
 
-/* This may seem rather large, but it is manageable, and actually the largest 
- *    amount of data that can be on the screen. */
+/* This may seem rather large, but it is manageable, and actually the 
+ * largest amount of data that can be on the screen. */
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
 
 /***************** Console State:  ****************/
-/* Invariant: Always points to the next position to write. */
+
+/** @brief Current color of the console. */ 
 static int console_color = FGND_WHITE | BGND_BLACK;
+
+/** @brief Location to print the next character to on the console. */
 static int console_row = 0;
 static int console_col = 0;
-static int cursor_hidden = 1;
 
-/* Print buffer protects us from printing from an invalid 
- *  user space buffer. */
-static char printbuf[PRINT_BUF_SIZE];
+/** @brief Is the cursor currently hidden? */
+static boolean_t cursor_hidden = FALSE;
+
+/** @brief Mutex to prevent interleaving of console output. */
 mutex_t print_lock;
 
 void console_init()
 {
    mutex_init(&print_lock);
 }
-
 
 /** 
 * @brief Prints len bytes of memory, starting at buf, to the console. 
@@ -46,49 +52,48 @@ void console_init()
 *  If len is larger than some reasonable maximum or if buf is not a 
 *     valid memory address, an integer error code less than zero should be 
 *     returned.
-*  Characters printed to the console invoke standard newline, backspace, and scrolling behaviors.
+*  Characters printed to the console invoke standard newline, backspace, 
+*  and scrolling behaviors.
 * 
 * @param reg The register state on entry to print.
 */
 void print_handler(volatile regstate_t reg)
 {
-   /* The interface and code is very similar to readline 
-    *    i.e. forgive copy and paste code. */
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
-   int len;
-   char* buf;
-   
-   if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
-      RETURN(PRINT_INVALID_ARGS);
-   
-   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < sizeof(char*))
-      RETURN(PRINT_INVALID_ARGS);
+	int len;
+	char* buf;
 
-	if (len < 0 || len > PRINT_BUF_SIZE)
-		RETURN(PRINT_INVALID_ARGS);
+	if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int)) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+	if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
+			sizeof(char*)) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
 
-   /* Copy buffer. TODO We could potentially put a much smaller
-    *    buffer on the stack, and not have to hold this lock through
-    *    the copying process.  Alternatively, we can write a version
-    *    of putbytes that does validated copying, but in that case 
-    *    we would probably end up putting only part of the input on
-    *    the console if we were to fail.
-    **/
-   mutex_lock(&print_lock);
-   if(v_memcpy((char*)printbuf, buf, len) != len)
-   {
-      mutex_unlock(&print_lock);
-      RETURN(PRINT_INVALID_ARGS);
-   }
-   putbytes(printbuf, len);
-   mutex_unlock(&print_lock);
-   RETURN(0);
+	if (len < 0 || len > PRINT_BUF_SIZE) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+
+	char printbuf[PRINT_BUF_SIZE];
+
+	/* Copy buf to prevent the memory it lies in from being freed during the
+	 * call to putbytes. */
+	if (v_memcpy(printbuf, buf, len) != len) {
+		RETURN(SYSCALL_INVALID_ARGS);
+	}
+
+	/* Ensure sequential access to the console screen. */
+	mutex_lock(&print_lock);
+	putbytes(printbuf, len);
+	mutex_unlock(&print_lock);
+	RETURN(SYSCALL_SUCCESS);
 }
 
 /** 
-* @brief Sets the terminal print color for any future output to the console. 
-*  If color does not specify a valid color, an integer error code less than 
-*  zero should be returned. Zero is returned on success.
+* @brief Sets the terminal print color for any future output to the 
+* console. If color does not specify a valid color, an integer error 
+* code less than zero should be returned. Zero is returned on success.
 * 
 * @param reg The register state on entry to the handler.
 */
@@ -96,54 +101,63 @@ void set_term_color_handler(volatile regstate_t reg)
 {
 	int color = (int)SYSCALL_ARG(reg);
 	if(0 < color || color > MAX_VALID_COLOR)
-      RETURN(-1);
-   
-   set_term_color(color); 
-   RETURN(0);
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	set_term_color(color); 
+	RETURN(SYSCALL_SUCCESS);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
-   int row, col;
-   
-   if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
-      RETURN(-1);
-   
-   if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < sizeof(int))
-      RETURN(-1);
-   
-   /* TODO What constitutes an invalid cursor position? */
-   set_cursor(row, col);
-   RETURN(0);
+	int row, col;
+
+	if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < 
+			sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	/* TODO What constitutes an invalid cursor position? */
+	set_cursor(row, col);
+	RETURN(SYSCALL_SUCCESS);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
-   int *row, *col;
-   int myrow, mycol;
-   
-   /* Copy in user space addresses. */
-   if(v_memcpy((char*)&row, arg_addr, sizeof(int*)) < sizeof(int*))
-      RETURN(-1);
-   
-   if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < sizeof(int*))
-      RETURN(-1);
-   
-   get_cursor(&myrow, &mycol);
-   
-   /* Copy out row and column. */
-   if(v_memcpy((char*)row, (char*)&myrow, sizeof(int)) < sizeof(int))
-      RETURN(-1);
-   
-   if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
-      RETURN(-1);
+	int *row, *col;
+	int myrow, mycol;
 
-   RETURN(0); 
+	/* Copy in user space addresses. */
+	if(v_memcpy((char*)&row, arg_addr, sizeof(int*)) < sizeof(int*))
+		RETURN(SYSCALL_INVALID_ARGS);
+   
+	if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < 
+			sizeof(int*))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	get_cursor(&myrow, &mycol);
+
+	/* Copy out row and column. */
+	if(v_memcpy((char*)row, (char*)&myrow, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+
+	RETURN(SYSCALL_SUCCESS);
 }
 /************** End Syscall wrappers . **************/
 
+/**
+ * @brief Change the position of the cursor to the given row and column
+ * without checking for validity.
+ *
+ * @param row The row to move the cursor to.
+ * @param col The column to move the cursor to.
+ */
 static void set_cursor_position(int row, int col)
 {
 	int address = row * CONSOLE_WIDTH + col;
@@ -348,7 +362,8 @@ void get_term_color(int* color)
  */
 int set_cursor(int row, int col)
 {
-	if(row < CONSOLE_HEIGHT && col < CONSOLE_WIDTH)
+	if(0 <= row && row < CONSOLE_HEIGHT && 
+			0 <= col && col < CONSOLE_WIDTH)
 	{
 		console_row = row;
 		console_col = col;
@@ -387,7 +402,7 @@ void hide_cursor()
 {
 	if(!cursor_hidden)
 	{
-		cursor_hidden = 1;
+		cursor_hidden = TRUE;
 		set_cursor_position(CONSOLE_WIDTH, CONSOLE_HEIGHT);
 	}
 }
@@ -402,7 +417,7 @@ void show_cursor()
 {
 	if(cursor_hidden)
 	{
-		cursor_hidden = 0;
+		cursor_hidden = FALSE;
 		set_cursor_position(console_row, console_col);
 	}
 }

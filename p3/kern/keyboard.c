@@ -22,10 +22,7 @@
 #include <thread.h>
 #include <vstring.h>
 #include <console.h>
-
-#define READLINE_INVALID_ARGS -1
-#define READLINE_INVALID_LENGTH -2
-#define READLINE_INVALID_BUFFER -3
+#include <syscall_codes.h>
 
 /*********************************************************************/
 /*                                                                   */
@@ -61,6 +58,38 @@ void getchar_handler(volatile regstate_t reg)
    //TODO
 }
 
+/** @brief Reads the next line from the console and copies it into the
+ * buffer pointed to by buf. 
+ *
+ * If there is no line of input currently available, the calling thread 
+ * is descheduled until one is. If some other thread is descheduled on a 
+ * readline() or a getchar(), then the calling thread must block and 
+ * wait its turn to access the input stream. The length of the buffer 
+ * is indicated by len. If the line is smaller than the buffer, then the 
+ * complete line including the newline character is copied into the 
+ * buffer. If the length of the line exceeds the length of the buffer, 
+ * only len characters should be copied into buf. Available characters 
+ * should not be committed into buf until there is a newline character 
+ * available, so the user has a chance to backspace over typing mistakes. 
+ *
+ * Characters that will be consumed by a readline() should be echoed to 
+ * the console as soon as possible. If there is no outstanding call to 
+ * readline() no characters should be echoed. Echoed user input may be 
+ * interleaved with output due to calls to print(). Characters not
+ * placed in the buffer should remain available for other calls to
+ * readline() and/or getchar(). Some kernel implementations may choose to
+ * regard characters which have been echoed to the screen but which have
+ * not been placed into a user buffer to be "dedicated" to readline() and
+ * not available to getchar(). 
+ *
+ * The readline system call returns the number of bytes copied into the 
+ * buffer. An integer error code less than zero is returned if buf is 
+ * not a valid memory address, if buf falls in a read-only memory region 
+ * of the task, or if len is "unreasonably" large.
+ *
+ * @param reg The register state on entry containing the buffer to read to
+ * and the maximum length to read.
+ */
 void readline_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
@@ -69,18 +98,19 @@ void readline_handler(volatile regstate_t reg)
    
    if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
    {
-      debug_print("readline", "Failing readline - arg len unreadable.");
-      RETURN(READLINE_INVALID_ARGS);
+      debug_print("readline", "arg len unreadable.");
+      RETURN(SYSCALL_INVALID_ARGS);
    }
    
-   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < sizeof(char*))
+   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
+			 sizeof(char*))
    {
-      debug_print("readline", "Failing readline - arg buf unreadable.");
-      RETURN(READLINE_INVALID_ARGS);
+      debug_print("readline", "arg buf unreadable.");
+      RETURN(SYSCALL_INVALID_ARGS);
    }
    
 	if (len < 0 || len > KEY_BUF_SIZE) {
-      debug_print("readline", "Failing readline - len %d unreasonable.", len);
+      debug_print("readline", "len %d unreasonable.", len);
 		RETURN(READLINE_INVALID_LENGTH);
 	}
    
@@ -88,7 +118,7 @@ void readline_handler(volatile regstate_t reg)
     *  a race condition with remove_pages
     * */
 	if (!mm_validate_write(buf, len)) {
-      debug_print("readline", "Failing readline - buf unwritable.");
+      debug_print("readline", "buf unwritable.");
 		RETURN(READLINE_INVALID_BUFFER);
 	}
 
@@ -143,10 +173,11 @@ void keyboard_handler(void)
 		keybuf[keybuf_tail] = c;
 		keybuf_tail = next_tail;
 
-      putbyte(c);
+		putbyte(c);
 		
-      /* A blocked thread can be released if a full line has been read, or if
-		 * more characters have been read than are currently being waited for. */
+		/* A blocked thread can be released if a full line has been read, 
+		 * or if more characters have been read than are currently being 
+		 * waited for. */
 		if (c == '\n') {
 			newlines++;
 			cond_signal(&keyboard_signal);
@@ -159,8 +190,8 @@ void keyboard_handler(void)
 }
 
 int readline(char *buf, int len) {
-	/* Prevent other readers from interfering. They can't accomplish anything
-	 * until we're done anyway. */
+	/* Prevent other readers from interfering. They can't accomplish 
+	 * anything until we're done anyway. */
 	mutex_lock(&keyboard_lock);
 	line_length = len;
 
@@ -172,7 +203,7 @@ int readline(char *buf, int len) {
 	enable_interrupts();
 	int read;
    
-   debug_print("readline", "Beginning read!.");
+	debug_print("readline", "Beginning read!.");
 	for (read = 0; read < len; read++) {
 		buf[read] = keybuf[keybuf_head];
 		keybuf_head = NEXT(keybuf_head);
@@ -181,7 +212,7 @@ int readline(char *buf, int len) {
 			break;
 		}
 	}
-   debug_print("readline", "Read complete!.");
+	debug_print("readline", "Read complete!.");
 	mutex_unlock(&keyboard_lock);
 	return read;
 }
