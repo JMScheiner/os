@@ -24,6 +24,23 @@ def tid_of(tcb):
 def get_runnable():
    return eval_expr(cpu, 'runnable')
 
+def regstate_of(tcb):
+   regstate_p = eval_expr(cpu, '(pusha_t*)' + ptr_str(tcb) + '->esp')
+   regstate = dict()
+   type, regstate['edi'] = eval_expr(cpu, ptr_str(regstate_p) + '->edi')
+   type, regstate['esi'] = eval_expr(cpu, ptr_str(regstate_p) + '->esi')
+   type, regstate['ebp'] = eval_expr(cpu, ptr_str(regstate_p) + '->ebp')
+   type, regstate['esp'] = eval_expr(cpu, ptr_str(regstate_p) + '->original_esp')
+   type, regstate['ebx'] = eval_expr(cpu, ptr_str(regstate_p) + '->ebx')
+   type, regstate['edx'] = eval_expr(cpu, ptr_str(regstate_p) + '->edx')
+   type, regstate['ecx'] = eval_expr(cpu, ptr_str(regstate_p) + '->ecx')
+   type, regstate['eax'] = eval_expr(cpu, ptr_str(regstate_p) + '->eax')
+   return regstate
+
+# Okay - we can do anything. I'm going to work on something that finds the
+#  eip in the iret frame and reports where each runnable thread was 
+#  interrupted by the timer. 
+
 ##########################
 
 def print_runlist(): 
@@ -33,7 +50,7 @@ def print_runlist():
       if tcb == runnable:
          return 
       
-      print tid_of(tcb)
+      print regstate_of(tcb)
       print_tail(next_tcb(tcb))
    
    print_tail(next_tcb(runnable))
