@@ -62,7 +62,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
 	int siblings = atomic_add(&pcb->thread_count, 1);
 	if (siblings == 0) {
-		pcb->status.tid = tcb->tid;
+		pcb->status->tid = tcb->tid;
 	}
 
 	//HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);

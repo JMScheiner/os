@@ -237,34 +237,6 @@ unsigned int default_hash(int key);
 		mutex_unlock(hashtable_name.lock); \
 	} while (0)
 
-/** @def HASHTABLE_GET_ADDR(hashtable_type, hashtable_name, key_name, val_addr)
- *
- * @brief Retrieve a value from the hashtable given its key. If the given key
- *        is not in the table, do not change the given value.
- *
- * @param hashtable_type The type of the hashtable.
- * @param hashtable_name The hashtable.
- * @param key_name The key to access the table with.
- * @param val_addr The variable to place the value's address in.
- */
-#define HASHTABLE_GET_ADDR(hashtable_type, hashtable_name, key_name, val_addr) \
-	do { \
-		size_t _HASH_ = (hashtable_name).hash(key_name) % \
-				prime_hashtable_sizes[(hashtable_name).table_index]; \
-		struct hashtable_type##_link_struct *_LINK_; \
-		/* Search for key in the bucket that was hashed to. */ \
-		mutex_lock(hashtable_name.lock); \
-		for (_LINK_ = (hashtable_name).table[_HASH_]; \
-					_LINK_ != NULL; \
-					_LINK_ = _LINK_->next) { \
-			if (_LINK_->key == (key_name)) { \
-				val_addr = &_LINK_->val; \
-				break; \
-			} \
-		} \
-		mutex_unlock(hashtable_name.lock); \
-	} while (0)
-
 /** @def HASHTABLE_REMOVE(hashtable_type, hashtable_name, key_name, val_name)
  *
  * @brief Remove a key, value pair from the hashtable, placing the value in

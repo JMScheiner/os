@@ -55,6 +55,9 @@ pcb_t* get_pcb()
 pcb_t* initialize_process(boolean_t first_process) 
 {
 	pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
+	// TODO Do something smarter
+	assert(pcb);
+
    pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
 		pcb->parent = NULL;
@@ -65,7 +68,11 @@ pcb_t* initialize_process(boolean_t first_process)
 	}
 	pcb->thread_count = 0;
 	pcb->regions = NULL;
-	pcb->status.status = 0;
+	pcb->status = (status_t *)malloc(sizeof(status_t));
+	// TODO Do something smarter
+	assert(pcb->status);
+	pcb->status->status = 0;
+	INIT_LIST(pcb->children);
 	pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
    pcb->sanity_constant = PCB_SANITY_CONSTANT;
@@ -78,6 +85,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	mutex_init(&pcb->status_lock);
 	mutex_init(&pcb->waiter_lock);
 	mutex_init(&pcb->check_waiter_lock);
+	mutex_init(&pcb->child_lock);
 
 	cond_init(&pcb->wait_signal);
    

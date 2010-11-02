@@ -12,9 +12,14 @@
 #include <eflags.h>
 
 /**
- * @brief Global flag indicating whether locks have been enabled yet. Locks
- * cannot be enabled until interrupts are enabled.
+ * @brief Global count of how many times interrupts have been disabled
+ * without being enabled. This is intially 1 because initially interrupts
+ * are disabled.
  */
+int lock_depth = 1;
+
+/** @brief Global flag preventing use of mutexes until the kernel has been
+ * initialized. */
 boolean_t locks_enabled = FALSE;
 
 /**
@@ -60,7 +65,7 @@ void mutex_lock(mutex_t *mp)
 	mutex_node_t node;
 	node.tcb = get_tcb();
 	node.next = NULL;
-	disable_interrupts();
+	quick_lock();
 	if (mp->head == NULL) {
 		mp->head = mp->tail = &node;
 	}
@@ -70,11 +75,11 @@ void mutex_lock(mutex_t *mp)
 	}
 	while (mp->locked || mp->head != &node) {
 		scheduler_block_me();
-		disable_interrupts();
+		quick_lock();
 	}
 	mp->locked = TRUE;
 	mp->head = mp->head->next;
-	enable_interrupts();
+	quick_unlock();
 }
 
 /**
@@ -88,14 +93,41 @@ void mutex_unlock(mutex_t *mp) {
 	if (!locks_enabled) return;
 
 	mp->locked = FALSE;
-	unsigned int eflags = get_eflags();
-	if (eflags & EFL_IF) {
-		disable_interrupts();
-		if(mp->head) scheduler_make_runnable(mp->head->tcb);
-		enable_interrupts();
-	}
-	else {
-		if(mp->head) scheduler_make_runnable(mp->head->tcb);
-	}
+	quick_lock();
+	if(mp->head) scheduler_make_runnable(mp->head->tcb);
+	quick_unlock();
 }
+
+/**
+ * @brief Apply a global lock to the system that disables interrupts. This 
+ * should only be used for fast operations that absolutely should not block.
+ */
+void quick_lock() {
+	disable_interrupts();
+	lock_depth++;
+}
+
+/**
+ * @brief Release the global lock. The global lock can be locked multiple
+ * times. Only enable interrupts if an equal number of unlocks have been
+ * applied.
+ */
+void quick_unlock() {
+	assert(lock_depth > 0);
+	assert((get_eflags() & EFL_IF) == 0);
+	if (--lock_depth == 0)
+		enable_interrupts();
+}
+
+/**
+ * @brief Release the global lock unconditionally and reset the number of
+ * times it has been locked to 0.
+ */
+void quick_unlock_all() {
+	assert(lock_depth > 0);
+	assert((get_eflags() & EFL_IF) == 0);
+	lock_depth = 0;
+	enable_interrupts();
+}
+
 
