@@ -14,9 +14,9 @@
 char *debug_print_strings[] = {
    /*"scheduler", */
    //"sleep", 
-   "loader", 
-   //"wait", 
-   //"vanish", 
+   //"loader", 
+   "wait", 
+   "vanish", 
    "fork", 
    "exec", 
    //"thread_fork",

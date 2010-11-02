@@ -103,9 +103,6 @@ struct PROCESS_CONTROL_BLOCK
 	 * the number of waiting parent threads. */
 	int unclaimed_children;
 
-	/** @brief Base address of the process page directory. */
-	void *page_directory;
-
 	/** @brief A list of regions with different page fault and freeing 
 	 * procedures. */
 	region_t* regions;

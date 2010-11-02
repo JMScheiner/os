@@ -55,7 +55,7 @@ pcb_t* get_pcb()
 pcb_t* initialize_process(boolean_t first_process) 
 {
 	pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
-	pcb->pid = atomic_add(&next_pid, 1);
+   pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
 		pcb->parent = NULL;
 		init_process = pcb;
@@ -67,6 +67,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	pcb->regions = NULL;
 	pcb->status.status = 0;
 	pcb->unclaimed_children = 0;
+   pcb->zombie_statuses = NULL;
    
 	mm_new_directory(pcb);
 	mutex_init(&pcb->lock);

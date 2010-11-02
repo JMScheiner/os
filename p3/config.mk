@@ -27,6 +27,10 @@ UPDATE_METHOD = afs
 # directory.
 #
 410TESTS = ck1 knife peon coolness merchant readline_basic
+410TESTS += cho cho2 cho_variant deschedule_hang exec_basic
+410TESTS += exec_basic_helper exec_nonexist fork_bomb
+410TESTS += fork_exit_bomb fork_test1 fork_wait fork_wait_bomb
+410TESTS += halt_test make_crash make_crash_helper
 
 ###########################################################################
 # Test programs you have written which you wish to run

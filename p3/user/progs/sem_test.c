@@ -53,8 +53,6 @@ int main(int argc, const char *argv[])
 		thr_create(sem_test, (void*)i);
 	}
 
-	while(1) { }
-
 	return 0;
 }
 

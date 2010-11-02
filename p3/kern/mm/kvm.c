@@ -18,6 +18,7 @@
 #include <mutex.h>
 #include <global_thread.h>
 #include <debug.h>
+#include <simics.h>
 
 static void* _kvm_initial_table;
 void* kvm_initial_table() { return _kvm_initial_table; }
@@ -109,9 +110,24 @@ void* kvm_new_page()
    mutex_lock(&kernel_free_lock);
    if(kernel_free_list)
    {
+      assert((void*)kernel_free_list > (void*)USER_MEM_END);
       new_page = kernel_free_list;
       kernel_free_list = kernel_free_list->next;
+
+      if((kernel_free_list != 0) && !((void*)kernel_free_list > (void*)USER_MEM_END))
+         MAGIC_BREAK;
+
       mutex_unlock(&kernel_free_lock);
+      
+      //page_dirent_t* global_dir = global_pcb()->dir_v;
+      //page_tablent_t* table = global_dir[ DIR_OFFSET(new_page) ];
+      
+      /* FIXME FIXME FIXME WHY DON'T I WORK. Remap the page. */
+      /*table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
+         | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
+      lprintf("Mapped page %p to %p", new_page, table[ TABLE_OFFSET(new_page) ]);*/
+      invalidate_page(new_page);
+   
    }
    else
    {
@@ -138,22 +154,28 @@ void kvm_free_page(void* page)
    void* next;
    assert(page > (void*)USER_MEM_END);
 
-   page_dirent_t* global_dir = global_pcb()->dir_v;
-   
+   if(kernel_free_list)
+      assert((void*)kernel_free_list > (void*)USER_MEM_END);
+
+   //page_dirent_t* global_dir = global_pcb()->dir_v;
    /* Will there be race conditions on freed kernel pages? (TODO No) */
-   page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
-   table[ TABLE_OFFSET(page) ] = 
-      PAGE_OF(table[ TABLE_OFFSET(page) ]);
+   //page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
    
-   
-   /* Is this all that needs to be done? */
    mutex_lock(&kernel_free_lock);
    
+   lprintf("Adding page %p to kernel_free_list=%p", page, kernel_free_list);
    next = kernel_free_list;
    kernel_free_list = page;
    kernel_free_list->next = next;
    
    mutex_unlock(&kernel_free_lock);
+   
+   /* Wipe all flags, unmap the page. */
+   //table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
+   //invalidate_page(page);
+   
+   /* Is this all that needs to be done? */
+   assert((void*)kernel_free_list > (void*)USER_MEM_END);
 }
 
 /** 

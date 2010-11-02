@@ -193,7 +193,7 @@ void fork_handler(volatile regstate_t reg)
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
    /* Register the first thread in the new TCB. */
-   sim_reg_child(new_pcb->dir_p, get_pcb()->dir_p);
+   sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);
    scheduler_register(new_tcb);
    
    RETURN(newpid);
@@ -308,6 +308,7 @@ void vanish_handler(volatile regstate_t reg)
 		// We are the last thread in our process
 		//region_t *region = pcb->regions;
 		// Free regions
+      // FIXME FIXME FIXME Let our kids know we're dead. 
 		pcb_t *parent = pcb->parent;
 		if (parent == NULL) {
 			parent = init_process;
@@ -321,6 +322,11 @@ void vanish_handler(volatile regstate_t reg)
 		cond_signal(&parent->wait_signal);
       
       mm_free_address_space(pcb);
+
+      lprintf("***************************************");
+      lprintf("   freeing pcb = %p, mutex at %p       ", pcb, &pcb->status_lock);
+      lprintf("***************************************");
+      free(pcb);
 	}
 	
 	mutex_lock(&zombie_stack_lock);
@@ -380,7 +386,6 @@ void wait_handler(volatile regstate_t reg)
 	if (status_addr)
 		*status_addr = status->status;
 	int tid = status->tid;
-	free(pcb);
 	RETURN(tid);
 }
 

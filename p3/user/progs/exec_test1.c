@@ -14,6 +14,5 @@ int main()
 	args[4] = NULL;
 	int err = exec("exec_test2", args);
 	lprintf("FAIL - exec returned with error %d", err);
-	while (1);
 	return 1;
 }

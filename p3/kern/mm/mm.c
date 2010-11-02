@@ -182,8 +182,8 @@ void mm_free_address_space(pcb_t* pcb)
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
    
-   for(d_index = (USER_MEM_START >> DIR_SHIFT); 
-      d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
+   for(d_index = DIR_OFFSET(USER_MEM_START); 
+      d_index < DIR_OFFSET(USER_MEM_END); d_index++)
    {
       table_v = virtual_dir[d_index];
       table_p = dir_v[d_index];
@@ -536,6 +536,7 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    user_free_list = free_block->next;
    memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
+   //lprintf("n_free_frame = %d", n_free_frames);
 
    mutex_unlock(&user_free_lock);
    return new_frame;
@@ -554,6 +555,8 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    free_block_t* node;
    unsigned long frame;
 
+   if(page == 0xfffce000) MAGIC_BREAK;
+   
    frame = table_v[ TABLE_OFFSET(page) ];
    if(!(FLAGS_OF(frame) & PTENT_PRESENT)) return -1;
       

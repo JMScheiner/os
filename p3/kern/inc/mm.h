@@ -27,9 +27,9 @@
 #define PTENT_ZFOD         0x400
 
 #define PAGE_MASK (PAGE_SIZE - 1)
-#define PAGE_OF(addr) (((int)addr) & (~PAGE_MASK))
-#define FLAGS_OF(addr) (((int)addr) & (PAGE_MASK))
-#define PAGE_OFFSET(addr) (((int)addr) & PAGE_MASK)
+#define PAGE_OF(addr) (((int)(addr)) & (~PAGE_MASK))
+#define FLAGS_OF(addr) (((int)(addr)) & (PAGE_MASK))
+#define PAGE_OFFSET(addr) (((int)(addr)) & PAGE_MASK)
 
 /** @brief Evaluate to true iff addr1 and addr2 are on the same page. 
  *

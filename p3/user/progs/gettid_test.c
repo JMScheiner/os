@@ -1,10 +1,10 @@
 
 #include <syscall.h>
 #include <simics.h>
+#include <stdio.h>
 
 int main()
 {
-	lprintf("My tid is 0x%x", gettid());
-	while (1) {
-	}
+	printf("My tid is 0x%x", gettid());
+   return 7;
 }

@@ -20,7 +20,6 @@ int main(int argc, const char *argv[])
 
    lprintf("Child back - gettid returns 0x%x.", gettid());
    
-   while(1);
    return 1;
 }
 

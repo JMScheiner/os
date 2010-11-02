@@ -12,8 +12,8 @@ int main(int argc, const char *argv[])
       sleep(sleep_time);
    }
 
-	while(1)
-	{
+   while(1) 
+   {
       sleep(sleep_time);
 		lprintf("0x%x Back!", gettid());
 	}
