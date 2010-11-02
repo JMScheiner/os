@@ -5,6 +5,9 @@
 #include <list.h>
 #include <types.h>
 
+#define TCB_SANITY_CONSTANT 0xdeadbeef
+#define PCB_SANITY_CONSTANT 0xcafebabe
+
 typedef struct MUTEX_NODE mutex_node_t;
 typedef struct MUTEX mutex_t;
 typedef struct COND cond_t;
@@ -129,6 +132,7 @@ struct PROCESS_CONTROL_BLOCK
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;
+   int sanity_constant;
 };
 
 /** @brief Thread control block structure. */
@@ -155,6 +159,7 @@ struct THREAD_CONTROL_BLOCK{
 
    unsigned long wakeup;
    int sleep_index;
+   int sanity_constant;
 };
 
 struct SLEEP_HEAP 

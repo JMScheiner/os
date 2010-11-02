@@ -13,7 +13,6 @@ void timer_init(void);
 * 	- Pops all registers.
 */
 void asm_timer_wrapper(void);
-
 long time(void);
 
 #endif /* end of include guard: TIMER_39YOD2E4 */

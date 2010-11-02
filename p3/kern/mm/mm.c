@@ -541,7 +541,7 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    user_free_list = free_block->next;
    memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
-   lprintf("n_free_frame = %d", n_free_frames);
+   //lprintf("n_free_frame = %d", n_free_frames);
 
    mutex_unlock(&user_free_lock);
    return new_frame;

@@ -24,6 +24,7 @@ void global_thread_init()
 	mutex_init(&_global_pcb.status_lock);
 	mutex_init(&_global_pcb.waiter_lock);
 	mutex_init(&_global_pcb.check_waiter_lock);
+   _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
    LIST_INIT_NODE(&_global_pcb, global_node);
    mutex_init(&_global_list_lock);
@@ -34,6 +35,7 @@ void global_thread_init()
    _global_tcb->esp = _global_tcb->kstack;
    _global_tcb->pcb = &_global_pcb;
    _global_tcb->tid = -1;
+   _global_tcb->sanity_constant = TCB_SANITY_CONSTANT;
 
    arrange_global_context();
 }

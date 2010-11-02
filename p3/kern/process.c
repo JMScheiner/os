@@ -68,6 +68,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	pcb->status.status = 0;
 	pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
+   pcb->sanity_constant = PCB_SANITY_CONSTANT;
    
 	mm_new_directory(pcb);
 	mutex_init(&pcb->lock);

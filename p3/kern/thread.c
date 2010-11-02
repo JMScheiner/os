@@ -46,6 +46,7 @@ void init_thread_table(void)
 tcb_t* initialize_thread(pcb_t *pcb) 
 {
 	assert(pcb);
+	//assert(pcb != (void*)0xffffffff);
    
 	void* kstack_page = kvm_new_page();
 	debug_print("mm", "new kernel stack page at %p", kstack_page);
@@ -58,6 +59,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	
 	tcb->tid = new_tid();
 	tcb->pcb = pcb;
+   tcb->sanity_constant = TCB_SANITY_CONSTANT;
 	int siblings = atomic_add(&pcb->thread_count, 1);
 	if (siblings == 0) {
 		pcb->status.tid = tcb->tid;
@@ -78,6 +80,15 @@ tcb_t* initialize_thread(pcb_t *pcb)
 tcb_t *get_tcb()
 {
 	void *esp = get_esp();
+   tcb_t* ret = (tcb_t*)PAGE_OF(esp);
+   assert(ret->sanity_constant = TCB_SANITY_CONSTANT);
+
+   /* TODO When is this NULL? */
+   //assert((int)ret->pcb != -1);
+   if(ret->pcb)
+   {
+      assert(ret->pcb->sanity_constant = PCB_SANITY_CONSTANT);
+   }
 	return (tcb_t *)PAGE_OF(esp);
 }
 

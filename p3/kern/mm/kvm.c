@@ -28,6 +28,7 @@ void* kvm_initial_table() { return _kvm_initial_table; }
 static void* kvm_bottom;
 static free_block_t* kernel_free_list;
 static mutex_t kernel_free_lock;
+static mutex_t new_table_lock;
 
 static void* kvm_alloc_page(void* page);
 
@@ -43,6 +44,7 @@ void kvm_init()
    kernel_free_list = NULL;
    kvm_bottom = KVM_TOP;
    mutex_init(&kernel_free_lock);
+   mutex_init(&new_table_lock);
    
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
    global_dir[ DIR_OFFSET(KVM_TOP) ] = (page_dirent_t)
@@ -73,10 +75,18 @@ void* kvm_alloc_page(void* page)
    
    dir = (page_dirent_t*)global_pcb()->dir_v;
    table = dir[ DIR_OFFSET(page) ];
-
+   
    if(!(FLAGS_OF(table) & PTENT_PRESENT))
    {
-      table = kvm_new_table(page);
+      mutex_lock(&new_table_lock);
+
+      /* If, after locking the table still isn't allocated, 
+       *  we are free to allocate it ourselves. */
+      table = dir[ DIR_OFFSET(page) ];
+      if(!(FLAGS_OF(table) & PTENT_PRESENT))
+         table = kvm_new_table(page);
+      
+      mutex_unlock(&new_table_lock);
    }
    else
    {
@@ -188,19 +198,27 @@ void kvm_free_page(void* page)
 */
 void* kvm_new_table(void* addr)
 {
+   pcb_t *global, *iter;
+   page_dirent_t* dir_v;
+   
+   global = global_pcb();
+   dir_v = global->dir_v;
+   assert(!(FLAGS_OF(dir_v[ DIR_OFFSET(addr) ]) & PTENT_PRESENT));
+
    /* kvm tables are direct mapped. */
    void* table = mm_new_kp_page();
-   page_dirent_t* dir_v;
 
-   /* Need to update ALL directories. Luckily this shouldn't happen often. 
-    *  Since the kernel should fill its existing tables fairly infrequently. */
+   /* Need to update ALL directories. Luckily this only happens when the 
+    *  kernel uses up 4M of space. */
    
    mutex_t* global_lock = global_list_lock();
-   pcb_t* global = global_pcb();
-   pcb_t* iter;
-   
    mutex_lock(global_lock);
+
+   /* Map the new table in the global directory. */
+   dir_v[ DIR_OFFSET(addr) ] = 
+      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    
+   /* Map the new table in every other PCB*/
    for (iter = global; (iter = LIST_NEXT(iter, global_node)) != global; )
    {
       lprintf("UPDATING GLOBAL TABLE, pid = %x", iter->pid);
@@ -208,10 +226,6 @@ void* kvm_new_table(void* addr)
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    }
-   
-   dir_v = global->dir_v;
-   dir_v[ DIR_OFFSET(addr) ] = 
-      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    
    mutex_unlock(global_lock);
    

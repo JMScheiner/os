@@ -21,6 +21,7 @@
 #include <global_thread.h>
 #include <asm_helper.h>
 #include <thread.h>
+#include <reg.h>
 
 //In reality this is 9.99931276 milliseconds.
 //	Per tick, we lose 687.24ns.
@@ -49,7 +50,7 @@ void timer_init()
 /** 
 * @brief Increments the timer counter. 
 */
-void timer_handler(void)
+void timer_handler(regstate_t reg)
 {
    atomic_add_volatile(&ticks, 1);
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
@@ -64,8 +65,10 @@ void timer_handler(void)
    {
       scheduler_next(get_tcb());
    }
-
-
+   
+   /* If this fails then we've probably corrupted a 
+    *  kernel stack. */
+   assert(reg.eip);
 }
 
 /** 
