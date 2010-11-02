@@ -325,10 +325,14 @@ void vanish_handler(volatile regstate_t reg)
 		cond_signal(&parent->wait_signal);
       
       mm_free_address_space(pcb);
+      
+      /* Remove ourselves from the global PCB list. */
+      mutex_t* global_lock = global_list_lock();
+      pcb_t* global = global_pcb();
+      mutex_lock(global_lock);
+      LIST_INSERT_AFTER(global, pcb, global_node); 
+      mutex_unlock(global_lock);
 
-      lprintf("***************************************");
-      lprintf("   freeing pcb = %p, mutex at %p       ", pcb, &pcb->status_lock);
-      lprintf("***************************************");
       free(pcb);
 	}
 	

@@ -3,9 +3,11 @@
 #include <malloc.h>
 #include <page.h>
 #include <lifecycle.h>
+#include <mutex.h>
 
 static pcb_t _global_pcb;
 static tcb_t* _global_tcb;
+static mutex_t _global_list_lock;
 
 void global_thread_init()
 {
@@ -15,6 +17,16 @@ void global_thread_init()
    _global_pcb.parent = NULL;
    _global_pcb.thread_count = 1;
    _global_pcb.regions = NULL;
+	mutex_init(&_global_pcb.lock);
+	mutex_init(&_global_pcb.directory_lock);
+	mutex_init(&_global_pcb.kvm_lock);
+	mutex_init(&_global_pcb.region_lock);
+	mutex_init(&_global_pcb.status_lock);
+	mutex_init(&_global_pcb.waiter_lock);
+	mutex_init(&_global_pcb.check_waiter_lock);
+
+   LIST_INIT_NODE(&_global_pcb, global_node);
+   mutex_init(&_global_list_lock);
    
    kstack = smemalign(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE;
    _global_tcb = (tcb_t*)(kstack - PAGE_SIZE);
@@ -22,6 +34,7 @@ void global_thread_init()
    _global_tcb->esp = _global_tcb->kstack;
    _global_tcb->pcb = &_global_pcb;
    _global_tcb->tid = -1;
+
    arrange_global_context();
 }
 
@@ -32,4 +45,9 @@ inline pcb_t* global_pcb() {
 inline tcb_t* global_tcb() { 
    return _global_tcb; 
 } 
+
+inline mutex_t* global_list_lock()
+{
+   return &_global_list_lock;
+}
 

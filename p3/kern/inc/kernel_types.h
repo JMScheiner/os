@@ -15,6 +15,7 @@ typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct SLEEP_HEAP sleep_heap_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
+DEFINE_LIST(pcb_node_t, pcb_t);
 
 /** @brief Queue node in a mutex. */
 struct MUTEX_NODE {
@@ -123,6 +124,8 @@ struct PROCESS_CONTROL_BLOCK
 	/** @brief Mutual exclusion locks for pcb. */
 	mutex_t lock, region_lock, directory_lock, status_lock, 
 					waiter_lock, check_waiter_lock, kvm_lock;
+   
+   pcb_node_t global_node;
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;

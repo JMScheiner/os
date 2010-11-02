@@ -190,21 +190,32 @@ void* kvm_new_table(void* addr)
 {
    /* kvm tables are direct mapped. */
    void* table = mm_new_kp_page();
+   page_dirent_t* dir_v;
 
    /* Need to update ALL directories. Luckily this shouldn't happen often. 
     *  Since the kernel should fill its existing tables fairly infrequently. */
-   /*mutex_t* list_lock = pcb_list_lock();
-   TODO TODO TODO TODO 
-    Hold onto the kernel free lock while you do it. 
-   mutex_lock(list_lock);
-
-   FOREACH(global_queue, iter)
+   
+   mutex_t* global_lock = global_list_lock();
+   pcb_t* global = global_pcb();
+   pcb_t* iter;
+   
+   mutex_lock(global_lock);
+   
+   for (iter = global; (iter = LIST_NEXT(iter, global_node)) != global; )
    {
-      iter->dir_v[ DIR_OFFSET(addr) ]
+      lprintf("UPDATING GLOBAL TABLE, pid = %x", iter->pid);
+      dir_v = iter->dir_v;
+      dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
-   } 
-   mutex_unlock(list_lock);*/
-
+   }
+   
+   dir_v = global->dir_v;
+   dir_v[ DIR_OFFSET(addr) ] = 
+      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
+   
+   mutex_unlock(global_lock);
+   
+   lprintf("Returning table at %p", table);
    return table;
 }
 

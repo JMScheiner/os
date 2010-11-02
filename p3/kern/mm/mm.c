@@ -223,7 +223,7 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long flags;
-   unsigned long copy_page = 0, page;
+   unsigned long page;
    pcb_t* current_pcb;
    
    page_dirent_t *current_dir_v, *new_dir_v, *current_virtual_dir;
@@ -264,14 +264,19 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
          debug_print("mm", "Copying page 0x%lx", page);
          
          new_frame = mm_new_frame((unsigned long*)copy_table_v, (unsigned long)COPY_PAGE);
+
+         /* When this fails time to do something smarter. */
+         assert(new_frame);
+
+
          memcpy((void*)COPY_PAGE, (void*)page, PAGE_SIZE);
          new_table_v[t_index] = new_frame | flags;
       }
    }
    
    /* Unmap the page we used to copy for good measure. */
-   copy_table_v[ TABLE_OFFSET(copy_page) ] = 0;
-   invalidate_page((void*)copy_page);
+   copy_table_v[ TABLE_OFFSET(COPY_PAGE) ] = 0;
+   invalidate_page((void*)COPY_PAGE);
 }
 
 /** 
@@ -536,7 +541,7 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    user_free_list = free_block->next;
    memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
-   //lprintf("n_free_frame = %d", n_free_frames);
+   lprintf("n_free_frame = %d", n_free_frames);
 
    mutex_unlock(&user_free_lock);
    return new_frame;
