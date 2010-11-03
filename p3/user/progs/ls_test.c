@@ -20,8 +20,7 @@ int main(int argc, const char *argv[])
       printf("%s\n", bufptr);
       bufptr += size + 1; 
    }
-   MAGIC_BREAK;
 
-   return 0;
+   return 152352;
 }
 

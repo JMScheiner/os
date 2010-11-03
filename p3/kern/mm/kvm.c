@@ -179,7 +179,7 @@ void kvm_free_page(void* page)
    
    mutex_lock(&kernel_free_lock);
    
-   lprintf("Adding page %p to kernel_free_list=%p", page, kernel_free_list);
+   debug_print("kvm", "Adding page %p to kernel_free_list=%p", page, kernel_free_list);
    next = kernel_free_list;
    kernel_free_list = page;
    kernel_free_list->next = next;
