@@ -106,64 +106,6 @@ int mm_init()
 }
 
 /** 
-* @brief Allocates a new initialized page directory in the given PCB.
-* 
-*  The directory is initialized with: 
-*     - Kernel pages direct mapped and present.
-*     - Supervisory mode everywhere.
-*     - Read only / not present in user land.
-*     - The directory itself mapped in kernel VM
-*
-*  The PCB will be updated with 
-*     - the physical address of the new directory
-*     - the virtual address of the new directory
-*     - the virtual address of the virtual directory.
-* 
-* @param pcb The PCB to endow with a new directory. 
-*/
-void mm_new_directory(pcb_t* pcb)
-{
-   int i;
-   page_dirent_t* global_dir = global_pcb()->dir_v;
-   page_dirent_t* dir_v = kvm_new_page();
-   page_dirent_t* virtual_dir_v = kvm_new_page();
-   
-   debug_print("mm", "Global directory at %p", global_dir);
-   
-   /* The global parts of every directory should be the same. */
-   memset(dir_v, 0, PAGE_SIZE);
-   memset(virtual_dir_v, 0, PAGE_SIZE);
-   
-   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
-      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
-   
-   memcpy(dir_v, global_dir, 
-      (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
-   
-   /* When we do this copy the directory itself gets mapped as well. */
-   for(i = (USER_MEM_END >> DIR_SHIFT); i < DIR_SIZE; i++)
-      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
-  
-   debug_print("mm", "Copying [%p, %d] to [%p, %d]", 
-      global_dir + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
-      dir_v + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
-
-   memcpy(dir_v + DIR_OFFSET(USER_MEM_END), 
-      global_dir + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
-   
-   debug_print("mm", "pcb = %p, global_pcb = %p", pcb, global_pcb());
-   
-   debug_print("mm", "New directory at %p", dir_v);
-
-   pcb->dir_v = dir_v;
-   pcb->dir_p = kvm_vtop(dir_v);
-   pcb->virtual_dir = virtual_dir_v;
-}
-
-/** 
 * @brief Frees all frames allocated to the user. Handy for use in 
 *  mm_free_address_space and exec. 
 * 

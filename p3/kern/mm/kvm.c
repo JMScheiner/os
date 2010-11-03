@@ -19,9 +19,11 @@
 #include <global_thread.h>
 #include <debug.h>
 #include <simics.h>
+#include <common_kern.h>
+#include <string.h>
 
 static void* _kvm_initial_table;
-void* kvm_initial_table() { return _kvm_initial_table; }
+inline void* kvm_initial_table() { return _kvm_initial_table; }
 
 /* A list of pages (virtual) that can be allocated.
  *    They are already mapped in the global directory.*/
@@ -85,6 +87,8 @@ void* kvm_alloc_page(void* page)
       table = dir[ DIR_OFFSET(page) ];
       if(!(FLAGS_OF(table) & PTENT_PRESENT))
          table = kvm_new_table(page);
+      else
+         table = (page_tablent_t*)PAGE_OF(table);
       
       mutex_unlock(&new_table_lock);
    }
@@ -259,6 +263,73 @@ void* kvm_vtop(void* vaddr)
    
    return (void*)(PAGE_OF(paddr) + PAGE_OFFSET(vaddr));
 }
+
+/** 
+* @brief Allocates a new initialized page directory in the given PCB.
+* 
+*  The directory is initialized with: 
+*     - Kernel pages direct mapped and present.
+*     - Supervisory mode everywhere.
+*     - Read only / not present in user land.
+*     - The directory itself mapped in kernel VM
+*
+*  The PCB will be updated with 
+*     - the physical address of the new directory
+*     - the virtual address of the new directory
+*     - the virtual address of the virtual directory.
+* 
+*  We are also responsible for adding ourself to the global PCB list
+*     that is used for managing the global kvm tables. 
+* 
+* @param pcb The PCB to endow with a new directory. 
+*/
+void kvm_new_directory(pcb_t* pcb)
+{
+   int i;
+   page_dirent_t* global_dir = global_pcb()->dir_v;
+   page_dirent_t* dir_v = kvm_new_page();
+   page_dirent_t* virtual_dir_v = kvm_new_page();
+   
+   debug_print("mm", "Global directory at %p", global_dir);
+   
+   /* The global parts of every directory should be the same. */
+   memset(dir_v, 0, PAGE_SIZE);
+   memset(virtual_dir_v, 0, PAGE_SIZE);
+   
+   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
+      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
+   
+   memcpy(dir_v, global_dir, 
+      DIR_OFFSET(USER_MEM_START) * sizeof(page_tablent_t*));
+   
+   /* Need to acquire the new table lock here, otherwise a new global 
+    *  table could get allocated, and we would never find out about it, 
+    *  since we aren't on the global list. TODO Can the interaction of 
+    *  the global and table locks deadlock? Which should we acquire first? */
+   mutex_t* global_lock = global_list_lock();
+   pcb_t* global = global_pcb();
+   
+   mutex_lock(&new_table_lock);
+   
+   /* When we do this copy the directory itself gets mapped as well. */
+   for(i = DIR_OFFSET(kvm_bottom); i < DIR_SIZE; i++)
+      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
+  
+   memcpy(dir_v + DIR_OFFSET(kvm_bottom), 
+      global_dir + DIR_OFFSET(kvm_bottom), 
+      (DIR_SIZE - DIR_OFFSET(kvm_bottom)) * sizeof(page_tablent_t*));
+   
+   /* Add ourselves to the global PCB list. */
+   mutex_lock(global_lock);
+   LIST_INSERT_AFTER(global, pcb, global_node); 
+   mutex_unlock(global_lock);
+   mutex_unlock(&new_table_lock);
+   
+   pcb->dir_v = dir_v;
+   pcb->dir_p = kvm_vtop(dir_v);
+   pcb->virtual_dir = virtual_dir_v;
+}
+
 
 
 

@@ -17,16 +17,16 @@ char *debug_print_strings[] = {
    //"loader", 
    //"wait", 
    //"vanish", 
-   //"fork", 
-   "exec", 
+   "fork", 
+   //"exec", 
    //"thread_fork",
    //"mm", 
-   //"kvm", 
+   "kvm", 
    //"page", 
    //"readline", 
    //"lifecycle", 
-   "region", 
-   "malloc", 
+   //"region", 
+   //"malloc", 
    NULL};
 char *debug_break_strings[] = {"page", NULL};
 

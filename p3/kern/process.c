@@ -12,6 +12,7 @@
 #include <mutex.h>
 #include <global_thread.h>
 #include <cond.h>
+#include <kvm.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -70,7 +71,7 @@ pcb_t* initialize_process(boolean_t first_process)
    pcb->zombie_statuses = NULL;
    pcb->sanity_constant = PCB_SANITY_CONSTANT;
    
-	mm_new_directory(pcb);
+	kvm_new_directory(pcb);
 	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->kvm_lock);
@@ -81,13 +82,6 @@ pcb_t* initialize_process(boolean_t first_process)
 
 	cond_init(&pcb->wait_signal);
    
-   /* Add ourselves to the global PCB list. */
-   mutex_t* global_lock = global_list_lock();
-   pcb_t* global = global_pcb();
-   mutex_lock(global_lock);
-   LIST_INSERT_AFTER(global, pcb, global_node); 
-   mutex_unlock(global_lock);
-
 	//HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
 	
 	return pcb;
