@@ -59,7 +59,8 @@ void scheduler_init()
  */
 void scheduler_register(tcb_t* tcb)
 {
-   debug_print("scheduler", "Adding %p to the scheduler with tid 0x%x", tcb, tcb->tid);
+   debug_print("scheduler", "Adding %p to the scheduler with tid 0x%x", 
+			tcb, tcb->tid);
    LIST_INIT_NODE(tcb, scheduler_node);
    
    quick_lock();
@@ -158,7 +159,7 @@ void scheduler_next(tcb_t* tcb)
    /* If it is time to wake up a thread, put him first in the run queue. 
     *
     *  Is this a good policy? I can see people doing sleep(1) all of the 
-		*  time, and causing starvation.
+    *  time, and causing starvation.
     **/
    if(sleeper && sleeper->wakeup < now)
    {

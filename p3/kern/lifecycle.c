@@ -401,7 +401,9 @@ void wait_handler(volatile regstate_t reg)
 	if (pcb->zombie_statuses == NULL) {
 		cond_wait(&pcb->wait_signal);
 	}
-	quick_unlock();
+	else {
+		quick_unlock();
+	}
 
 	debug_print("wait", "zombie child status = %p after cond_wait", 
 			pcb->zombie_statuses);
