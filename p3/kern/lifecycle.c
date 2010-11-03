@@ -420,7 +420,7 @@ void wait_handler(volatile regstate_t reg)
 		v_memcpy((char *)status_addr, (char *)&status->status, sizeof(int));
 	}
 	int tid = status->tid;
-	free(status);
+	sfree(status, sizeof(status_t));
 	RETURN(tid);
 }
 
