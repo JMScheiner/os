@@ -125,6 +125,8 @@ struct PROCESS_CONTROL_BLOCK
 	mutex_t lock, region_lock, directory_lock, status_lock, 
 					waiter_lock, check_waiter_lock, child_lock, kvm_lock;
    
+   /** @brief A reference to a global list of PCBs, used when allocating new 
+    *  tables for kernel virtual memory. */
    pcb_node_t global_node;
 	pcb_node_t child_node;
 

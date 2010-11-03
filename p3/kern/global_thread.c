@@ -4,6 +4,7 @@
 #include <page.h>
 #include <lifecycle.h>
 #include <mutex.h>
+#include <mm.h>
 
 static pcb_t _global_pcb;
 static tcb_t* _global_tcb;
@@ -29,7 +30,7 @@ void global_thread_init()
    LIST_INIT_NODE(&_global_pcb, global_node);
    mutex_init(&_global_list_lock);
    
-   kstack = smemalign(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE;
+   kstack = mm_new_kp_page() + PAGE_SIZE;
    _global_tcb = (tcb_t*)(kstack - PAGE_SIZE);
    _global_tcb->kstack = kstack;
    _global_tcb->esp = _global_tcb->kstack;

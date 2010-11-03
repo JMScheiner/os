@@ -106,70 +106,12 @@ int mm_init()
 }
 
 /** 
-* @brief Allocates a new initialized page directory in the given PCB.
+* @brief Frees all frames allocated to the user. Handy for use in 
+*  mm_free_address_space and exec. 
 * 
-*  The directory is initialized with: 
-*     - Kernel pages direct mapped and present.
-*     - Supervisory mode everywhere.
-*     - Read only / not present in user land.
-*     - The directory itself mapped in kernel VM
-*
-*  The PCB will be updated with 
-*     - the physical address of the new directory
-*     - the virtual address of the new directory
-*     - the virtual address of the virtual directory.
-* 
-* @param pcb The PCB to endow with a new directory. 
+* @param pcb The PCB to free the user space of.
 */
-void mm_new_directory(pcb_t* pcb)
-{
-   int i;
-   page_dirent_t* global_dir = global_pcb()->dir_v;
-   page_dirent_t* dir_v = kvm_new_page();
-   page_dirent_t* virtual_dir_v = kvm_new_page();
-   
-   debug_print("mm", "Global directory at %p", global_dir);
-   
-   /* The global parts of every directory should be the same. */
-   memset(dir_v, 0, PAGE_SIZE);
-   memset(virtual_dir_v, 0, PAGE_SIZE);
-   
-   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
-      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
-   
-   memcpy(dir_v, global_dir, 
-      (USER_MEM_START >> DIR_SHIFT) * sizeof(page_tablent_t*));
-   
-   /* When we do this copy the directory itself gets mapped as well. */
-   for(i = (USER_MEM_END >> DIR_SHIFT); i < DIR_SIZE; i++)
-      virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
-  
-   debug_print("mm", "Copying [%p, %d] to [%p, %d]", 
-      global_dir + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*),
-      dir_v + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
-
-   memcpy(dir_v + DIR_OFFSET(USER_MEM_END), 
-      global_dir + DIR_OFFSET(USER_MEM_END), 
-      (DIR_SIZE - DIR_OFFSET(USER_MEM_END)) * sizeof(page_tablent_t*));
-   
-   debug_print("mm", "pcb = %p, global_pcb = %p", pcb, global_pcb());
-   
-   debug_print("mm", "New directory at %p", dir_v);
-
-   pcb->dir_v = dir_v;
-   pcb->dir_p = kvm_vtop(dir_v);
-   pcb->virtual_dir = virtual_dir_v;
-}
-
-/** 
-* @brief Frees every frame and table that belongs to user space. 
-*  Releases the directory, and continues execution in the global directory.  
-* 
-* @param pcb The process that points to the relevant address space. 
-*/
-void mm_free_address_space(pcb_t* pcb)
+void mm_free_user_space(pcb_t* pcb)
 {
    unsigned long d_index;
    unsigned long t_index;
@@ -201,6 +143,25 @@ void mm_free_address_space(pcb_t* pcb)
       mm_free_table(pcb, (void*)(d_index << DIR_SHIFT));
       dir_v[d_index] = 0;
    }
+}
+
+/** 
+* @brief Frees every frame and table that belongs to user space. 
+*  Releases the directories, and continues execution in the global directory.
+* 
+* @param pcb The process that points to the relevant address space. 
+*/
+void mm_free_address_space(pcb_t* pcb)
+{
+   pcb_t* global;
+   page_dirent_t* dir_v, *virtual_dir;
+   
+   global = global_pcb();
+   dir_v = pcb->dir_v;
+   virtual_dir = pcb->virtual_dir;
+   
+   /* All other tables are global - we don't need to worry about them. */
+   mm_free_user_space(pcb);
    
    pcb->dir_v = global->dir_v;
    pcb->dir_p = global->dir_p;
@@ -496,7 +457,7 @@ boolean_t mm_validate_write(void *addr, int len)
 
 /** 
 * @brief Allocates a new kernel physical page. 
-*  FIXME Since we have stricter alignment requirements when we are 
+*  TODO Since we have stricter, consistent alignment requirements when we are 
 *     calling this, it may be beneficial to take some memory away
 *     from the kernel heap and replace it with our own frame allocator.
 * 

@@ -15,16 +15,18 @@ char *debug_print_strings[] = {
    /*"scheduler", */
    //"sleep", 
    //"loader", 
-   "wait", 
-   "vanish", 
-   "fork", 
-   "exec", 
+   //"wait", 
+   //"vanish", 
+   //"fork", 
+   //"exec", 
    //"thread_fork",
    //"mm", 
    //"kvm", 
-   "page", 
-   "readline", 
-   "lifecycle", 
+   //"page", 
+   //"readline", 
+   //"lifecycle", 
+   //"region", 
+   //"malloc", 
    NULL};
 char *debug_break_strings[] = {"page", NULL};
 
