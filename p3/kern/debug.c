@@ -27,6 +27,7 @@ char *debug_print_strings[] = {
    //"lifecycle", 
    //"region", 
    //"malloc", 
+   "console", 
    NULL};
 char *debug_break_strings[] = {"page", NULL};
 

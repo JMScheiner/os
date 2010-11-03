@@ -117,9 +117,8 @@ void exec_handler(volatile regstate_t reg) {
    pcb_t* pcb = get_pcb();
 	
    /* Free user memory, user memory regions. */
-   if(pcb->regions)
-      free_region_list(pcb);
-   else MAGIC_BREAK;
+   assert(pcb->regions);
+   free_region_list(pcb);
    mm_free_user_space(pcb);
 
 	// TODO This probably shouldn't be an assert.
