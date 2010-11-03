@@ -75,6 +75,8 @@ void* kvm_alloc_page(void* page)
    page_dirent_t* dir;
    page_tablent_t* table;
    
+   /* Note we may not have a stack yet, so it isn't safe to reference
+    *  our TCB (and therefore our own PCB). */
    dir = (page_dirent_t*)global_pcb()->dir_v;
    table = dir[ DIR_OFFSET(page) ];
    
@@ -214,22 +216,23 @@ void* kvm_new_table(void* addr)
 
    /* Need to update ALL directories. Luckily this only happens when the 
     *  kernel uses up 4M of space. */
-   
    mutex_t* global_lock = global_list_lock();
    mutex_lock(global_lock);
 
-   /* Map the new table in the global directory. */
-   dir_v[ DIR_OFFSET(addr) ] = 
-      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
-   
    /* Map the new table in every other PCB*/
    for (iter = global; (iter = LIST_NEXT(iter, global_node)) != global; )
    {
-      lprintf("UPDATING GLOBAL TABLE, pid = %x", iter->pid);
+      debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    }
+   
+   /* Deliberately map the global table last, since processes looking for new
+    *  kernel pages will reference it. */
+   dir_v = global->dir_v;
+   dir_v[ DIR_OFFSET(addr) ] = 
+      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    
    mutex_unlock(global_lock);
    

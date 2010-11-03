@@ -8,6 +8,13 @@
 /**
  * @brief Halt the system
  *
+ * Ceases execution of the operating system. The exact operation of this system 
+ *    call depends on the kernel’s implementation and execution environment. 
+ *    Kernels running under Simics should shut down the simulation via a call 
+ *    to SIM halt(). However, implementations should be prepared to do 
+ *    something reasonable if SIM halt() is a no-op, which will happen if the 
+ *    kernel is run on real hardware.
+ *
  * @param reg Ignored
  */
 void halt_handler(volatile regstate_t reg)
@@ -16,6 +23,18 @@ void halt_handler(volatile regstate_t reg)
    halt();
 }
 
+/** 
+* @brief Fills in the user-specified buffer with the names of executable files 
+*  stored in the system's RAM disk "file system" If there is enough room in 
+*  the buffer for all of the (null-terminated) file names and an additional 
+*  null byte after the last filename's terminating null, the system call will 
+*  return the number of filenames successfully copied. Otherwise, an error 
+*  code less than zero is returned and the contents of the buffer are 
+*  undefined. For the curious among you, this system call is (very) loosely 
+*  modeled on the System V getdents() call.
+* 
+* @param reg The register state on entry to the handler.
+*/
 void ls_handler(volatile regstate_t reg)
 {
 	char *arg_addr, *filename, *buf; 

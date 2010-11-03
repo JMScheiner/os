@@ -45,6 +45,7 @@ def regstate_of(tcb):
 
 def print_runlist(): 
    runnable = get_runnable()
+   print runnable
    
    def print_tail(tcb): 
       if tcb == runnable:
