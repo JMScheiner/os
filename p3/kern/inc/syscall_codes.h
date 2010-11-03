@@ -19,6 +19,9 @@
 /** @brief Error indicating the executable name could not be read. */
 #define EXEC_INVALID_NAME -4
 
+/** @brief Error indicating exec was called in a multithreaded process. */
+#define EXEC_MULTIPLE_THREADS -5
+
 /** @brief Error indicating there are no available children to 
  * wait on. */
 #define WAIT_NO_CHILDREN -2

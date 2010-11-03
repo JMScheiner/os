@@ -67,7 +67,7 @@ void exec_handler(volatile regstate_t reg) {
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
 	int argc;
-
+   
 	/* Verify that the arguments lie in valid memory. */
    if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
 		RETURN(SYSCALL_INVALID_ARGS);
@@ -75,8 +75,15 @@ void exec_handler(volatile regstate_t reg) {
    if(v_memcpy((char*)&argvec, 
       arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
 		RETURN(SYSCALL_INVALID_ARGS);
+   
+   pcb_t* pcb = get_pcb();
 
 	/* TODO Check if there is more than one thread. */
+   if(pcb->thread_count > 1)
+   {
+      MAGIC_BREAK;
+      RETURN(EXEC_MULTIPLE_THREADS);
+   }
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
 		RETURN(EXEC_INVALID_NAME);
@@ -115,8 +122,6 @@ void exec_handler(volatile regstate_t reg) {
 	if ((err = elf_load_helper(&elf_hdr, execname_buf)) != ELF_SUCCESS) {
 		RETURN(err);
 	}
-	
-   pcb_t* pcb = get_pcb();
 	
    /* Free user memory, user memory regions. */
    assert(pcb->regions);

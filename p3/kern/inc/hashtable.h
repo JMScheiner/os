@@ -73,26 +73,6 @@ unsigned int default_hash(int key);
 		(hashtable_name).lock = lock; \
 	} while (0)
 
-/** @def DYNAMIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function)
- *
- * @brief Dynamically instantiate a new empty hashtable that will use the given
- *        hash function. The hashtable should eventually be passed to 
- *        DYNAMIC_FREE_HASHTABLE.
- *
- * @param hashtable_type The type of the hashtable to instantiate.
- *
- * @param hashtable_name The name of the hashtable to instantiate.
- *
- * @param hash_function The function to hash keys to integers for this
- *        hashtable.
- */
-#define DYNAMIC_INIT_HASHTABLE(hashtable_type, hashtable_name, hash_function) \
-	do { \
-		hashtable_name = (hashtable_type)malloc(sizeof(struct hashtable_type##struct)); \
-		assert(hashtable_name); \
-		STATIC_INIT_HASHTABLE(hashtable_type, *hashtable_name, hash_function); \
-	} while (0)
-
 /** @def STATIC_FREE_HASHTABLE(hashtable_name)
  *
  * @brief Free a hashtable that was allocated statically.
