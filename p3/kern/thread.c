@@ -15,6 +15,7 @@
 #include <scheduler.h>
 #include <mutex.h>
 #include <debug.h>
+#include <global_thread.h>
 
 //static mutex_t tcb_table_lock;
 
@@ -80,9 +81,15 @@ tcb_t* initialize_thread(pcb_t *pcb)
 tcb_t *get_tcb()
 {
 	void *esp = get_esp();
-   tcb_t* ret = (tcb_t*)PAGE_OF(esp);
-   assert(ret->sanity_constant = TCB_SANITY_CONSTANT);
+   tcb_t* ret = NULL;
 
+   if(esp < global_tcb()->kstack)
+      ret = global_tcb();
+   else
+      ret = (tcb_t*)PAGE_OF(esp);
+
+   assert(ret->sanity_constant == TCB_SANITY_CONSTANT);
+   
    /* TODO When is this NULL? */
    //assert((int)ret->pcb != -1);
    /*if(ret->pcb)

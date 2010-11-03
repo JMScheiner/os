@@ -27,6 +27,7 @@
 
 static free_block_t* user_free_list;
 static mutex_t user_free_lock;
+static mutex_t copy_lock;
 
 static void* mm_new_table(pcb_t* pcb, void* addr);
 static void mm_free_table(pcb_t* pcb, void* addr);
@@ -93,6 +94,7 @@ int mm_init()
          global_dir[i] = 0;
 
    mutex_init(&user_free_lock);
+   mutex_init(&copy_lock);
    
    /* Initialize kernel virtual memory which lives above 
     * USER_MEM_END and is global. */

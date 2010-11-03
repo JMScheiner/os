@@ -48,9 +48,14 @@ void init_process_table(void)
  */
 pcb_t* get_pcb()
 {
-   tcb_t* tcb = get_tcb();
+   pcb_t* pcb;
+   tcb_t* tcb;
+   
+   tcb = get_tcb();
    assert(tcb);
-   return tcb->pcb;
+   pcb = tcb->pcb;
+   assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
+   return pcb;
 }
 
 pcb_t* initialize_process(boolean_t first_process) 
