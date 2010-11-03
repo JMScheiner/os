@@ -417,7 +417,7 @@ void wait_handler(volatile regstate_t reg)
 
 	if (status_addr) {
 		// There's nothing we can do if the copy fails, but don't crash. */
-		v_memcpy((char *)status_addr, (char *)status->status, sizeof(int));
+		v_memcpy((char *)status_addr, (char *)&status->status, sizeof(int));
 	}
 	int tid = status->tid;
 	free(status);

@@ -26,7 +26,12 @@
 #define COPY_PAGE ((void*)(-PAGE_SIZE))
 
 static free_block_t* user_free_list;
+
+/* Lock for the user free list structure. */
 static mutex_t user_free_lock;
+
+/* Since we use the same addressable space for copying, 
+ *  we need to lock that address in the global table.  */
 static mutex_t copy_lock;
 
 static void* mm_new_table(pcb_t* pcb, void* addr);
@@ -202,7 +207,8 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
    current_virtual_dir = current_pcb->virtual_dir;
 
    copy_table_v = kvm_initial_table();
-
+   
+   mutex_lock(&copy_lock);
    for(d_index = (USER_MEM_START >> DIR_SHIFT); 
       d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
    {
@@ -236,6 +242,7 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
          new_table_v[t_index] = new_frame | flags;
       }
    }
+   mutex_unlock(&copy_lock);
    
    /* Unmap the page we used to copy for good measure. */
    copy_table_v[ TABLE_OFFSET(COPY_PAGE) ] = 0;
@@ -504,7 +511,6 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    user_free_list = free_block->next;
    memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
-   //lprintf("n_free_frame = %d", n_free_frames);
 
    mutex_unlock(&user_free_lock);
    return new_frame;
