@@ -15,6 +15,7 @@
 
 #include <kernel_types.h>
 #include <malloc.h>
+#include <malloc_wrappers.h> /* srealloc */
 #include <limits.h>
 
 #define DEFAULT_HEAP_SIZE 128
@@ -29,8 +30,7 @@
 */
 void heap_init(sleep_heap_t* heap)
 {
-	heap->data = (tcb_t**)malloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
-	// TODO Think about memory issues
+	heap->data = (tcb_t**)smalloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
 	assert(heap->data != NULL);
 	heap->data[0] = NULL;
 	heap->index = 1;
@@ -105,11 +105,12 @@ void bubble_down(sleep_heap_t *heap, int index) {
 */
 void heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
+   /* Double the heap size if there are a lot of sleepers. */
 	if(heap->index == (heap->size - 1))
 	{
+		heap->data = srealloc(heap->data,   
+         heap->size * sizeof(tcb_t*), 2 * heap->size * sizeof(tcb_t*));
 		heap->size = 2 * heap->size;
-		heap->data = realloc(heap->data, heap->size * sizeof(tcb_t*));
-		// TODO Think about memory issues
 		assert(heap->data != NULL);
 	}
 	heap->data[heap->index] = key;

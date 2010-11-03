@@ -54,7 +54,7 @@ pcb_t* get_pcb()
 
 pcb_t* initialize_process(boolean_t first_process) 
 {
-	pcb_t* pcb = (pcb_t*) malloc(sizeof(pcb_t));
+	pcb_t* pcb = (pcb_t*) smalloc(sizeof(pcb_t));
    pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
 		pcb->parent = NULL;

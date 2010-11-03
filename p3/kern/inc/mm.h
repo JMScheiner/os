@@ -69,6 +69,8 @@ void mm_free_pages(pcb_t* pcb, void* addr, size_t n);
 void* mm_new_kp_page();
 void mm_new_directory(pcb_t* pcb);
 void mm_duplicate_address_space(pcb_t* pcb);
+
+void mm_free_user_space(pcb_t* pcb);
 void mm_free_address_space(pcb_t* pcb);
 
 int mm_getflags(pcb_t* pcb, void* addr);

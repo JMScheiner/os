@@ -35,6 +35,7 @@
 #include <seg.h>
 #include <vstring.h>
 #include <syscall_codes.h>
+#include <region.h>
 
 
 void *zombie_stack = NULL;
@@ -113,10 +114,15 @@ void exec_handler(volatile regstate_t reg) {
 		RETURN(err);
 	}
 	
-	/* TODO Free user memory regions. */
+   pcb_t* pcb = get_pcb();
+	
+   /* Free user memory, user memory regions. */
+   if(pcb->regions)
+      free_region_list(pcb);
+   else MAGIC_BREAK;
+   mm_free_user_space(pcb);
 
 	// TODO This probably shouldn't be an assert.
-   pcb_t* pcb = get_pcb();
 	assert(initialize_memory(execname_buf, elf_hdr, pcb) == 0);
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
@@ -181,14 +187,15 @@ void fork_handler(volatile regstate_t reg)
    
    new_pcb = initialize_process(FALSE);
    new_tcb = initialize_thread(new_pcb);
-	 debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
-	 debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
+	debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
+	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
 	 atomic_add(&current_pcb->unclaimed_children, 1);
   
    /* Duplicate the current address space in the new process. */
    mm_duplicate_address_space(new_pcb);
+   new_pcb->regions = duplicate_region_list(current_pcb);
    
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
@@ -330,10 +337,11 @@ void vanish_handler(volatile regstate_t reg)
       mutex_t* global_lock = global_list_lock();
       pcb_t* global = global_pcb();
       mutex_lock(global_lock);
-      LIST_INSERT_AFTER(global, pcb, global_node); 
+      LIST_REMOVE(global, pcb, global_node); 
       mutex_unlock(global_lock);
-
-      free(pcb);
+      
+      free_region_list(pcb);
+      sfree(pcb, sizeof(pcb_t));
 	}
 	
 	mutex_lock(&zombie_stack_lock);

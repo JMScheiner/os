@@ -42,21 +42,6 @@
 	} \
 	while (0)
 
-/** @def DYNAMIC_INIT_QUEUE(queue_type, queue_name)
- *
- * @brief Dynamically instantiate a new empty queue. The
- *        queue should eventually be passed to free.
- *
- * @param queue_type The type of the queue to instantiate.
- * @param queue_name The queue to instantiate.
- */
-#define DYNAMIC_INIT_QUEUE(queue_type, queue_name) \
-	do { \
-		queue_name = (queue_type)calloc(1, sizeof(struct queue_type##_queue_struct)); \
-		assert(queue_name) \
-	} \
-	while (0)
-
 /** @def ENQUEUE_FIRST(queue, node)
  *
  * @brief Enqueue node as the first node in the queue.

@@ -85,10 +85,10 @@ tcb_t *get_tcb()
 
    /* TODO When is this NULL? */
    //assert((int)ret->pcb != -1);
-   if(ret->pcb)
+   /*if(ret->pcb)
    {
       assert(ret->pcb->sanity_constant = PCB_SANITY_CONSTANT);
-   }
+   }*/
 	return (tcb_t *)PAGE_OF(esp);
 }
 

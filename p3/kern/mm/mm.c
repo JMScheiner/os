@@ -164,12 +164,12 @@ void mm_new_directory(pcb_t* pcb)
 }
 
 /** 
-* @brief Frees every frame and table that belongs to user space. 
-*  Releases the directory, and continues execution in the global directory.  
+* @brief Frees all frames allocated to the user. Handy for use in 
+*  mm_free_address_space and exec. 
 * 
-* @param pcb The process that points to the relevant address space. 
+* @param pcb The PCB to free the user space of.
 */
-void mm_free_address_space(pcb_t* pcb)
+void mm_free_user_space(pcb_t* pcb)
 {
    unsigned long d_index;
    unsigned long t_index;
@@ -201,6 +201,25 @@ void mm_free_address_space(pcb_t* pcb)
       mm_free_table(pcb, (void*)(d_index << DIR_SHIFT));
       dir_v[d_index] = 0;
    }
+}
+
+/** 
+* @brief Frees every frame and table that belongs to user space. 
+*  Releases the directories, and continues execution in the global directory.
+* 
+* @param pcb The process that points to the relevant address space. 
+*/
+void mm_free_address_space(pcb_t* pcb)
+{
+   pcb_t* global;
+   page_dirent_t* dir_v, *virtual_dir;
+   
+   global = global_pcb();
+   dir_v = pcb->dir_v;
+   virtual_dir = pcb->virtual_dir;
+   
+   /* All other tables are global - we don't need to worry about them. */
+   mm_free_user_space(pcb);
    
    pcb->dir_v = global->dir_v;
    pcb->dir_p = global->dir_p;
@@ -496,7 +515,7 @@ boolean_t mm_validate_write(void *addr, int len)
 
 /** 
 * @brief Allocates a new kernel physical page. 
-*  FIXME Since we have stricter alignment requirements when we are 
+*  TODO Since we have stricter, consistent alignment requirements when we are 
 *     calling this, it may be beneficial to take some memory away
 *     from the kernel heap and replace it with our own frame allocator.
 * 
