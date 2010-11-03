@@ -94,11 +94,8 @@ struct PROCESS_CONTROL_BLOCK
 	/** @brief pcb of our parent. */
 	pcb_t *parent;
 
-	/** @brief pcb of the sibling born right before us. */
-	//pcb_t *sibling;
-
-	/** @brief pcb of our most recent child. */
-	//pcb_t *child;
+	/** @brief Circular list of our children. */
+	pcb_t *children;
 
 	/** @brief Number of kernel threads running within the process. */
 	int thread_count;
@@ -109,10 +106,10 @@ struct PROCESS_CONTROL_BLOCK
 
 	/** @brief A list of regions with different page fault and freeing 
 	 * procedures. */
-	region_t* regions;
+	region_t *regions;
 	
 	/** @brief Our exit status. */
-	status_t status;
+	status_t *status;
 
 	/** @brief Pointer to the list of exited child statuses. */
 	status_t *zombie_statuses;
@@ -126,11 +123,12 @@ struct PROCESS_CONTROL_BLOCK
 	
 	/** @brief Mutual exclusion locks for pcb. */
 	mutex_t lock, region_lock, directory_lock, status_lock, 
-					waiter_lock, check_waiter_lock, kvm_lock;
+					waiter_lock, check_waiter_lock, child_lock, kvm_lock;
    
    /** @brief A reference to a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */
    pcb_node_t global_node;
+	pcb_node_t child_node;
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;

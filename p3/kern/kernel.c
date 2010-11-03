@@ -45,6 +45,7 @@
 #include <global_thread.h>
 #include <asm_helper.h>
 #include <lifecycle.h>
+#include <mutex.h>
 
 /*
  * state for kernel memory allocation.
@@ -99,7 +100,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    mm_init();
 
    locks_enabled = TRUE;
-   enable_interrupts();
+   quick_unlock();
 
    while(1) { } 
    

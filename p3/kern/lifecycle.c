@@ -40,6 +40,7 @@
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
+mutex_t wait_vanish_lock;
 
 extern pcb_t *init_process;
 
@@ -48,6 +49,7 @@ extern pcb_t *init_process;
  */
 void lifecycle_init() {
 	mutex_init(&zombie_stack_lock);
+	mutex_init(&wait_vanish_lock);
 }
 
 /**
@@ -190,7 +192,10 @@ void fork_handler(volatile regstate_t reg)
 	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
    new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
-	 atomic_add(&current_pcb->unclaimed_children, 1);
+	atomic_add(&current_pcb->unclaimed_children, 1);
+	mutex_lock(&current_pcb->child_lock);
+	LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
+	mutex_unlock(&current_pcb->child_lock);
   
    /* Duplicate the current address space in the new process. */
    mm_duplicate_address_space(new_pcb);
@@ -289,9 +294,9 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
 void set_status_handler(volatile regstate_t reg)
 {
 	pcb_t *pcb = get_pcb();
-	pcb->status.status = (int)SYSCALL_ARG(reg);
+	pcb->status->status = (int)SYSCALL_ARG(reg);
 	debug_print("vanish", "Set status of pcb %p to %d", pcb, 
-			pcb->status.status);
+			pcb->status->status);
 }
 
 /** 
@@ -314,21 +319,28 @@ void vanish_handler(volatile regstate_t reg)
 	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
-		// We are the last thread in our process
-		//region_t *region = pcb->regions;
-		// Free regions
-      // FIXME FIXME FIXME Let our kids know we're dead. 
-		pcb_t *parent = pcb->parent;
-		if (parent == NULL) {
-			parent = init_process;
+		
+		pcb_t *child;
+		mutex_lock(&pcb->child_lock);
+		LIST_FORALL(pcb->children, child, child_node) {
+			child->parent = init_process;
 		}
+		mutex_unlock(&pcb->child_lock);
+		
+		mutex_lock(&wait_vanish_lock);
+		pcb_t *parent = pcb->parent;
+		if (parent != init_process)
+			LIST_REMOVE(parent->children, pcb, child_node);
 		debug_print("vanish", "Last thread, signalling %p", parent);
-		status_t *status = &pcb->status;
+
+		status_t *status = pcb->status;
 		mutex_lock(&parent->status_lock);
 		status->next = parent->zombie_statuses;
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
+
 		cond_signal(&parent->wait_signal);
+		mutex_unlock(&wait_vanish_lock);
       
       mm_free_address_space(pcb);
       
@@ -384,11 +396,13 @@ void wait_handler(volatile regstate_t reg)
 	mutex_lock(&pcb->waiter_lock);
 	debug_print("wait", "zombie child status = %p before cond_wait", 
 			pcb->zombie_statuses);
-	disable_interrupts();
+	quick_lock();
 	if (pcb->zombie_statuses == NULL) {
 		cond_wait(&pcb->wait_signal);
 	}
-	enable_interrupts();
+	else {
+		quick_unlock();
+	}
 
 	debug_print("wait", "zombie child status = %p after cond_wait", 
 			pcb->zombie_statuses);
@@ -405,6 +419,7 @@ void wait_handler(volatile regstate_t reg)
 		v_memcpy((char *)status_addr, (char *)&status->status, sizeof(int));
 	}
 	int tid = status->tid;
+	sfree(status, sizeof(status_t));
 	RETURN(tid);
 }
 

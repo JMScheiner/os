@@ -41,6 +41,11 @@
 #define LIST_PREV(node, instance) \
    ((node)->instance.prev)
 
+#define LIST_FORALL(list, iter, instance) \
+	for ((iter) = (list); \
+			((iter) != NULL); \
+			(iter) = LIST_NEXT(iter, instance) == (list) ? \
+			LIST_NEXT(iter, instance) : NULL)
 
 #define LIST_INIT_NODE(node, instance) \
 	do { \

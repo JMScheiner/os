@@ -195,12 +195,14 @@ int readline(char *buf, int len) {
 	mutex_lock(&keyboard_lock);
 	line_length = len;
 
-	disable_interrupts();
+	quick_lock();
 	if (newlines == 0 && NUM_KEYS < len) {
 		/* Wait for the keyboard_handler to process a full line. */
 		cond_wait(&keyboard_signal);
 	}
-	enable_interrupts();
+	else {
+		quick_unlock();
+	}
 	int read;
    
 	debug_print("readline", "Beginning read!.");

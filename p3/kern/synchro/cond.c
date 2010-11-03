@@ -40,11 +40,11 @@ void cond_destroy(cond_t *cv) {
  *
  * This should be used with the following pattern.
  *
- * disable_interrupts();
+ * quick_lock();
  * if (we_need_to_wait) {
  *   cond_wait(&signal);
  * }
- * enable_interrupts();
+ * quick_unlock();
  *
  * @param cv The condition variable to wait on.
  */
@@ -57,10 +57,11 @@ void cond_wait(cond_t *cv) {
 }
 
 /**
- * @brief Signal the waiting thread if one exists. This must be called with
- * interrupts disabled (typically from a trap gate handler).
+ * @brief Signal the waiting thread if one exists. This must be called
+ * serially (once per condition variable), so calls should be protected by
+ * locks.
  *
- * @param cv The condition varaible to signal.
+ * @param cv The condition variable to signal.
  */
 void cond_signal(cond_t *cv) {
 	assert(cv);

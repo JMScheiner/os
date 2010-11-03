@@ -22,6 +22,7 @@
 #include <asm_helper.h>
 #include <thread.h>
 #include <reg.h>
+#include <mutex.h>
 
 //In reality this is 9.99931276 milliseconds.
 //	Per tick, we lose 687.24ns.
@@ -54,6 +55,9 @@ void timer_handler(regstate_t reg)
 {
    atomic_add_volatile(&ticks, 1);
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+
+	/* Pretend to apply a lock to indicate we are at lock depth 1. */
+	quick_lock();
    
    /* Identify ourselves, and run the next thread. */
    tcb_t* global = global_tcb();
