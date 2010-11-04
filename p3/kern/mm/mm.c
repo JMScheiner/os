@@ -352,40 +352,36 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 /** 
 * @brief Removes pages from the currently running processes address space. 
 *
-*  Note that this deliberately asks for the addresses to be page aligned. 
-*     There isn't a great way of freeing non-page aligned memory, without
-*     keeping track of what is "allocated" 
-* 
+*  Essentially a support function for remove_pages. 
+*  TODO We can support freeing tables when appropriate by keeping a count 
+*   in the lower bits of virtual_dir. 
+*
 * @param addr The page aligned address to free. 
 * @param n The number of pages to remove. 
 */
-void mm_free_pages(pcb_t* pcb, void* addr, size_t n)
+void mm_remove_pages(pcb_t* pcb, void* start, void* end)
 {
-   unsigned long page;
    page_dirent_t *dir_v, *virtual_dir_v;
    page_tablent_t *table_v, *table_p;
+   void* page;
    
-   assert(((unsigned int)addr & PAGE_MASK) == 0);
-   assert((unsigned int)addr > USER_MEM_START);
+   assert(((unsigned int)start & PAGE_MASK) == 0);
+   assert(((unsigned int)end & PAGE_MASK) == 0);
+   assert((unsigned int)start > USER_MEM_START);
+   assert((unsigned int)end < USER_MEM_END);
    
    dir_v = (page_dirent_t*)pcb->dir_v;
    virtual_dir_v = (page_dirent_t*)pcb->virtual_dir;
    
    mutex_lock(&pcb->directory_lock);
-   for(page = (unsigned long) addr; page += PAGE_SIZE; n--)
+   for(page = start; page < end; page += PAGE_SIZE)
    {
       table_p = dir_v[ DIR_OFFSET(page) ]; 
-      
-      /* Skip page tables that are not present. */
-      if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) 
-         continue;
-   
+      assert(FLAGS_OF(table_p) & PDENT_PRESENT);
       table_v = (page_tablent_t*)virtual_dir_v[ DIR_OFFSET(page) ];
-
-      /* We let mm_free_frame silently return a -1 
-       *    if the page isn't mapped */
-      mm_free_frame(table_v, page);
+      assert(mm_free_frame(table_v, (unsigned long)page) >= 0);
    }
+   lprintf("Finishing remove pages.");
    mutex_unlock(&pcb->directory_lock);
 }
 

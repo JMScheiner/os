@@ -39,7 +39,7 @@ UPDATE_METHOD = afs
 # directory.
 #
 STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test tfork_test
-STUDENTTESTS += autostack sleep ls_test fault_and_die
+STUDENTTESTS += autostack sleep ls_test fault_and_die malloc_test
 
 ###########################################################################
 # Object files for your thread library

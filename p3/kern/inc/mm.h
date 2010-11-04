@@ -65,7 +65,7 @@
 
 int mm_init(void); 
 void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
-void mm_free_pages(pcb_t* pcb, void* addr, size_t n);
+void mm_remove_pages(pcb_t* pcb, void* start, void* end);
 void* mm_new_kp_page();
 void mm_duplicate_address_space(pcb_t* pcb);
 

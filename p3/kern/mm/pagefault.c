@@ -85,6 +85,12 @@ void bss_fault(void* addr, int ecode)
    thread_kill(errbuf);
 }
 
+void user_fault(void* addr, int access_mode)
+{
+   /* In our implementation this shouldn't happen. */
+   assert(0);
+}
+
 void stack_fault(void* addr, int ecode)
 {
    debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));

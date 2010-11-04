@@ -28,6 +28,7 @@ char *debug_print_strings[] = {
    //"region", 
    //"malloc", 
    //"console", 
+   "memman", 
    NULL};
 char *debug_break_strings[] = {"page", NULL};
 
