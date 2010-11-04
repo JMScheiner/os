@@ -83,9 +83,7 @@ pcb_t* initialize_process(boolean_t first_process)
    pcb->sanity_constant = PCB_SANITY_CONSTANT;
    
 	kvm_new_directory(pcb);
-	mutex_init(&pcb->lock);
 	mutex_init(&pcb->directory_lock);
-	mutex_init(&pcb->kvm_lock);
 	mutex_init(&pcb->region_lock);
 	mutex_init(&pcb->status_lock);
 	mutex_init(&pcb->waiter_lock);

@@ -66,7 +66,7 @@ struct REGION
 	void* end;
 
 	/** @brief The page fault handler for the region. */
-	void (*fault)(void* addr, int access_mode);
+	void (*fault)(void* addr, int ecode);
 
 	/** @brief The next region in the address space. */
 	struct REGION* next;
@@ -122,8 +122,8 @@ struct PROCESS_CONTROL_BLOCK
 	void *virtual_dir;
 	
 	/** @brief Mutual exclusion locks for pcb. */
-	mutex_t lock, region_lock, directory_lock, status_lock, 
-					waiter_lock, check_waiter_lock, child_lock, kvm_lock;
+	mutex_t region_lock, directory_lock, status_lock, 
+					waiter_lock, check_waiter_lock, child_lock;
    
    /** @brief A reference to a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */
