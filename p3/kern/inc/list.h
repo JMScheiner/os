@@ -45,7 +45,7 @@
 	for ((iter) = (list); \
 			((iter) != NULL); \
 			(iter) = LIST_NEXT(iter, instance) == (list) ? \
-			LIST_NEXT(iter, instance) : NULL)
+			NULL : LIST_NEXT(iter, instance))
 
 #define LIST_INIT_NODE(node, instance) \
 	do { \
