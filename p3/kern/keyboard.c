@@ -35,9 +35,9 @@
  */
 static char keybuf[KEY_BUF_SIZE];
 static unsigned int keybuf_head = 0;
+static unsigned int keybuf_divider = 0;
 static unsigned int keybuf_tail = 0;
 static int newlines = 0;
-static int line_length = KEY_BUF_SIZE;
 
 static mutex_t keyboard_lock;
 
@@ -47,9 +47,9 @@ static cond_t keyboard_signal;
 #define NEXT(index) \
 	(((index) + 1) & (KEY_BUF_SIZE - 1))
 
-/** @brief Get the number of keys currently in the key buffer. */
-#define NUM_KEYS \
-	((keybuf_tail - keybuf_head + KEY_BUF_SIZE) & (KEY_BUF_SIZE - 1))
+/** @brief Get the index in keybuf preceding the given index. */
+#define PREV(index) \
+	(((index) - 1) & (KEY_BUF_SIZE - 1))
 
 void getchar_handler(volatile regstate_t reg)
 {
@@ -170,19 +170,25 @@ void keyboard_handler(void)
 			KH_HASDATA(augchar) && 
 			KH_ISMAKE(augchar)) {
 		char c = KH_GETCHAR(augchar);
-		keybuf[keybuf_tail] = c;
-		keybuf_tail = next_tail;
+		if (c == '\b') {
+			if (keybuf_tail != keybuf_head && 
+					keybuf_tail != keybuf_divider) {
+				keybuf_tail = PREV(keybuf_tail);
+				putbyte(c);
+			}
+		}
+		else {
+			keybuf[keybuf_tail] = c;
+			keybuf_tail = next_tail;
+			putbyte(c);
+		}
 
-		putbyte(c);
-		
 		/* A blocked thread can be released if a full line has been read, 
 		 * or if more characters have been read than are currently being 
 		 * waited for. */
 		if (c == '\n') {
 			newlines++;
-			cond_signal(&keyboard_signal);
-		}
-		else if (NUM_KEYS >= line_length) {
+			keybuf_divider = keybuf_tail;
 			cond_signal(&keyboard_signal);
 		}
 	}
@@ -193,10 +199,9 @@ int readline(char *buf, int len) {
 	/* Prevent other readers from interfering. They can't accomplish 
 	 * anything until we're done anyway. */
 	mutex_lock(&keyboard_lock);
-	line_length = len;
-
+	
 	quick_lock();
-	if (newlines == 0 && NUM_KEYS < len) {
+	if (newlines == 0) {
 		/* Wait for the keyboard_handler to process a full line. */
 		cond_wait(&keyboard_signal);
 	}
@@ -204,8 +209,9 @@ int readline(char *buf, int len) {
 		quick_unlock();
 	}
 	int read;
+	assert(newlines > 0);
    
-	debug_print("readline", "Beginning read!.");
+	debug_print("readline", "Beginning read!");
 	for (read = 0; read < len; read++) {
 		buf[read] = keybuf[keybuf_head];
 		keybuf_head = NEXT(keybuf_head);
@@ -214,7 +220,7 @@ int readline(char *buf, int len) {
 			break;
 		}
 	}
-	debug_print("readline", "Read complete!.");
+	debug_print("readline", "Read complete!");
 	mutex_unlock(&keyboard_lock);
 	return read;
 }
