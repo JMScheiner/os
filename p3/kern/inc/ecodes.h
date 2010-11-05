@@ -2,7 +2,7 @@
 #ifndef SYSCALL_CODES_FDKJ3489
 #define SYSCALL_CODES_FDKJ3489
 
-#define SYSCALL_SUCCESS 0
+#define E_SUCCESS 0
 #define SYSCALL_INVALID_ARGS (-1)
 
 #define READLINE_INVALID_LENGTH (-2)
@@ -20,11 +20,14 @@
 #define EXEC_INVALID_NAME (-4)
 
 /** @brief Error indicating exec was called in a multithreaded process. */
-#define EXEC_MULTIPLE_THREADS (-5)
+#define E_MULTIPLE_THREADS (-5)
 
 /** @brief Error indicating there are no available children to 
  * wait on. */
 #define WAIT_NO_CHILDREN (-2)
+
+/* @brief No frames left for virtual memory allocation. */
+#define E_NOVM (-1)
 
 #define REMOVE_PAGES_REGION_NOT_FOUND (-1)
 #endif

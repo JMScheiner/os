@@ -63,6 +63,12 @@ pcb_t* initialize_process(boolean_t first_process)
 	pcb_t* pcb = (pcb_t*) smalloc(sizeof(pcb_t));
 	// TODO Do something smarter
 	assert(pcb);
+	if(kvm_new_directory(pcb) < 0)
+   {
+      sfree(pcb, sizeof(pcb_t));
+      return NULL;
+   }
+   
    pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
 		pcb->parent = NULL;
@@ -82,7 +88,6 @@ pcb_t* initialize_process(boolean_t first_process)
    pcb->zombie_statuses = NULL;
    pcb->sanity_constant = PCB_SANITY_CONSTANT;
    
-	kvm_new_directory(pcb);
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
 	mutex_init(&pcb->status_lock);

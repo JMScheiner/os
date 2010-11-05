@@ -9,7 +9,7 @@
 #include <vstring.h>
 #include <region.h>
 #include <common_kern.h>
-#include <syscall_codes.h>
+#include <ecodes.h>
 #include <debug.h>
 
 /* @brief Protects us from the user removing pages while we try 

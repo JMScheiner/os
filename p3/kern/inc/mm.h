@@ -63,15 +63,21 @@
 	((PAGE_OF((unsigned long)(addr) + (len) - 1) \
 		- PAGE_OF(addr)) / PAGE_SIZE + 1)
 
+/** Initialize **/
 int mm_init(void); 
-void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
-void mm_remove_pages(pcb_t* pcb, void* start, void* end);
-void* mm_new_kp_page();
-void mm_duplicate_address_space(pcb_t* pcb);
 
+/** Request / receive resources */
+void *mm_new_kp_page(void);
+int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
+int mm_duplicate_address_space(pcb_t* pcb);
+int mm_request_frames(int n);
+
+/** Release resources **/
+void mm_remove_pages(pcb_t* pcb, void* start, void* end);
 void mm_free_user_space(pcb_t* pcb);
 void mm_free_address_space(pcb_t* pcb);
 
+/** Requests information **/
 int mm_getflags(pcb_t* pcb, void* addr);
 boolean_t mm_validate_read(void* addr, int len);
 boolean_t mm_validate_write(void* addr, int len);

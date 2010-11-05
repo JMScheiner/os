@@ -47,14 +47,15 @@ void init_thread_table(void)
 tcb_t* initialize_thread(pcb_t *pcb) 
 {
 	assert(pcb);
-	//assert(pcb != (void*)0xffffffff);
    
 	void* kstack_page = kvm_new_page();
-	debug_print("mm", "new kernel stack page at %p", kstack_page);
+   if(kstack_page == NULL)
+      return NULL;
+	
+   debug_print("mm", "new kernel stack page at %p", kstack_page);
 
 	/* Put the TCB at the bottom of the kernel stack. */
 	tcb_t* tcb = (tcb_t*)kstack_page;
-	
 	tcb->esp = kstack_page + PAGE_SIZE; 
 	tcb->kstack = kstack_page + PAGE_SIZE;
 	

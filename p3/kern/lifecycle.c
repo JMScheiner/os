@@ -33,7 +33,7 @@
 #include <eflags.h>
 #include <cr.h>
 #include <seg.h>
-#include <syscall_codes.h>
+#include <ecodes.h>
 #include <region.h>
 #include <console.h>
 
@@ -78,7 +78,7 @@ void exec_handler(volatile regstate_t reg) {
    pcb_t* pcb = get_pcb();
 
    if(pcb->thread_count > 1)
-      RETURN(EXEC_MULTIPLE_THREADS);
+      RETURN(E_MULTIPLE_THREADS);
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
 		RETURN(EXEC_INVALID_NAME);
@@ -184,6 +184,9 @@ void fork_handler(volatile regstate_t reg)
 
    tcb_t *current_tcb = get_tcb();
    pcb_t *current_pcb = current_tcb->pcb;
+   
+   if(current_pcb->thread_count > 1)
+      RETURN(E_MULTIPLE_THREADS);
    
    new_pcb = initialize_process(FALSE);
    new_tcb = initialize_thread(new_pcb);

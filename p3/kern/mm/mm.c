@@ -1,11 +1,15 @@
 /** 
 * @file mm.c
 * @brief Memory management.
+*
+* - Frame requests are handled at the highest level that is contained
+*   in VM - this means mm_duplicate_address_space, and mm_alloc
 *  
 * @author Justin Scheiner
 * @author Tim Wilson
 * @bug Kernel page allocation can probably do better than malloc.
-* @bug We hold on to directory locks for a long time.
+* @bug There is no real need to serialize address space copying.
+* @bug mm_alloc is a trainwreck...
 */
 
 #include <mm.h>
@@ -22,10 +26,20 @@
 #include <string.h>        // memcpy, memset
 #include <global_thread.h>
 #include <debug.h>
+#include <ecodes.h>
 
 #define COPY_PAGE ((void*)(-PAGE_SIZE))
 
+/* @brief Local copy of the total number of physical frames in the system.
+ *  mm implementation assumes contiguous memory. */
+static int n_phys_frames;
+static int n_free_frames;
+static int n_available_frames;
+
 static free_block_t* user_free_list;
+
+/* Locks requests for frames. */
+static mutex_t request_lock;
 
 /* Lock for the user free list structure. */
 static mutex_t user_free_lock;
@@ -60,6 +74,7 @@ int mm_init()
 
    /* This makes an assumption that initially memory is contiguous. */
    n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
+   n_available_frames = n_free_frames;
 
    /* Build a very simple link structure on free frames. */
    for(i = 0, iter = user_free_list; 
@@ -186,28 +201,58 @@ void mm_free_address_space(pcb_t* pcb)
 * @param pcb The new process to copy into. The page directory 
 *  should be empty, but allocated.  
 */
-void mm_duplicate_address_space(pcb_t* new_pcb) 
+int mm_duplicate_address_space(pcb_t* new_pcb) 
 {
-   unsigned long d_index;
+   /* Declarations. */
+   unsigned long d_index, necessary_frames;
    unsigned long t_index;
    unsigned long flags;
    unsigned long page;
    pcb_t* current_pcb;
    
    page_dirent_t *current_dir_v, *new_dir_v, *current_virtual_dir;
-
    page_tablent_t *copy_table_v, *current_table_v, *new_table_v, 
       *current_table_p;
 
    page_tablent_t current_frame, new_frame;
    
+   /* Initial values. */
    current_pcb = get_pcb();
    current_dir_v = current_pcb->dir_v;
    new_dir_v = new_pcb->dir_v;
    current_virtual_dir = current_pcb->virtual_dir;
-
    copy_table_v = kvm_initial_table();
+
+   /* First determine the resources we will need. 
+    *    Since this is essentially a helper function for fork, 
+    *    there is only one thread - us.
+    **/
    
+   necessary_frames = 0;
+   for(d_index = (USER_MEM_START >> DIR_SHIFT); 
+      d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
+   {
+      current_table_v = current_virtual_dir[d_index];
+      current_table_p = current_dir_v[d_index];
+      if(!(FLAGS_OF(current_table_p) & PDENT_PRESENT)) 
+         continue;
+      
+      /* Require a frame for the table. */
+      necessary_frames++;
+      for(t_index = 0; t_index < TABLE_SIZE; t_index++)
+      {
+         current_frame = current_table_v[t_index];
+         if((FLAGS_OF(current_frame) & PTENT_PRESENT))
+            necessary_frames++;
+      }
+   }
+   
+   /* Request the frames we need. */
+   assert(necessary_frames > 0);
+   if(mm_request_frames(necessary_frames) < 0)
+      return E_NOVM;
+   
+   /* Proceed with the duplication */
    mutex_lock(&copy_lock);
    for(d_index = (USER_MEM_START >> DIR_SHIFT); 
       d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
@@ -215,38 +260,47 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
       current_table_v = current_virtual_dir[d_index];
       current_table_p = current_dir_v[d_index];
       
-      if(!(FLAGS_OF(current_table_p) & PDENT_PRESENT)) continue;
+      if(!(FLAGS_OF(current_table_p) & PDENT_PRESENT)) 
+         continue;
       
       flags = FLAGS_OF(current_table_p);
       
-      /* Also maps the table in the new process's dir / virtual directory. */
+      /* mm_new_table maps the table in the new process's 
+       *    directory and virtual directory. */
       new_table_v = mm_new_table(new_pcb, (void*)(d_index << DIR_SHIFT));
+
+      /* This should always pass, since we've already requested the frames. */
+      assert(new_table_v);
       
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
          current_frame = current_table_v[t_index];
-         if(!(FLAGS_OF(current_frame) & PTENT_PRESENT)) continue;
+         if(!(FLAGS_OF(current_frame) & PTENT_PRESENT)) 
+            continue;
 
          flags = FLAGS_OF(current_frame);
          page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
          
          debug_print("mm", "Copying page 0x%lx", page);
          
-         new_frame = mm_new_frame((unsigned long*)copy_table_v, (unsigned long)COPY_PAGE);
-
-         /* When this fails time to do something smarter. */
+         new_frame = mm_new_frame((unsigned long*)copy_table_v, 
+            (unsigned long)COPY_PAGE);
+         
+         /* This should always pass, 
+          * since we've already requested the frames. */
          assert(new_frame);
-
 
          memcpy((void*)COPY_PAGE, (void*)page, PAGE_SIZE);
          new_table_v[t_index] = new_frame | flags;
       }
    }
-   mutex_unlock(&copy_lock);
-   
-   /* Unmap the page we used to copy for good measure. */
+
+   /* Unmap the page we used for copying for good measure. */
    copy_table_v[ TABLE_OFFSET(COPY_PAGE) ] = 0;
    invalidate_page((void*)COPY_PAGE);
+   mutex_unlock(&copy_lock);
+   
+   return E_SUCCESS;
 }
 
 /** 
@@ -254,7 +308,7 @@ void mm_duplicate_address_space(pcb_t* new_pcb)
 *  1. Initializes all of it's entries as non-present.
 *  2. Maps the table in the PCB's directories, at the address indicated.
 *
-*  @return The virtual address of the new table. 
+*  @return The virtual address of the new table. Or NULL on failure. 
 */
 void* mm_new_table(pcb_t* pcb, void* addr)
 {
@@ -264,6 +318,9 @@ void* mm_new_table(pcb_t* pcb, void* addr)
    page_dirent_t* virtual_dir_v = pcb->virtual_dir;
    
    table_v = kvm_new_page();
+   if(table_v == NULL)
+      return NULL;
+   
    table_p = kvm_vtop(table_v); 
 
    memset(table_v, 0, PAGE_SIZE);
@@ -300,8 +357,10 @@ void mm_free_table(pcb_t* pcb, void* addr)
 * @param addr The address to allocate.
 * @param len Length of the new region in bytes.
 * @param flags Flags for the region, e.g. PTENT_PRESENT
+*
+* @return 0 on succcess,  on failure. 
 */
-void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
+int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
 {
    assert(len > 0);
    assert((unsigned long)addr >= USER_MEM_START && 
@@ -312,18 +371,34 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    page_tablent_t* table_p;
    page_tablent_t* table_v;
 
-   unsigned int page = PAGE_OF(addr);
+   unsigned int page;
    unsigned int npages =   
       (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
+   unsigned int ntables;
    unsigned long frame;
    int i;
    
+   ntables = 0;
+   for(i = DIR_OFFSET(addr); i < DIR_OFFSET(addr + len); i++)
+   {
+      table_p = (page_tablent_t*)dir_v[i];
+      if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
+         ntables++;
+   }
+
+   if(mm_request_frames(npages + ntables) < 0)
+      return E_NOVM;
+   
    mutex_lock(&pcb->directory_lock);
-   for (i = 0; i < npages; i++, page += PAGE_SIZE) 
+   for (i = 0, page = (unsigned long)addr; i < npages; i++, page += PAGE_SIZE) 
    {
       table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
       if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
-         mm_new_table(pcb, (void*)page);
+      {
+         /* Since we've already requested the frame, we should be 
+          *  okay to allocate it in all cases. */
+         assert(mm_new_table(pcb, (void*)page));
+      }
 
       table_v = (page_tablent_t*)virtual_dir[ DIR_OFFSET(page) ];
    
@@ -346,8 +421,8 @@ void mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       invalidate_page((void*)page);
    }
    mutex_unlock(&pcb->directory_lock);
+   return 0;
 } 
-
 
 /** 
 * @brief Removes pages from the currently running processes address space. 
@@ -479,6 +554,29 @@ void* mm_new_kp_page()
 }
 
 /** 
+* @brief Serializes frame requests to check if the 
+*  demands can be met. 
+* 
+* @param n The number of frames we are requesting. 
+* 
+* @return True if we are free to allocate n frames. 
+*         False if we need to fail. 
+*/
+int mm_request_frames(int n)
+{
+   int ret = E_NOVM;
+   mutex_lock(&request_lock);
+   if(n_available_frames - n >= 0)
+   {
+      n_available_frames -= n;
+      ret = 0;
+   }
+   mutex_unlock(&request_lock);
+   return E_NOVM;
+}
+
+
+/** 
 * @brief Safely allocates a new frame.
 *  1. Allocates a new frame for the current process.
 *  2. Maps that frame to the place indicated by "page" in rw/supervisor mode.
@@ -544,6 +642,7 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
    n_free_frames++;
+   n_available_frames++;
    mutex_unlock(&user_free_lock);
 
    /* This frame should now be invisible to the process. */

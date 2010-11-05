@@ -22,7 +22,7 @@
 #include <thread.h>
 #include <vstring.h>
 #include <console.h>
-#include <syscall_codes.h>
+#include <ecodes.h>
 
 /*********************************************************************/
 /*                                                                   */

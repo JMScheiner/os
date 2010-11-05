@@ -6,7 +6,7 @@
 #define KVM_TOP      ((void*)(-2 * PAGE_SIZE))
 
 void kvm_init();
-void kvm_new_directory(pcb_t* pcb);
+int kvm_new_directory(pcb_t* pcb);
 void* kvm_new_table(void* addr);
 void* kvm_initial_table();
 

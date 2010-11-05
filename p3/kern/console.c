@@ -10,7 +10,7 @@
 #include <types.h>
 #include <vstring.h>
 #include <mutex.h>
-#include <syscall_codes.h>
+#include <ecodes.h>
 
 /** @brief Index of the first byte after console memory. */
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
@@ -87,7 +87,7 @@ void print_handler(volatile regstate_t reg)
 	mutex_lock(&print_lock);
 	putbytes(printbuf, len);
 	mutex_unlock(&print_lock);
-	RETURN(SYSCALL_SUCCESS);
+	RETURN(E_SUCCESS);
 }
 
 /** 
@@ -104,7 +104,7 @@ void set_term_color_handler(volatile regstate_t reg)
 		RETURN(SYSCALL_INVALID_ARGS);
 
 	set_term_color(color); 
-	RETURN(SYSCALL_SUCCESS);
+	RETURN(E_SUCCESS);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
@@ -132,7 +132,7 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 
 	set_cursor(row, col);
    debug_print("console", "Successfully set cursor position. ");
-	RETURN(SYSCALL_SUCCESS);
+	RETURN(E_SUCCESS);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
@@ -158,7 +158,7 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 	if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
 		RETURN(SYSCALL_INVALID_ARGS);
 
-	RETURN(SYSCALL_SUCCESS);
+	RETURN(E_SUCCESS);
 }
 /************** End Syscall wrappers . **************/
 

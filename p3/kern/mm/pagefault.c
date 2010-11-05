@@ -94,7 +94,11 @@ void user_fault(void* addr, int access_mode)
 void stack_fault(void* addr, int ecode)
 {
    debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
-   mm_alloc(get_pcb(), (void*)PAGE_OF(addr), PAGE_SIZE, PTENT_USER | PTENT_RW);
+   if(mm_alloc(get_pcb(), (void*)PAGE_OF(addr), 
+         PAGE_SIZE, PTENT_USER | PTENT_RW) < 0)
+   {
+      thread_kill("Fatal: System ran out of resources on stack allocation");
+   }
 }
 
 void generic_fault(int ecode, void* addr)

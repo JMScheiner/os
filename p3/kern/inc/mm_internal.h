@@ -43,11 +43,6 @@ typedef struct FREE_BLOCK
    struct FREE_BLOCK* next;
 } free_block_t;
 
-/* @brief Local copy of the total number of physical frames in the system.
- *  mm implementation assumes contiguous memory. */
-int n_phys_frames;
-int n_free_frames;
-
 typedef unsigned long page_tablent_t;
 typedef page_tablent_t* page_dirent_t;
 

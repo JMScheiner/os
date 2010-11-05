@@ -6,6 +6,9 @@
 *  - There are at most (USER_MEM_END >> DIR_SHIFT) of these tables. 
 *  - Not direct mapping the kvm tables was too much for
 *     my puny brain to handle.
+*
+*  - KVM is NOT responsible for requesting frames. This should occur 
+*    at the highest reasonable level. 
 *  
 * @author Justin Scheiner
 * @author Tim Wilson
@@ -21,6 +24,7 @@
 #include <simics.h>
 #include <common_kern.h>
 #include <string.h>
+#include <ecodes.h>
 
 static void* _kvm_initial_table;
 inline void* kvm_initial_table() { return _kvm_initial_table; }
@@ -42,6 +46,7 @@ void kvm_init()
 {
    page_dirent_t* global_dir;
    _kvm_initial_table = mm_new_kp_page();
+   assert(_kvm_initial_table);
    
    kernel_free_list = NULL;
    kvm_bottom = KVM_TOP;
@@ -63,6 +68,7 @@ void kvm_init()
 * @param page The page to frame. 
 * 
 * @return The physical address of the framed page. 
+*  Or NULL on failure. 
 */
 void* kvm_alloc_page(void* page)
 {
@@ -80,6 +86,7 @@ void* kvm_alloc_page(void* page)
    dir = (page_dirent_t*)get_pcb()->dir_v;
    table = dir[ DIR_OFFSET(page) ];
    
+   /* Deal with new global table allocation if necessary. */
    if(!(FLAGS_OF(table) & PTENT_PRESENT))
    {
       mutex_lock(&new_table_lock);
@@ -88,16 +95,18 @@ void* kvm_alloc_page(void* page)
        *  we are free to allocate it ourselves. */
       table = dir[ DIR_OFFSET(page) ];
       if(!(FLAGS_OF(table) & PTENT_PRESENT))
-         table = kvm_new_table(page);
+      {
+         if((table = kvm_new_table(page)) == NULL)
+            return NULL;
+      }
       else
+      {
          table = (page_tablent_t*)PAGE_OF(table);
+      }
       
       mutex_unlock(&new_table_lock);
    }
-   else
-   {
-      table = (page_tablent_t*)PAGE_OF(table);
-   }
+   else table = (page_tablent_t*)PAGE_OF(table);
    
    /* FIXME Maybe this should never happen... */
    if(FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT) 
@@ -154,7 +163,8 @@ void* kvm_new_page()
       mutex_unlock(&kernel_free_lock);
       
       /* Frame the new page */
-      kvm_alloc_page(new_page);
+      if(kvm_alloc_page(new_page) == NULL)
+         return NULL;
    }
    return new_page;
 }
@@ -204,6 +214,7 @@ void kvm_free_page(void* page)
 */
 void* kvm_new_table(void* addr)
 {
+   void* table;
    pcb_t *global, *iter;
    page_dirent_t* dir_v;
    
@@ -212,7 +223,11 @@ void* kvm_new_table(void* addr)
    assert(!(FLAGS_OF(dir_v[ DIR_OFFSET(addr) ]) & PTENT_PRESENT));
 
    /* kvm tables are direct mapped. */
-   void* table = mm_new_kp_page();
+   if((table = mm_new_kp_page()) == NULL)
+      return NULL;
+
+   /* When this assertion fails, time to do something smarter...*/
+   assert(table);
 
    /* Need to update ALL directories. Luckily this only happens when the 
     *  kernel uses up 4M of space. */
@@ -279,13 +294,26 @@ void* kvm_vtop(void* vaddr)
 *     that is used for managing the global kvm tables. 
 * 
 * @param pcb The PCB to endow with a new directory. 
+*
+* @return 0 on success, a negative integer on failure. 
 */
-void kvm_new_directory(pcb_t* pcb)
+int kvm_new_directory(pcb_t* pcb)
 {
    int i;
    page_dirent_t* global_dir = global_pcb()->dir_v;
+
    page_dirent_t* dir_v = kvm_new_page();
+   if(dir_v == NULL)
+   {
+      return E_NOVM;
+   }
+   
    page_dirent_t* virtual_dir_v = kvm_new_page();
+   if(virtual_dir_v == NULL)
+   {
+      kvm_free_page(dir_v);
+      return E_NOVM;
+   }
    
    debug_print("mm", "Global directory at %p", global_dir);
    
@@ -325,8 +353,7 @@ void kvm_new_directory(pcb_t* pcb)
    pcb->dir_v = dir_v;
    pcb->dir_p = kvm_vtop(dir_v);
    pcb->virtual_dir = virtual_dir_v;
+
+   return E_SUCCESS;
 }
-
-
-
 
