@@ -113,14 +113,25 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 	int row, col;
 
 	if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
+   {
+      debug_print("console", "set_cursor_position: failed to copy args. ");
 		RETURN(SYSCALL_INVALID_ARGS);
+   }
 
 	if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < 
 			sizeof(int))
+   {
+      debug_print("console", "set_cursor_position: failed to copy args. ");
 		RETURN(SYSCALL_INVALID_ARGS);
+   } 
 
 	/* TODO What constitutes an invalid cursor position? */
+   if( 0 > row || row >= CONSOLE_HEIGHT 
+    || 0 > col || col >= CONSOLE_WIDTH)
+      RETURN(SYSCALL_INVALID_ARGS);
+
 	set_cursor(row, col);
+   debug_print("console", "Successfully set cursor position. ");
 	RETURN(SYSCALL_SUCCESS);
 }
 

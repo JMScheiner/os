@@ -91,11 +91,8 @@ tcb_t *get_tcb()
    assert(ret->sanity_constant == TCB_SANITY_CONSTANT);
    
    /* TODO When is this NULL? */
-   //assert((int)ret->pcb != -1);
-   /*if(ret->pcb)
-   {
-      assert(ret->pcb->sanity_constant = PCB_SANITY_CONSTANT);
-   }*/
-	return (tcb_t *)PAGE_OF(esp);
+   assert(ret->pcb != NULL);
+   assert(ret->pcb->sanity_constant = PCB_SANITY_CONSTANT);
+	return ret;
 }
 

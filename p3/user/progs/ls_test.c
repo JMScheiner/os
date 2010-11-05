@@ -15,10 +15,12 @@ int main(int argc, const char *argv[])
    
    ls(BUFSIZE, bufptr);
    
+   int n = 1;
    while((size = strlen(bufptr)) > 0)
    {
-      printf("%s\n", bufptr);
+      printf("%s, ", bufptr);
       bufptr += size + 1; 
+      if(!(n++ % 4)) printf("\n");
    }
 
    return 152352;

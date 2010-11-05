@@ -1,7 +1,5 @@
 /** @file hashtable.h
  *
- * @brief Macros for generating and manipulating a hashtable
- *
  * @author Tim Wilson (tjwilson)
  */
 

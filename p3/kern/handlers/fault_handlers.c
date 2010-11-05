@@ -3,11 +3,18 @@
 #include <simics.h>
 #include <asm.h>
 #include <reg.h>
+#include <lifecycle.h>
+#include <stdio.h>
+#include <assert.h>
+#include <asm_helper.h>
+
+#define ERRBUF_SIZE 0x100
 
 void divide_error_handler(regstate_t reg)
 {
-	lprintf("Ignoring divide_error ");
-	MAGIC_BREAK;
+   char errbuf[ERRBUF_SIZE];
+   sprintf(errbuf, "Divide by zero, %%eip = 0x%ld", reg.eip);
+   thread_kill(errbuf);
 }
 
 void debug_handler(regstate_t reg)
@@ -24,79 +31,85 @@ void breakpoint_handler(regstate_t reg)
 
 void overflow_handler(regstate_t reg)
 {
-	lprintf("Ignoring overflow ");
-	MAGIC_BREAK;
+   /* Explicitly ignore overflows, since we have no signal mechanism. */
 }
 
 void bound_range_exceeded_handler(regstate_t reg)
 {
-	lprintf("Ignoring bound_range_exceeded ");
-	MAGIC_BREAK;
+   /* Explicitly ignore bound range exceeded, 
+    * since we have no signal mechanism. */
 }
 
 void invalid_opcode_handler(regstate_t reg)
 {
-	lprintf("Ignoring invalid_opcode ");
-	MAGIC_BREAK;
+   char errbuf[ERRBUF_SIZE];
+   sprintf(errbuf, "Invalid instruction, %%eip = 0x%ld", reg.eip);
+   thread_kill(errbuf);
 }
 
 void device_not_available_handler(regstate_t reg)
 {
-	lprintf("Ignoring device_not_available ");
-	MAGIC_BREAK;
+   char errbuf[ERRBUF_SIZE];
+   sprintf(errbuf, "Device not available exception at %%eip = 0x%ld", reg.eip);
+   thread_kill(errbuf);
 }
 
 void double_fault_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring double_fault ");
+   /* This never happens.*/
 	MAGIC_BREAK;
+   assert(0);
 }
 
 void invalid_tss_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring invalid_tss ");
+   /* This never happens.*/
 	MAGIC_BREAK;
+   assert(0); 
 }
 
 void segment_not_present_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring segment_not_present ");
+   /* This never happens.*/
 	MAGIC_BREAK;
+   assert(0); 
 }
 
 void stack_segment_fault_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring stack_segment_fault ");
+   /* This never happens.*/
 	MAGIC_BREAK;
+   assert(0); 
 }
 
 void general_protection_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring general_protection ");
+   /* This never happens.*/
 	MAGIC_BREAK;
+   assert(0); 
 }
 
 void alignment_check_handler(regstate_error_t reg)
 {
-	lprintf("Ignoring alignment_check ");
+   /* We don't do alignment checking. */
 	MAGIC_BREAK;
+   assert(0); 
 }
 
 void machine_check_handler(regstate_t reg)
 {
-	lprintf("Ignoring machine_check ");
-	MAGIC_BREAK;
+   /* Something disastrous happened. */
+   MAGIC_BREAK;
+   halt();
 }
 
 void syscall_handler(regstate_t reg)
 {
-	lprintf("Ignoring syscall ");
-	MAGIC_BREAK;
+   /* Doesn't do anything. */
 }
 
 void misbehave_handler(regstate_t reg)
 {
-	lprintf("Ignoring misbehave ");
-	MAGIC_BREAK;
+   /* Doesn't do anything. */
 }
 

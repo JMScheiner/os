@@ -77,7 +77,7 @@ void* kvm_alloc_page(void* page)
    
    /* Note we may not have a stack yet, so it isn't safe to reference
     *  our TCB (and therefore our own PCB). */
-   dir = (page_dirent_t*)global_pcb()->dir_v;
+   dir = (page_dirent_t*)get_pcb()->dir_v;
    table = dir[ DIR_OFFSET(page) ];
    
    if(!(FLAGS_OF(table) & PTENT_PRESENT))
@@ -220,19 +220,13 @@ void* kvm_new_table(void* addr)
    mutex_lock(global_lock);
 
    /* Map the new table in every other PCB*/
-   for (iter = global; (iter = LIST_NEXT(iter, global_node)) != global; )
+   LIST_FORALL(global, iter, global_node)
    {
       debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    }
-   
-   /* Deliberately map the global table last, since processes looking for new
-    *  kernel pages will reference it. */
-   dir_v = global->dir_v;
-   dir_v[ DIR_OFFSET(addr) ] = 
-      (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
    
    mutex_unlock(global_lock);
    

@@ -33,10 +33,9 @@
 #include <eflags.h>
 #include <cr.h>
 #include <seg.h>
-#include <vstring.h>
 #include <syscall_codes.h>
 #include <region.h>
-
+#include <console.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -67,7 +66,7 @@ void exec_handler(volatile regstate_t reg) {
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
 	int argc;
-
+   
 	/* Verify that the arguments lie in valid memory. */
    if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
 		RETURN(SYSCALL_INVALID_ARGS);
@@ -75,8 +74,15 @@ void exec_handler(volatile regstate_t reg) {
    if(v_memcpy((char*)&argvec, 
       arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
 		RETURN(SYSCALL_INVALID_ARGS);
+   
+   pcb_t* pcb = get_pcb();
 
 	/* TODO Check if there is more than one thread. */
+   if(pcb->thread_count > 1)
+   {
+      MAGIC_BREAK;
+      RETURN(EXEC_MULTIPLE_THREADS);
+   }
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
 		RETURN(EXEC_INVALID_NAME);
@@ -116,12 +122,9 @@ void exec_handler(volatile regstate_t reg) {
 		RETURN(err);
 	}
 	
-   pcb_t* pcb = get_pcb();
-	
    /* Free user memory, user memory regions. */
-   if(pcb->regions)
-      free_region_list(pcb);
-   else MAGIC_BREAK;
+   assert(pcb->regions);
+   free_region_list(pcb);
    mm_free_user_space(pcb);
 
 	// TODO This probably shouldn't be an assert.
@@ -300,6 +303,17 @@ void set_status_handler(volatile regstate_t reg)
 			pcb->status->status);
 }
 
+void thread_kill(char* error_message)
+{
+   putbytes(error_message, strlen(error_message));
+   putbytes("\n", 2);
+   putbytes("\n", 2);
+   
+   pcb_t* pcb = get_pcb();
+   pcb->status->status = STATUS_KILLED;
+   vanish_handler();
+}
+
 /** 
 * @brief Terminates execution of the calling thread "immediately."
 *
@@ -313,7 +327,7 @@ void set_status_handler(volatile regstate_t reg)
 * 
 * @param reg Ignored.
 */
-void vanish_handler(volatile regstate_t reg)
+void vanish_handler()
 {
 	tcb_t *tcb = get_tcb();
 	pcb_t *pcb = tcb->pcb;

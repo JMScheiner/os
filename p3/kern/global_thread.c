@@ -18,9 +18,7 @@ void global_thread_init()
    _global_pcb.parent = NULL;
    _global_pcb.thread_count = 1;
    _global_pcb.regions = NULL;
-	mutex_init(&_global_pcb.lock);
 	mutex_init(&_global_pcb.directory_lock);
-	mutex_init(&_global_pcb.kvm_lock);
 	mutex_init(&_global_pcb.region_lock);
 	mutex_init(&_global_pcb.status_lock);
 	mutex_init(&_global_pcb.waiter_lock);

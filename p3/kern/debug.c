@@ -12,7 +12,7 @@
 #define DEBUG_BREAK
 
 char *debug_print_strings[] = {
-   /*"scheduler", */
+   //"scheduler", 
    //"sleep", 
    //"loader", 
    //"wait", 
@@ -27,6 +27,8 @@ char *debug_print_strings[] = {
    //"lifecycle", 
    //"region", 
    //"malloc", 
+   //"console", 
+   "memman", 
    NULL};
 char *debug_break_strings[] = {NULL};
 
