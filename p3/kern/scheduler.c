@@ -20,6 +20,7 @@
 #include <global_thread.h>
 #include <debug.h>
 #include <mutex.h>
+#include <lifecycle.h>
 
 #define INIT_PROGRAM "init"
 
@@ -27,17 +28,22 @@
  * @brief Circular queue of runnable threads. 
  *  Always points to the next runnable thread, if there is one. 
  */
-static tcb_t* runnable;
+static tcb_t *runnable;
 
 /**
- * @brief Circular queue of blocked threads.
+ * @brief Circular queue of descheduled threads.
+ *
+ * If at any point there are no runnable or blocked threads, all
+ * descheduled threads should be killed.
  */
-static tcb_t* blocked;
+static tcb_t *descheduled;
 
 /** 
 * @brief A min-heap keying on the time the sleeper will run next.
 */
 static sleep_heap_t sleepers;
+
+static int blocked_count = 0;
 
 /** 
 * @brief Initialize the scheduler.
@@ -46,14 +52,10 @@ void scheduler_init()
 {
    heap_init(&sleepers);
    INIT_LIST(runnable);   
-   INIT_LIST(blocked); 
 }
 
 /**
  * @brief Register a thread as runnable.
- *
- * Note: This thread must not be in the runnable queue before
- * calling this function.
  *
  * @param tcb The tcb of the newly runnable thread.
  */
@@ -61,7 +63,6 @@ void scheduler_register(tcb_t* tcb)
 {
    debug_print("scheduler", "Adding %p to the scheduler with tid 0x%x", 
 			tcb, tcb->tid);
-   LIST_INIT_NODE(tcb, scheduler_node);
    
    quick_lock();
    LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
@@ -71,60 +72,89 @@ void scheduler_register(tcb_t* tcb)
 /**
  * @brief Run the thread with the given tcb
  *
- * Note: I believe interrupts should always be disabled before calling this
+ * Interrupts must always be disabled before calling this
  * function, otherwise we may accidently try to run a zombie thread.
  *
  * @param tcb The tcb of the thread to run.
  */
 void scheduler_run(tcb_t* tcb)
 {
-	quick_lock();
+	assert(tcb->blocked == FALSE);
+	assert(tcb->descheduled == FALSE);
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
-	scheduler_next(get_tcb());
+	scheduler_next();
 }
 
 /**
- * @brief Move the given thread from the blocked list to the runnable
- * queue.
- *
- * @param tcb The thread to move to the runnable queue.
- */
-void scheduler_make_runnable(tcb_t* tcb)
-{
-	debug_print("scheduler", "Unblocking thread %p", tcb);
-	quick_lock();
-	LIST_REMOVE(blocked, tcb, scheduler_node);
-	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
-	quick_unlock();
-}
-
-/**
- * @brief Move a thread from the runnable queue to the blocked queue.
- *
- * @param tcb The thread to move to the blocked queue.
- */
-void scheduler_block(tcb_t* tcb)
-{
-	debug_print("scheduler", "Blocking thread %p", tcb);
-	quick_lock();
-	LIST_REMOVE(runnable, tcb, scheduler_node);
-	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-	quick_unlock();
-}
-
-/**
- * @brief Place ourself on the blocked list to avoid being scheduled and
+ * @brief Remove ourself from the runnable list to avoid being scheduled and
  * run the next thread.
  */
-void scheduler_block_me()
+void scheduler_block()
 {
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Blocking myself, thread %p", tcb);
 	quick_lock();
+	blocked_count++;
+	tcb->blocked = TRUE;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
-	LIST_INSERT_BEFORE(blocked, tcb, scheduler_node);
-	scheduler_next(tcb);
+	scheduler_next();
+}
+
+/**
+ * @brief Mark the given thread as unblocked and schedule them if they are
+ * not descheduled. 
+ *
+ * @param tcb The thread to unblock.
+ */
+void scheduler_unblock(tcb_t* tcb)
+{
+	debug_print("scheduler", "Unblocking thread %p", tcb);
+	quick_lock();
+	assert(tcb->blocked);
+	blocked_count--;
+	tcb->blocked = FALSE;
+	if (!tcb->descheduled && tcb->wakeup != 0)
+		LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+	quick_unlock();
+}
+
+/**
+ * @brief Deschedule ourself, preventing the kernel from running us until
+ * someone reschedules us.
+ */
+void scheduler_deschedule()
+{
+	tcb_t *tcb = get_tcb();
+	debug_print("scheduler", "Descheduling thread %p", tcb);
+	quick_lock();
+	assert(!tcb->descheduled);
+	tcb->descheduled = TRUE;
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	quick_unlock();
+}
+
+/**
+ * @brief Reschedule a thread after a call to deschedule
+ *
+ * @param tcb The thread to reschedule
+ *
+ * @return True if the thread was successfully rescheduled, false if the
+ * thread was already scheduled.
+ */
+boolean_t scheduler_reschedule(tcb_t *tcb)
+{
+	debug_print("scheduler", "Rescheduling thread %p", tcb);
+	quick_lock();
+	if (tcb->descheduled) {
+		tcb->descheduled = FALSE;
+		if (!tcb->blocked && tcb->wakeup != 0)
+			LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+		quick_unlock();
+		return TRUE;
+	}
+	quick_unlock();
+	return FALSE;
 }
 
 /**
@@ -136,11 +166,11 @@ void scheduler_block_me()
 void scheduler_die(mutex_t *lock)
 {
 	tcb_t *tcb = get_tcb();
-	debug_print("scheduler", "Dying %p", get_tcb());
+	debug_print("scheduler", "Dying %p", tcb);
 	quick_lock();
 	mutex_unlock(lock);
-	LIST_REMOVE(runnable, get_tcb(), scheduler_node);
-	scheduler_next(tcb);
+	LIST_REMOVE(runnable, tcb, scheduler_node);
+	scheduler_next();
 	assert(FALSE);
 }
 
@@ -148,8 +178,9 @@ void scheduler_die(mutex_t *lock)
  * @brief Switch to the next thread in the runnable queue.
  *    This function should never be called with interrupts enabled!!!!!!
  */
-void scheduler_next(tcb_t* tcb)
+void scheduler_next()
 {
+	tcb_t *tcb = get_tcb();
    tcb_t *sleeper;
    unsigned long now;
    debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
@@ -165,33 +196,34 @@ void scheduler_next(tcb_t* tcb)
    {
 		debug_print("sleep", "Waking tcb %p from %p", sleeper, tcb);
       heap_pop(&sleepers);
+		sleeper->wakeup = 0;
       LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
       runnable = sleeper;
    }
 
    if(!runnable)
    {
-      /* There is a sleeping thread, and no one to run - 
+      /* There is a sleeping or blocked thread, and no one to run - 
 			 * twiddle our thumbs.*/
-      if(sleeper || blocked)
+      if(sleeper || blocked_count > 0)
       {
-         tcb_t* global = global_tcb();
-				 debug_print("scheduler", "running global thread %p", global);
-         set_esp0((int)global_tcb()->kstack);
-         context_switch(&tcb->esp, 
-            &global->esp, global->pcb->dir_p);
-			quick_unlock_all();
-			return;
+			runnable = global_tcb();
       }
       
       /* If there is no one in the run queue, we are responsible 
        * for launching the first task (again if necessary).
        */
 		debug_print("scheduler", "reloading init");
-      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, 
-					strlen(INIT_PROGRAM) + 1);
+		tcb_t *killed;
+		LIST_FORALL(descheduled, killed, scheduler_node) {
+			thread_kill("No possibility of rescheduling");
+		}
+      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+		assert(FALSE);
    }
-   runnable = LIST_NEXT(runnable, scheduler_node);
+	else {
+	   runnable = LIST_NEXT(runnable, scheduler_node);
+	}
 	debug_print("scheduler", "now running %p", runnable);
    set_esp0((int)runnable->kstack);
    context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);
@@ -209,14 +241,14 @@ void scheduler_next(tcb_t* tcb)
  */
 void scheduler_sleep(unsigned long ticks)
 {
-   tcb_t* me = get_tcb();
-   debug_print("sleep", "%p going to sleep for %d ticks", me, ticks);
-   me->wakeup = time() + ticks;
+   tcb_t* tcb = get_tcb();
+   debug_print("sleep", "%p going to sleep for %d ticks", tcb, ticks);
+   tcb->wakeup = time() + ticks;
    
    quick_lock();
-   heap_insert(&sleepers, me);
-   LIST_REMOVE(runnable, me, scheduler_node);
-   scheduler_next(me);
+   heap_insert(&sleepers, tcb);
+   LIST_REMOVE(runnable, tcb, scheduler_node);
+   scheduler_next();
 }
 
 

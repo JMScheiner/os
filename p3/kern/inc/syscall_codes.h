@@ -26,6 +26,11 @@
  * wait on. */
 #define WAIT_NO_CHILDREN (-2)
 
+#define YIELD_NONEXISTENT (-2)
+
+#define MAKE_RUNNABLE_NONEXISTENT (-2)
+#define MAKE_RUNNABLE_SCHEDULED (-3)
+
 #define REMOVE_PAGES_REGION_NOT_FOUND (-1)
 #endif
 

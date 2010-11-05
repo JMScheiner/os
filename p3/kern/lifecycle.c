@@ -36,6 +36,8 @@
 #include <syscall_codes.h>
 #include <region.h>
 #include <console.h>
+#include <thread.h>
+#include <hashtable.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -369,7 +371,11 @@ void vanish_handler()
       free_region_list(pcb);
       sfree(pcb, sizeof(pcb_t));
 	}
-	
+
+
+	mutex_lock(&tcb_table.lock);
+	hashtable_remove(&tcb_table, tcb->tid);
+	mutex_unlock(&tcb_table.lock);
 	mutex_lock(&zombie_stack_lock);
 	debug_print("vanish", "Freeing zombie %p", zombie_stack);
 	if (zombie_stack) kvm_free_page(zombie_stack);

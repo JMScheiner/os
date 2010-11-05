@@ -57,8 +57,8 @@ void hashtable_init(hashtable_t *hashtable, unsigned int (*hash)(int))
 	hashtable->table_index = 0;
 	hashtable->hash = hash;
 	mutex_init(&hashtable->lock);
-	hashtable->table = (hashtable_link_t **)smalloc(hashtable->table_index * 
-			sizeof(hashtable_link_t *));
+	hashtable->table = (hashtable_link_t **)
+		smalloc(hashtable->table_index * sizeof(hashtable_link_t *));
 }
 
 static void hashtable_resize(hashtable_t *hashtable)
@@ -81,7 +81,8 @@ static void hashtable_resize(hashtable_t *hashtable)
 		}
 	}
 	/* Free the old table. */
-	sfree(hashtable->table, hashtable->table_index * sizeof(hashtable_link_t *));
+	sfree(hashtable->table, hashtable->table_index * 
+			sizeof(hashtable_link_t *));
 	hashtable->table = table;
 	hashtable->table_index++;
 }
@@ -92,17 +93,16 @@ void hashtable_put(hashtable_t *hashtable, int tid, tcb_t *tcb)
 	hashtable_link_t *link = NULL;
 	/* If the hash table has reached load factor 1, double the size of the
 	 * table. */
-	mutex_lock(&hashtable->lock);
 	if (hashtable->size == prime_hashtable_sizes[hashtable->table_index])
 		hashtable_resize(hashtable);
-	hash = hashtable->hash(tid) % prime_hashtable_sizes[hashtable->table_index];
+	hash = hashtable->hash(tid) % 
+		prime_hashtable_sizes[hashtable->table_index];
 	link = (hashtable_link_t *)smalloc(sizeof(hashtable_link_t));
 	link->tid = tid;
 	link->tcb = tcb;
 	link->next = hashtable->table[hash];
 	hashtable->table[hash] = link;
 	hashtable->size++;
-	mutex_unlock(&hashtable->lock);
 }
 
 tcb_t *hashtable_get(hashtable_t *hashtable, int tid)
@@ -112,14 +112,12 @@ tcb_t *hashtable_get(hashtable_t *hashtable, int tid)
 	hashtable_link_t *link;
 	tcb_t *tcb = NULL;
 	/* Search for key in the bucket that was hashed to. */
-	mutex_lock(&hashtable->lock);
 	for (link = hashtable->table[hash]; link != NULL; link = link->next) {
 		if (link->tid == tid) {
 			tcb = link->tcb;
 			break;
 		}
 	}
-	mutex_unlock(&hashtable->lock);
 	return tcb;
 }
 
@@ -127,7 +125,6 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
 {
 	size_t hash = hashtable->hash(tid) % 
 		prime_hashtable_sizes[hashtable->table_index];
-	mutex_lock(&hashtable->lock);
 	hashtable_link_t *link = hashtable->table[hash];
 	hashtable_link_t *free_link;
 	tcb_t *tcb = NULL;
@@ -150,7 +147,6 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
 			}
 		}
 	}
-	mutex_unlock(&hashtable->lock);
 	return tcb;
 }
 

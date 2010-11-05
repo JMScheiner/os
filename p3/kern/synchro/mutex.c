@@ -74,7 +74,7 @@ void mutex_lock(mutex_t *mp)
 		mp->tail = &node;
 	}
 	while (mp->locked || mp->head != &node) {
-		scheduler_block_me();
+		scheduler_block();
 		quick_lock();
 	}
 	mp->locked = TRUE;
@@ -94,7 +94,7 @@ void mutex_unlock(mutex_t *mp) {
 
 	mp->locked = FALSE;
 	quick_lock();
-	if(mp->head) scheduler_make_runnable(mp->head->tcb);
+	if(mp->head) scheduler_unblock(mp->head->tcb);
 	quick_unlock();
 }
 

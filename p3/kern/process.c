@@ -31,17 +31,6 @@ pcb_t *init_process;
 //mutex_t pcb_table_lock;
 
 /**
- * @brief Initialize the pcb_table.
- */
-void init_process_table(void)
-{
-	//mutex_init(&pcb_table_lock);
-	//mutex_init(&status_table_lock);
-	//STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash, 
-	//		&pcb_table_lock);
-}
-
-/**
  * @brief Get the pcb of the currently running process.
  *
  * @return The pcb.

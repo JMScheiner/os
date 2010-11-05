@@ -7,6 +7,7 @@
 #include <syscall_codes.h>
 #include <mutex.h>
 #include <hashtable.h>
+#include <vstring.h>
 
 mutex_t deschedule_lock;
 
@@ -47,11 +48,12 @@ void yield_handler(volatile regstate_t reg)
 	int tid = (int)SYSCALL_ARG(reg);
 	quick_lock();
 	if (tid == -1) {
-		scheduler_next(get_tcb());
+		scheduler_next();
 		RETURN(SYSCALL_SUCCESS);
 	}
 	else {
-		tcb_t *next = hashtable_get(tcb_table, tid);
+		// No need to lock, interrupts are disabled
+		tcb_t *next = hashtable_get(&tcb_table, tid);
 		if (next != NULL) {
 			scheduler_run(next);
 			RETURN(SYSCALL_SUCCESS);
@@ -87,12 +89,16 @@ void deschedule_handler(volatile regstate_t reg)
 	int *arg_addr = (int *)SYSCALL_ARG(reg);
 	int reject;
 	mutex_lock(&deschedule_lock);
-	if (v_memcpy((char *)&reject, arg_addr, sizeof(int)) < sizeof(int))
+	if (v_memcpy((char *)&reject, (char *)arg_addr, sizeof(int)) < 
+			sizeof(int)) {
+		mutex_unlock(&deschedule_lock);
 		RETURN(SYSCALL_INVALID_ARGS);
+	}
 	if (reject == 0) {
-		//deschedule
+		scheduler_deschedule();
 	}
 	mutex_unlock(&deschedule_lock);
+	RETURN(SYSCALL_SUCCESS);
 }
 
 /** 
@@ -111,18 +117,17 @@ void make_runnable_handler(volatile regstate_t reg)
 {
 	int tid = (int)SYSCALL_ARG(reg);
 	int ret = 0;
-	tcb_t *tcb = hashtable_get(tcb_table, tid);
+	mutex_lock(&tcb_table.lock);
+	tcb_t *tcb = hashtable_get(&tcb_table, tid);
 	mutex_lock(&deschedule_lock);
 	if (tcb == NULL) {
 		ret = MAKE_RUNNABLE_NONEXISTENT;
 	}
-	else if (!tcb->descheduled) {
+	else if (!scheduler_reschedule(tcb)) {
 		ret = MAKE_RUNNABLE_SCHEDULED;
 	}
-	else {
-		//make runnable
-	}
 	mutex_unlock(&deschedule_lock);
+	mutex_unlock(&tcb_table.lock);
 	RETURN(ret);
 }
 

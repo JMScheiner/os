@@ -157,7 +157,9 @@ struct THREAD_CONTROL_BLOCK{
 
    tcb_node_t scheduler_node;
    tcb_node_t mutex_node;
-   int runnable;
+
+	boolean_t blocked;
+	boolean_t descheduled;
 
    unsigned long wakeup;
    int sleep_index;
