@@ -27,7 +27,7 @@
 //In reality this is 9.99931276 milliseconds.
 //	Per tick, we lose 687.24ns.
 //	That is about six seconds per day...
-#define TEN_MS_MSB ((unsigned char)(((TIMER_RATE / 100) & 0xff00) / 4))
+#define TEN_MS_MSB ((unsigned char)(((TIMER_RATE / 100) & 0xff00) >> 8))
 #define TEN_MS_LSB ((unsigned char)(TIMER_RATE / 100) & 0xff)
 
 // This overflows every 12 hours - but is fine for the purposes of 15410. 

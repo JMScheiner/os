@@ -79,12 +79,8 @@ void exec_handler(volatile regstate_t reg) {
    
    pcb_t* pcb = get_pcb();
 
-	/* TODO Check if there is more than one thread. */
    if(pcb->thread_count > 1)
-   {
-      MAGIC_BREAK;
       RETURN(EXEC_MULTIPLE_THREADS);
-   }
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
 		RETURN(EXEC_INVALID_NAME);
@@ -160,9 +156,8 @@ void thread_fork_handler(volatile regstate_t reg)
    pcb = get_pcb();
 	 debug_print("thread_fork", "Called from process %p", pcb);
    new_tcb = initialize_thread(pcb);
-	 debug_print("thread_fork", "New tcb %p", new_tcb);
    newtid = new_tcb->tid;
-   atomic_add(&pcb->thread_count, 1);
+	debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
    
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
@@ -196,7 +191,6 @@ void fork_handler(volatile regstate_t reg)
    new_tcb = initialize_thread(new_pcb);
 	debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
 	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
-   new_pcb->thread_count = 1;
    newpid = new_pcb->pid;
 	atomic_add(&current_pcb->unclaimed_children, 1);
 	mutex_lock(&current_pcb->child_lock);
