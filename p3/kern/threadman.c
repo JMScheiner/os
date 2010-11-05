@@ -5,6 +5,14 @@
 #include <simics.h>
 #include <timer.h>
 #include <syscall_codes.h>
+#include <mutex.h>
+#include <hashtable.h>
+
+mutex_t deschedule_lock;
+
+void threadman_init() {
+	mutex_init(&deschedule_lock);
+}
 
 /** 
 * @brief Returns the TID of the current thread in %eax. 
@@ -27,8 +35,8 @@ void gettid_handler(volatile regstate_t reg)
 *  
 *  If the thread with ID tid does not exist, is awaiting an external event 
 *     in a system call such as readline() or wait(), or has been suspended 
-*     via a system call, then an integer error code less than zero is returned 
-*     in %eax. 
+*     via a system call, then an integer error code less than zero is 
+*     returned in %eax. 
 *  
 *  Zero is returned in %eax on success.
 * 
@@ -36,56 +44,91 @@ void gettid_handler(volatile regstate_t reg)
 */
 void yield_handler(volatile regstate_t reg)
 {
-   //int tid = (int)SYSCALL_ARG(reg);
-	lprintf("Ignoring yield");
-	MAGIC_BREAK;
-   //TODO
+	int tid = (int)SYSCALL_ARG(reg);
+	quick_lock();
+	if (tid == -1) {
+		scheduler_next(get_tcb());
+		RETURN(SYSCALL_SUCCESS);
+	}
+	else {
+		tcb_t *next = hashtable_get(tcb_table, tid);
+		if (next != NULL) {
+			scheduler_run(next);
+			RETURN(SYSCALL_SUCCESS);
+		}
+		quick_unlock();
+		RETURN(YIELD_NONEXISTENT);
+	}
 }
 
 /** 
 * @brief Atomically checks the integer pointed to by reject and acts on it. 
 *
-*  If the integer is non-zero, the call returns immediately with return value zero. 
+*  If the integer is non-zero, the call returns immediately with return 
+*  value zero. 
 *
-*  If the integer pointed to by reject is zero, then the calling thread will not be
-*     run by the scheduler until a make runnable() call is made specifying the 
-*     deschedule()'d thread, at which point deschedule() will return zero
+*  If the integer pointed to by reject is zero, then the calling thread 
+*  will not be run by the scheduler until a make runnable() call is made 
+*  specifying the deschedule()'d thread, at which point deschedule() will 
+*  return zero
 *
-*  An integer error code less than zero is returned in %eax if reject is not a valid pointer. 
+*  An integer error code less than zero is returned in %eax if reject is 
+*  not a valid pointer. 
 *
-*  This system call is atomic with respect to make runnable(): the process of examining 
-*     reject and suspending the thread will not be interleaved with any execution of 
-*     make runnable() specifying the thread calling deschedule().
+*  This system call is atomic with respect to make runnable(): the process 
+*  of examining reject and suspending the thread will not be interleaved 
+*  with any execution of make runnable() specifying the thread calling 
+*  deschedule().
 *
 * @param reg The register state on entry and exit of the handler.
 */
 void deschedule_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring deschedule");
-	MAGIC_BREAK;
-   //TODO
+	int *arg_addr = (int *)SYSCALL_ARG(reg);
+	int reject;
+	mutex_lock(&deschedule_lock);
+	if (v_memcpy((char *)&reject, arg_addr, sizeof(int)) < sizeof(int))
+		RETURN(SYSCALL_INVALID_ARGS);
+	if (reject == 0) {
+		//deschedule
+	}
+	mutex_unlock(&deschedule_lock);
 }
 
 /** 
-* @brief Makes the deschedule()d thread with ID tid runnable by the scheduler.   
+* @brief Makes the deschedule()d thread with ID tid runnable by the 
+* scheduler.   
 *
 *  On success, zero is returned in %eax. 
 *
-*  An integer error code less than zero will be returned in %eax unless tid is 
-*     the ID of a thread which exists but is currently non-runnable due to a 
-*     call to deschedule().
+*  An integer error code less than zero will be returned in %eax unless 
+*  tid is the ID of a thread which exists but is currently non-runnable 
+*  due to a call to deschedule().
 *
 * @param reg The register state on entry and exit of the handler.
 */
 void make_runnable_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring make_runnable");
-	MAGIC_BREAK;
-   //TODO
+	int tid = (int)SYSCALL_ARG(reg);
+	int ret = 0;
+	tcb_t *tcb = hashtable_get(tcb_table, tid);
+	mutex_lock(&deschedule_lock);
+	if (tcb == NULL) {
+		ret = MAKE_RUNNABLE_NONEXISTENT;
+	}
+	else if (!tcb->descheduled) {
+		ret = MAKE_RUNNABLE_SCHEDULED;
+	}
+	else {
+		//make runnable
+	}
+	mutex_unlock(&deschedule_lock);
+	RETURN(ret);
 }
 
 /** 
-* @brief Returns the number of timer ticks which have occurred since system boot in %eax.
+* @brief Returns the number of timer ticks which have occurred since 
+* system boot in %eax.
 * 
 * @param reg The register state on entry and exit of the handler.
 */
@@ -95,13 +138,13 @@ void get_ticks_handler(volatile regstate_t reg)
 }
 
 /** 
-* @brief Deschedules the calling thread until at least ticks timer interrupts have occurred 
-*     after the call. 
+* @brief Deschedules the calling thread until at least ticks timer 
+* interrupts have occurred after the call. 
 *
 *  Returns immediately if ticks is zero. 
 *
-*  Returns an integer error code less than zero in %eax if ticks is negative. 
-*  Returns zero in %eax otherwise.
+*  Returns an integer error code less than zero in %eax if ticks is 
+*  negative. Returns zero in %eax otherwise.
 * 
 * @param reg The register state on entry and exit of the handler.
 */
@@ -115,8 +158,5 @@ void sleep_handler(volatile regstate_t reg)
    scheduler_sleep(ticks);
    RETURN(SYSCALL_SUCCESS);
 }
-
-
-
 
 

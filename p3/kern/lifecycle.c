@@ -311,7 +311,7 @@ void set_status_handler(volatile regstate_t reg)
 *  If the parent task is no longer running, exit status of the task is 
 *  made available to the kernel-launched "init" task instead. 
 * 
-* @param reg The register state on entry and exit of the handler. 
+* @param reg Ignored.
 */
 void vanish_handler(volatile regstate_t reg)
 {
