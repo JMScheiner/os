@@ -31,6 +31,11 @@ UPDATE_METHOD = afs
 410TESTS += exec_basic_helper exec_nonexist fork_bomb
 410TESTS += fork_exit_bomb fork_test1 fork_wait fork_wait_bomb
 410TESTS += halt_test make_crash make_crash_helper
+410TESTS += loader_test1 loader_test2 mem_eat_test mem_permissions
+410TESTS += minclone_mem new_pages print_basic register_test
+410TESTS += remove_pages_test1 remove_pages_test2 slaughter
+410TESTS += sleep_test1 stack_test1 wait_getpid wild_test1
+410TESTS += yield_desc_mkrun getpid_test1
 
 ###########################################################################
 # Test programs you have written which you wish to run
