@@ -21,8 +21,9 @@
 void global_thread_init(void);
 inline pcb_t* global_pcb(void);
 inline tcb_t* global_tcb(void);
-inline mutex_t* global_list_lock(void);
+mutex_t* global_list_lock();
 void global_list_remove(pcb_t* pcb);
+void global_list_add(pcb_t* pcb);
 
 #endif /* end of include guard: GLOBAL_THREAD_FZQ3AUU8 */
 

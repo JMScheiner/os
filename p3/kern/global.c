@@ -45,7 +45,7 @@ inline pcb_t* global_pcb() {
 
 inline tcb_t* global_tcb() { 
    return _global_tcb; 
-} 
+}
 
 inline mutex_t* global_list_lock()
 {
@@ -63,7 +63,11 @@ void global_list_remove(pcb_t* pcb)
 
 void global_list_add(pcb_t* pcb)
 {
-
+   pcb_t* global = &_global_pcb;
+   
+   mutex_lock(&_global_list_lock);
+   LIST_INSERT_AFTER(global, pcb, global_node); 
+   mutex_unlock(&_global_list_lock);
 }
 
 

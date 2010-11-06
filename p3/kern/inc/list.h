@@ -104,7 +104,10 @@
          LIST_PREV(node, instance) = LIST_PREV(list, instance); \
          LIST_PREV(list, instance) = (node); \
          LIST_NEXT(node, instance) = (list); \
+         assert(LIST_NEXT(node, instance) != NULL); \
+         assert(LIST_PREV(node, instance) != NULL); \
       }\
+      else assert(0); \
 	} while (0)
 
 /** @brief Insert an element into a list after the given node
@@ -127,7 +130,10 @@
          LIST_NEXT(node, instance) = LIST_NEXT(list, instance); \
          LIST_NEXT(list, instance) = (node); \
          LIST_PREV(node, instance) = (list); \
+         assert(LIST_NEXT(node, instance) != NULL); \
+         assert(LIST_PREV(node, instance) != NULL); \
       } \
+      else assert(0); \
 	} while (0)
 
 /** @brief Remove an element from a list

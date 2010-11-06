@@ -110,7 +110,7 @@ void* kvm_alloc_page(void* page)
    
    assert(!FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT);
    
-   //debug_print("kvm", "Mapping %p in table %p", page, table);
+   debug_print("kvm", "Mapping %p in table %p", page, table);
    frame = mm_new_frame((unsigned long*)table, (unsigned long)page);
 
    /* Set appropriate flags for the new frame. */
@@ -144,19 +144,19 @@ void* kvm_new_page()
 
       mutex_unlock(&kernel_free_lock);
       
-      //page_dirent_t* global_dir = global_pcb()->dir_v;
-      //page_tablent_t* table = global_dir[ DIR_OFFSET(new_page) ];
-      
       /* FIXME FIXME FIXME WHY DON'T I WORK. Remap the page. */
-      /*table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
+      page_dirent_t* global_dir = global_pcb()->dir_v;
+      page_tablent_t* table = 
+         (page_tablent_t*)PAGE_OF(global_dir[ DIR_OFFSET(new_page) ]);
+      
+      table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
          | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
-      lprintf("Mapped page %p to %p", new_page, table[ TABLE_OFFSET(new_page) ]);*/
+      
       invalidate_page(new_page);
 
       /* Since our own free frames didn't come from the main free frame pool, 
        *  we need to increment the number of available frames. */
       mm_inc_available();
-   
    }
    else
    {
@@ -190,8 +190,8 @@ void kvm_free_page(void* page)
    /* Clear the free frame list part of the recovered page. */
    memset(page, 0, sizeof(free_block_t));
    
-   //page_dirent_t* global_dir = global_pcb()->dir_v;
    /* Will there be race conditions on freed kernel pages? (TODO No) */
+   //page_dirent_t* global_dir = global_pcb()->dir_v;
    //page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
    
    mutex_lock(&kernel_free_lock);
@@ -244,7 +244,7 @@ void* kvm_new_table(void* addr)
    /* Map the new table in every other PCB*/
    LIST_FORALL(global, iter, global_node)
    {
-      //debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
+      debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
@@ -252,7 +252,9 @@ void* kvm_new_table(void* addr)
    
    mutex_unlock(global_lock);
    
+   lprintf("*****************************");
    lprintf("Returning table at %p", table);
+   lprintf("*****************************");
    return table;
 }
 
@@ -272,7 +274,6 @@ void* kvm_vtop(void* vaddr)
    page_dirent_t* dir = (page_dirent_t*)global_pcb()->dir_v;
    //debug_print("kvm", "kvm_vtop: dir = %p", dir);
    page_tablent_t* table = dir[ DIR_OFFSET(vaddr) ];
-   
    assert(FLAGS_OF(table) & PDENT_PRESENT);
    
    table = (page_tablent_t*)PAGE_OF(table);
@@ -318,7 +319,7 @@ int kvm_new_directory(pcb_t* pcb)
    assert(dir_v);
    assert(virtual_dir_v);
    
-   debug_print("mm", "Global directory at %p", global_dir);
+   debug_print("kvm", "Global directory at %p", global_dir);
    
    /* The global parts of every directory should be the same. */
    memset(dir_v, 0, PAGE_SIZE);
@@ -334,9 +335,6 @@ int kvm_new_directory(pcb_t* pcb)
     *  table could get allocated, and we would never find out about it, 
     *  since we aren't on the global list. TODO Can the interaction of 
     *  the global and table locks deadlock? Which should we acquire first? */
-   mutex_t* global_lock = global_list_lock();
-   pcb_t* global = global_pcb();
-   
    mutex_lock(&new_table_lock);
    
    /* When we do this copy the directory itself gets mapped as well. */
@@ -347,10 +345,7 @@ int kvm_new_directory(pcb_t* pcb)
       global_dir + DIR_OFFSET(kvm_bottom), 
       (DIR_SIZE - DIR_OFFSET(kvm_bottom)) * sizeof(page_tablent_t*));
    
-   /* Add ourselves to the global PCB list. */
-   mutex_lock(global_lock);
-   LIST_INSERT_AFTER(global, pcb, global_node); 
-   mutex_unlock(global_lock);
+   global_list_add(pcb);
    mutex_unlock(&new_table_lock);
    
    pcb->dir_v = dir_v;

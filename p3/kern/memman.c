@@ -37,7 +37,6 @@ void memman_init()
 */
 void new_pages_handler(volatile regstate_t reg)
 {
-   MAGIC_BREAK;
    int len, ret;
    char* start, *addr, *arg_addr, *end;
    

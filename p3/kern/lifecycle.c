@@ -235,9 +235,9 @@ void fork_handler(volatile regstate_t reg)
 fork_fail_dup: 
    free_thread_resources(new_tcb);
 fork_fail_tcb:
+fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb);
-fork_fail_dup_regions: 
 fork_fail_pcb: 
    lprintf(" Failed to allocate new PCB in fork() ");
    RETURN(E_NOMEM);
@@ -333,10 +333,11 @@ void set_status_handler(volatile regstate_t reg)
 void thread_kill(char* error_message)
 {
    putbytes(error_message, strlen(error_message));
-   putbytes("\n", 2);
+   putbytes("\n", 1);
    
    pcb_t* pcb = get_pcb();
    pcb->status->status = STATUS_KILLED;
+   MAGIC_BREAK;
    vanish_handler();
 }
 

@@ -17,12 +17,18 @@ def eval_expr(cpu, expr):
 def next_tcb(tcb):
    return eval_expr(cpu, ptr_str(tcb) + '->scheduler_node.next')
 
+def next_pcb(pcb):
+   return eval_expr(cpu, ptr_str(pcb) + '->global_node.next')
+
 def tid_of(tcb):
    type, tid = eval_expr(cpu, ptr_str(tcb) + '->tid')
    return tid
 
 def get_runnable():
    return eval_expr(cpu, 'runnable')
+
+def get_global():
+   return eval_expr(cpu, '&_global_pcb')
 
 def regstate_of(tcb):
    regstate_p = eval_expr(cpu, '(pusha_t*)' + ptr_str(tcb) + '->esp')
@@ -48,13 +54,28 @@ def print_runlist():
    print runnable
    
    def print_tail(tcb): 
+      type, val = tcb
+      if val == 0: 
+         print 'ERROR - THIS SHOULD NEVER HAPPEN' 
+         return
       if tcb == runnable:
          return 
       
       print regstate_of(tcb)
       print_tail(next_tcb(tcb))
-   
    print_tail(next_tcb(runnable))
 
-print_runlist()
-
+def walk_global_list():
+   global_pcb = get_global()
+   def print_tail(pcb): 
+      type, val = pcb
+      if val == 0: 
+         print 'ERROR - THIS SHOULD NEVER HAPPEN' 
+         return
+      print pcb
+      if pcb == global_pcb:
+         return 
+      print_tail(next_pcb(pcb))
+   
+   print_tail(next_pcb(global_pcb))
+   

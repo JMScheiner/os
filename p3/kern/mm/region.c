@@ -69,7 +69,7 @@ int allocate_region(
    region->next = pcb->regions;
    pcb->regions = region;
    mutex_unlock(&pcb->region_lock);
-
+   
 	return mm_alloc(pcb, (void *)start, end - start, access_level);
 }
 

@@ -171,7 +171,7 @@ void mm_free_user_space(pcb_t* pcb)
 
 /** 
 * @brief Frees every frame and table that belongs to user space. 
-*  Releases the directories, and continues execution in the global directory.
+*  Releases the directories, and removes the PCB from the global list. 
 * 
 * @param pcb The process that points to the relevant address space. 
 */

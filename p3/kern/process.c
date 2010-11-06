@@ -80,6 +80,10 @@ pcb_t* initialize_process(boolean_t first_process)
    if((pcb = (pcb_t*) smalloc(sizeof(pcb_t))) < 0) 
       goto fail_pcb;
 	
+   LIST_INIT_EMPTY(pcb->children);
+	LIST_INIT_NODE(pcb, global_node);
+	LIST_INIT_NODE(pcb, child_node);
+	
    if(kvm_new_directory(pcb) < 0) 
       goto fail_new_directory;
    
@@ -98,9 +102,6 @@ pcb_t* initialize_process(boolean_t first_process)
       goto fail_status;
 	
    pcb->status->status = 0;
-	LIST_INIT_EMPTY(pcb->children);
-	LIST_INIT_NODE(pcb, global_node);
-	LIST_INIT_NODE(pcb, child_node);
 	
    pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
@@ -115,8 +116,6 @@ pcb_t* initialize_process(boolean_t first_process)
 
 	cond_init(&pcb->wait_signal);
    
-	//HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
-	
 	return pcb;
 
 fail_status: 
