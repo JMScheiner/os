@@ -58,7 +58,8 @@ void hashtable_init(hashtable_t *hashtable, unsigned int (*hash)(int))
 	hashtable->hash = hash;
 	mutex_init(&hashtable->lock);
 	hashtable->table = (hashtable_link_t **)
-		smalloc(hashtable->table_index * sizeof(hashtable_link_t *));
+		scalloc(prime_hashtable_sizes[hashtable->table_index], 
+							 sizeof(hashtable_link_t *));
 }
 
 static void hashtable_resize(hashtable_t *hashtable)
@@ -81,8 +82,8 @@ static void hashtable_resize(hashtable_t *hashtable)
 		}
 	}
 	/* Free the old table. */
-	sfree(hashtable->table, hashtable->table_index * 
-			sizeof(hashtable_link_t *));
+	sfree(hashtable->table, prime_hashtable_sizes[hashtable->table_index] * 
+						 sizeof(hashtable_link_t *));
 	hashtable->table = table;
 	hashtable->table_index++;
 }

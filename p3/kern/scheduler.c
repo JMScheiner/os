@@ -28,7 +28,7 @@
  * @brief Circular queue of runnable threads. 
  *  Always points to the next runnable thread, if there is one. 
  */
-static tcb_t *runnable;
+static tcb_t *runnable = NULL;
 
 /**
  * @brief Circular queue of descheduled threads.
@@ -36,7 +36,7 @@ static tcb_t *runnable;
  * If at any point there are no runnable or blocked threads, all
  * descheduled threads should be killed.
  */
-static tcb_t *descheduled;
+static tcb_t *descheduled = NULL;
 
 /** 
 * @brief A min-heap keying on the time the sleeper will run next.
@@ -51,7 +51,7 @@ static int blocked_count = 0;
 void scheduler_init()
 {
    heap_init(&sleepers);
-   INIT_LIST(runnable);   
+   LIST_INIT_EMPTY(runnable);   
 }
 
 /**
@@ -114,8 +114,9 @@ void scheduler_unblock(tcb_t* tcb)
 	assert(tcb->blocked);
 	blocked_count--;
 	tcb->blocked = FALSE;
-	if (!tcb->descheduled && tcb->wakeup != 0)
+	if (!tcb->descheduled && tcb->wakeup == 0) {
 		LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+	}
 	quick_unlock();
 }
 
@@ -148,7 +149,7 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
 	quick_lock();
 	if (tcb->descheduled) {
 		tcb->descheduled = FALSE;
-		if (!tcb->blocked && tcb->wakeup != 0)
+		if (!tcb->blocked && tcb->wakeup == 0)
 			LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
 		quick_unlock();
 		return TRUE;
@@ -183,7 +184,7 @@ void scheduler_next()
 	tcb_t *tcb = get_tcb();
    tcb_t *sleeper;
    unsigned long now;
-   debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
+   //debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
    sleeper = heap_peek(&sleepers); 
    now = time();
    
@@ -207,23 +208,28 @@ void scheduler_next()
 			 * twiddle our thumbs.*/
       if(sleeper || blocked_count > 0)
       {
-			runnable = global_tcb();
+			tcb_t *next	= global_tcb();
+			//debug_print("scheduler", "Now running global thread %p", next);
+   		set_esp0((int)next->kstack);
+   		context_switch(&tcb->esp, &next->esp, next->pcb->dir_p);
+			quick_unlock_all();
+			return;
       }
-      
-      /* If there is no one in the run queue, we are responsible 
-       * for launching the first task (again if necessary).
-       */
-		debug_print("scheduler", "reloading init");
-		tcb_t *killed;
-		LIST_FORALL(descheduled, killed, scheduler_node) {
-			thread_kill("No possibility of rescheduling");
-		}
-      load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
-		assert(FALSE);
-   }
-	else {
-	   runnable = LIST_NEXT(runnable, scheduler_node);
+		else {
+	      /* If there is no one in the run queue, we are responsible 
+   	    * for launching the first task (again if necessary).
+      	 */
+			debug_print("scheduler", "reloading init");
+			tcb_t *killed;
+			LIST_FORALL(descheduled, killed, scheduler_node) {
+				thread_kill("No possibility of rescheduling");
+			}
+   	   load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+			assert(FALSE);
+   	}
 	}
+	
+	runnable = LIST_NEXT(runnable, scheduler_node);
 	debug_print("scheduler", "now running %p", runnable);
    set_esp0((int)runnable->kstack);
    context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);

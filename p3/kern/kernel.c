@@ -46,6 +46,7 @@
 #include <asm_helper.h>
 #include <lifecycle.h>
 #include <mutex.h>
+#include <threadman.h>
 
 /*
  * state for kernel memory allocation.
@@ -93,6 +94,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 	lifecycle_init();
    memman_init();
    thread_init();
+	threadman_init();
    
    handler_install();
    clear_console();

@@ -153,7 +153,7 @@ struct THREAD_CONTROL_BLOCK{
 	void *kstack;
 
 	/** @brief Next thread in the same process. */
-	struct THREAD_CONTROL_BLOCK *next;
+	//struct THREAD_CONTROL_BLOCK *next;
 
    tcb_node_t scheduler_node;
    tcb_node_t mutex_node;

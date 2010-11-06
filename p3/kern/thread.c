@@ -70,6 +70,9 @@ tcb_t* initialize_thread(pcb_t *pcb)
 		pcb->status->tid = tcb->tid;
 	}
 
+	//LIST_INIT_NODE(tcb, scheduler_node);
+	LIST_INIT_NODE(tcb, mutex_node);
+
 	mutex_lock(&tcb_table.lock);
 	hashtable_put(&tcb_table, tcb->tid, tcb);
 	mutex_unlock(&tcb_table.lock);

@@ -8,7 +8,7 @@
 #include <thread.h>
 #include <stdlib.h>
 #include <scheduler.h>
-#include <simics.h>
+#include <debug.h>
 #include <eflags.h>
 
 /**
@@ -65,6 +65,7 @@ void mutex_lock(mutex_t *mp)
 	mutex_node_t node;
 	node.tcb = get_tcb();
 	node.next = NULL;
+	debug_print("mutex", "Thread %p is entering mutex %p", node.tcb, mp);
 	quick_lock();
 	if (mp->head == NULL) {
 		mp->head = mp->tail = &node;
@@ -80,6 +81,7 @@ void mutex_lock(mutex_t *mp)
 	mp->locked = TRUE;
 	mp->head = mp->head->next;
 	quick_unlock();
+	debug_print("mutex", "Thread %p has acquired mutex %p", node.tcb, mp);
 }
 
 /**
@@ -92,6 +94,8 @@ void mutex_unlock(mutex_t *mp) {
 	assert(mp->initialized);
 	if (!locks_enabled) return;
 
+	debug_print("mutex", "Releasing mutex %p", mp);
+	
 	mp->locked = FALSE;
 	quick_lock();
 	if(mp->head) scheduler_unblock(mp->head->tcb);

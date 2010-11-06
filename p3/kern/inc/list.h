@@ -41,7 +41,21 @@
  *
  * @param list The list to initialize
  */
-#define INIT_LIST(list) list = NULL
+#define LIST_INIT_EMPTY(list) list = NULL
+
+#define LIST_INIT_NONEMPTY(list, instance) \
+	do { \
+      LIST_NEXT(list, instance) = list; \
+      LIST_PREV(list, instance) = list; \
+	} \
+	while (0)
+
+#define LIST_INIT_NODE(node, instance) \
+	do { \
+      LIST_NEXT(node, instance) = NULL; \
+      LIST_PREV(node, instance) = NULL; \
+	} \
+	while (0)
 
 /** @brief Get the next element of the list
  *
@@ -70,13 +84,6 @@
 			((iter) != NULL); \
 			(iter) = LIST_NEXT(iter, instance) == (list) ? \
 			NULL : LIST_NEXT(iter, instance))
-
-#define LIST_INIT_NODE(node, instance) \
-	do { \
-      LIST_NEXT(node, instance) = (node); \
-      LIST_PREV(node, instance) = (node); \
-	} \
-	while (0)
 
 /** @brief Insert an element into a list before the given node
  *
@@ -131,8 +138,9 @@
  */
 #define LIST_REMOVE(list, node, instance) \
 	do { \
-      if( (list) == (node) && (LIST_NEXT(node, instance) == (node)) ) \
+      if(LIST_NEXT(node, instance) == (node) ) \
       { \
+			assert(list == node); \
          list = NULL; \
       } \
       else if (LIST_NEXT(node, instance) != NULL) \
@@ -145,9 +153,9 @@
 				LIST_NEXT(node, instance); \
          LIST_PREV(LIST_NEXT(node, instance), instance) = \
 				LIST_PREV(node, instance); \
-			LIST_NEXT(node, instance) = NULL; \
-			LIST_PREV(node, instance) = NULL; \
       } \
+		LIST_NEXT(node, instance) = NULL; \
+		LIST_PREV(node, instance) = NULL; \
    } while (0)
 
 #endif

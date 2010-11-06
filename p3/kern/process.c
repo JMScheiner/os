@@ -66,7 +66,9 @@ pcb_t* initialize_process(boolean_t first_process)
 	// TODO Do something smarter
 	assert(pcb->status);
 	pcb->status->status = 0;
-	INIT_LIST(pcb->children);
+	LIST_INIT_EMPTY(pcb->children);
+	LIST_INIT_NODE(pcb, global_node);
+	LIST_INIT_NODE(pcb, child_node);
 	pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
    pcb->sanity_constant = PCB_SANITY_CONSTANT;

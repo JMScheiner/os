@@ -54,12 +54,16 @@ void yield_handler(volatile regstate_t reg)
 	else {
 		// No need to lock, interrupts are disabled
 		tcb_t *next = hashtable_get(&tcb_table, tid);
-		if (next != NULL) {
-			scheduler_run(next);
-			RETURN(SYSCALL_SUCCESS);
+		if (next == NULL) {
+			quick_unlock();
+			RETURN(YIELD_NONEXISTENT);
 		}
-		quick_unlock();
-		RETURN(YIELD_NONEXISTENT);
+		else if (next->descheduled || next->blocked) {
+			quick_unlock();
+			RETURN(YIELD_BLOCKED);
+		}
+		scheduler_run(next);
+		RETURN(SYSCALL_SUCCESS);
 	}
 }
 
