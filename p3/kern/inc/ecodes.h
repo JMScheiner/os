@@ -31,6 +31,11 @@
 /* @brief No frames left for virtual memory allocation. */
 #define E_NOVM (-1)
 #define E_NOMEM (-2)
+#define YIELD_NONEXISTENT (-2)
+#define YIELD_BLOCKED (-3)
+
+#define MAKE_RUNNABLE_NONEXISTENT (-2)
+#define MAKE_RUNNABLE_SCHEDULED (-3)
 
 #define REMOVE_PAGES_REGION_NOT_FOUND (-1)
 #endif

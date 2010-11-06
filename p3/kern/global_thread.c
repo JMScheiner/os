@@ -25,7 +25,7 @@ void global_thread_init()
 	mutex_init(&_global_pcb.check_waiter_lock);
    _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
-   LIST_INIT_NODE(&_global_pcb, global_node);
+   LIST_INIT_NONEMPTY(&_global_pcb, global_node);
    mutex_init(&_global_list_lock);
    
    kstack = mm_new_kp_page() + PAGE_SIZE;

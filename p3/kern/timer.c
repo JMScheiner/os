@@ -59,16 +59,8 @@ void timer_handler(regstate_t reg)
 	/* Pretend to apply a lock to indicate we are at lock depth 1. */
 	quick_lock();
    
-   /* Identify ourselves, and run the next thread. */
-   tcb_t* global = global_tcb();
-   if(get_esp() <= global->kstack)
-   {
-      scheduler_next(global_tcb());
-   }
-   else
-   {
-      scheduler_next(get_tcb());
-   }
+   /* Run the next thread. */
+   scheduler_next();
    
    /* If this fails then we've probably corrupted a 
     *  kernel stack. */

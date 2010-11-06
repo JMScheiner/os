@@ -13,6 +13,7 @@
 
 char *debug_print_strings[] = {
    //"scheduler", 
+	//"mutex", 
    //"sleep", 
    //"loader", 
    //"wait", 
@@ -30,7 +31,7 @@ char *debug_print_strings[] = {
    //"console", 
    //"memman", 
    NULL};
-char *debug_break_strings[] = {"page", NULL};
+char *debug_break_strings[] = {NULL};
 
 #ifdef DEBUG_PRINT
 void debug_print(const char *type, const char *fmt, ...) {

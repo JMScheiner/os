@@ -6,7 +6,6 @@
 *   only invoke smalloc, smemalign,  and sfree. 
 *
 *   TODO Outstanding ssues with memory management:
-*     - hashtable.h uses malloc / calloc / and free
 *     - Need to cover memalign calls. 
 *     - Root out where we malloc, but don't initialize
 *        (I've found a few)
@@ -99,6 +98,13 @@ void *smalloc(size_t size)
    }
    
    return ret;
+}
+
+void *scalloc(size_t nmemb, size_t size)
+{
+	void *ret = smalloc(nmemb * size);
+	memset(ret, 0, nmemb * size);
+	return ret;
 }
 
 void *srealloc(void* buf, size_t current_size, size_t new_size)

@@ -31,17 +31,6 @@ pcb_t *init_process;
 /** @brief Mutual exclusion lock for pcb_table. */
 //mutex_t pcb_table_lock;
 
-/**
- * @brief Initialize the pcb_table.
- */
-void init_process_table(void)
-{
-	//mutex_init(&pcb_table_lock);
-	//mutex_init(&status_table_lock);
-	//STATIC_INIT_HASHTABLE(pcb_table_t, pcb_table, default_hash, 
-	//		&pcb_table_lock);
-}
-
 /** 
 * @brief Frees everything except for the status - 
 *  which is required to remain around for calls to wait. 
@@ -109,8 +98,11 @@ pcb_t* initialize_process(boolean_t first_process)
       goto fail_status;
 	
    pcb->status->status = 0;
-	INIT_LIST(pcb->children);
-	pcb->unclaimed_children = 0;
+	LIST_INIT_EMPTY(pcb->children);
+	LIST_INIT_NODE(pcb, global_node);
+	LIST_INIT_NODE(pcb, child_node);
+	
+   pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
    pcb->sanity_constant = PCB_SANITY_CONSTANT;
    

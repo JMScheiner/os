@@ -53,7 +53,7 @@ void cond_wait(cond_t *cv) {
 	assert(cv->initialized);
 
 	cv->tcb = get_tcb();
-	scheduler_block_me();
+	scheduler_block();
 }
 
 /**
@@ -68,7 +68,7 @@ void cond_signal(cond_t *cv) {
 	assert(cv->initialized);
 
 	if (cv->tcb != NULL) {
-		scheduler_make_runnable(cv->tcb);
+		scheduler_unblock(cv->tcb);
 		cv->tcb = NULL;
 	}
 }

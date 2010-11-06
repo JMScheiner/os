@@ -31,11 +31,11 @@ UPDATE_METHOD = afs
 410TESTS += exec_basic_helper exec_nonexist fork_bomb
 410TESTS += fork_exit_bomb fork_test1 fork_wait fork_wait_bomb
 410TESTS += halt_test make_crash make_crash_helper
-410TESTS += loader_test1 loader_test2 mem_eat_test mem_permissions
-410TESTS += minclone_mem new_pages print_basic register_test
-410TESTS += remove_pages_test1 remove_pages_test2 slaughter
-410TESTS += sleep_test1 stack_test1 wait_getpid wild_test1
-410TESTS += yield_desc_mkrun getpid_test1
+410TESTS += actual_wait getpid_test1 loader_test1 loader_test2 
+410TESTS += mem_eat_test mem_permissions minclone_mem
+410TESTS += new_pages print_basic register_test remove_pages_test1
+410TESTS += remove_pages_test2 slaughter sleep_test1 stack_test1
+410TESTS += wait_getpid wild_test1 yield_desc_mkrun
 
 ###########################################################################
 # Test programs you have written which you wish to run
@@ -83,8 +83,8 @@ KERNEL_OBJS = console.o kernel.o loader.o malloc_wrappers.o mm/mm.o mm/kvm.o mm/
 KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
 KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
 KERNEL_OBJS += synchro/mutex.o synchro/cond.o vstring.o
-KERNEL_OBJS += hashtable.o asm_helper.o mm/pagefault.o keyboard.o timer.o
-KERNEL_OBJS += scheduler.o stub.o lifecycle.o threadman.o
+KERNEL_OBJS +=  asm_helper.o mm/pagefault.o keyboard.o timer.o
+KERNEL_OBJS += scheduler.o stub.o lifecycle.o threadman.o util/hashtable.o
 KERNEL_OBJS += memman.o misc.o util/heap.o global_thread.o debug.o
 
 ###########################################################################

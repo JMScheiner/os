@@ -23,6 +23,8 @@
 
 static int next_tid = 1;
 
+hashtable_t tcb_table;
+
 //DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
 
 /* @brief Maps tids to tcbs.  */
@@ -38,10 +40,9 @@ int new_tid()
 	return atomic_add(&next_tid, 1);
 }
 
-void init_thread_table(void) 
+void thread_init(void) 
 {
-	//mutex_init(&tcb_table_lock);
-	//STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash, &tcb_table_lock);
+	hashtable_init(&tcb_table, default_hash);
 }
 
 void free_thread_resources(tcb_t* tcb)
@@ -69,13 +70,21 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	
 	tcb->tid = new_tid();
 	tcb->pcb = pcb;
+	tcb->wakeup = 0;
+	tcb->blocked = FALSE;
+	tcb->descheduled = FALSE;
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
 	int siblings = atomic_add(&pcb->thread_count, 1);
 	if (siblings == 0) {
 		pcb->status->tid = tcb->tid;
 	}
 
-	//HASHTABLE_PUT(tcb_table_t, tcb_table, tcb->tid, tcb);
+	//LIST_INIT_NODE(tcb, scheduler_node);
+	LIST_INIT_NODE(tcb, mutex_node);
+
+	mutex_lock(&tcb_table.lock);
+	hashtable_put(&tcb_table, tcb->tid, tcb);
+	mutex_unlock(&tcb_table.lock);
 
 	return tcb;
 }

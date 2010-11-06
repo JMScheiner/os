@@ -36,6 +36,8 @@
 #include <ecodes.h>
 #include <region.h>
 #include <console.h>
+#include <thread.h>
+#include <hashtable.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -349,7 +351,7 @@ void thread_kill(char* error_message)
 *  If the parent task is no longer running, exit status of the task is 
 *  made available to the kernel-launched "init" task instead. 
 * 
-* @param reg The register state on entry and exit of the handler. 
+* @param reg Ignored.
 */
 void vanish_handler()
 {
@@ -385,7 +387,11 @@ void vanish_handler()
       set_cr3((int)global_pcb()->dir_p);
       free_process_resources(pcb);
 	}
-	
+
+
+	mutex_lock(&tcb_table.lock);
+	hashtable_remove(&tcb_table, tcb->tid);
+	mutex_unlock(&tcb_table.lock);
 	mutex_lock(&zombie_stack_lock);
 	debug_print("vanish", "Freeing zombie %p", zombie_stack);
 	if (zombie_stack) 

@@ -16,6 +16,8 @@ typedef struct STATUS status_t;
 typedef struct PROCESS_CONTROL_BLOCK pcb_t;
 typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct SLEEP_HEAP sleep_heap_t;
+typedef struct HASHTABLE_LINK hashtable_link_t;
+typedef struct HASHTABLE hashtable_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 DEFINE_LIST(pcb_node_t, pcb_t);
@@ -151,11 +153,13 @@ struct THREAD_CONTROL_BLOCK{
 	void *kstack;
 
 	/** @brief Next thread in the same process. */
-	struct THREAD_CONTROL_BLOCK *next;
+	//struct THREAD_CONTROL_BLOCK *next;
 
    tcb_node_t scheduler_node;
    tcb_node_t mutex_node;
-   int runnable;
+
+	boolean_t blocked;
+	boolean_t descheduled;
 
    unsigned long wakeup;
    int sleep_index;
@@ -168,6 +172,22 @@ struct SLEEP_HEAP
    int index;
    int size; 
    tcb_t** data; 
+};
+
+struct HASHTABLE_LINK
+{
+	int tid;
+	tcb_t *tcb;
+	struct HASHTABLE_LINK *next;
+};
+
+struct HASHTABLE
+{
+	size_t size;
+	size_t table_index;
+	unsigned int (*hash)(int);
+	mutex_t lock;
+	hashtable_link_t **table;
 };
 
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */

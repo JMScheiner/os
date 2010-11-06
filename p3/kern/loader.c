@@ -203,7 +203,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
 
 	// Never get here
-	assert(0);
+	assert(FALSE);
 	return 0;
 }
 
