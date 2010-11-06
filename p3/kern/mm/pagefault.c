@@ -97,6 +97,7 @@ void stack_fault(void* addr, int ecode)
    if(mm_alloc(get_pcb(), (void*)PAGE_OF(addr), 
          PAGE_SIZE, PTENT_USER | PTENT_RW) < 0)
    {
+      /* Not being able to grow the stack is a fatal problem. */
       thread_kill("Fatal: System ran out of resources on stack allocation");
    }
 }

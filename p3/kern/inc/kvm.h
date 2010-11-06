@@ -3,7 +3,7 @@
 
 #include <kernel_types.h>
 
-#define KVM_TOP      ((void*)(-2 * PAGE_SIZE))
+#define KVM_TOP      ((void*)(-3 * PAGE_SIZE))
 
 void kvm_init();
 int kvm_new_directory(pcb_t* pcb);

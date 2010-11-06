@@ -29,6 +29,7 @@
 #include <ecodes.h>
 
 #define COPY_PAGE ((void*)(-PAGE_SIZE))
+#define FREE_PAGE ((void*)(-2 * PAGE_SIZE))
 
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
@@ -115,6 +116,7 @@ int mm_init()
 
    mutex_init(&user_free_lock);
    mutex_init(&copy_lock);
+   mutex_init(&request_lock);
    
    /* Initialize kernel virtual memory which lives above 
     * USER_MEM_END and is global. */
@@ -188,8 +190,8 @@ void mm_free_address_space(pcb_t* pcb)
    pcb->dir_v = global->dir_v;
    pcb->dir_p = global->dir_p;
    pcb->virtual_dir = global->virtual_dir;
-   set_cr3((int)pcb->dir_p);
    
+   global_list_remove(pcb);
    kvm_free_page(dir_v);
    kvm_free_page(virtual_dir);
 }
@@ -379,18 +381,23 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    int i;
    
    ntables = 0;
-   for(i = DIR_OFFSET(addr); i < DIR_OFFSET(addr + len); i++)
+   for(i = DIR_OFFSET(addr); i <= DIR_OFFSET(addr + len); i++)
    {
       table_p = (page_tablent_t*)dir_v[i];
-      if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
+      if(!(FLAGS_OF(table_p) & PTENT_PRESENT))
+      {
          ntables++;
+      }
    }
 
    if(mm_request_frames(npages + ntables) < 0)
+   {
       return E_NOVM;
+   }
    
    mutex_lock(&pcb->directory_lock);
-   for (i = 0, page = (unsigned long)addr; i < npages; i++, page += PAGE_SIZE) 
+   page = PAGE_OF(addr);
+   for (i = 0; i < npages; i++, page += PAGE_SIZE) 
    {
       table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
       if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
@@ -414,7 +421,8 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       frame = mm_new_frame((unsigned long*)table_v, page);
       
       /* Reassign the page with the flags the user originally asked for. */
-      debug_print("mm", "Mapping page 0x%x to frame 0x%lx with flags %x", page, frame, flags);
+      debug_print("mm", "Mapping page 0x%x to frame 0x%lx with flags %x", 
+         page, frame, flags);
       debug_print("mm", "....in table %p", table_v);
       table_v[ TABLE_OFFSET(page) ] = 
          ((unsigned long) frame | PTENT_PRESENT | flags);
@@ -566,13 +574,19 @@ int mm_request_frames(int n)
 {
    int ret = E_NOVM;
    mutex_lock(&request_lock);
-   if(n_available_frames - n >= 0)
+   if((n_available_frames - n) >= 0)
    {
       n_available_frames -= n;
       ret = 0;
    }
    mutex_unlock(&request_lock);
-   return E_NOVM;
+   assert(n_available_frames < n_free_frames);
+   return ret;
+}
+
+inline void mm_inc_available()
+{
+   n_available_frames++;
 }
 
 
@@ -591,11 +605,13 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 {
    unsigned long new_frame;
    free_block_t* free_block;
+   assert(FLAGS_OF(page) == 0);
    
    mutex_lock(&user_free_lock);
    new_frame = (unsigned long)user_free_list;
    
-   /* When this assertion fails, do something more intelligent. */
+   /* Calls to mm_new_frame should have already requested the frames. 
+    *  and done something appropriate if the resources weren't available. */
    assert(new_frame);
    
    table_v[ TABLE_OFFSET(page) ] = new_frame | PTENT_PRESENT | PTENT_RW; 
@@ -603,15 +619,18 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    
    free_block = (free_block_t*)page;
    user_free_list = free_block->next;
-   memset((void*)page, 0, sizeof(free_block_t));
    n_free_frames--;
-
    mutex_unlock(&user_free_lock);
+
+   memset((void*)page, 0, PAGE_SIZE);
    return new_frame;
 }
 
 /** 
 * @brief Releases a frame into the free frame pool.
+*
+*  In the common case table_v is in our own address space, but this is not
+*   a guarantee. 
 * 
 * @param table The page table the page occupies. 
 * @param page The page to free from the address space associated with table. 
@@ -622,31 +641,30 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
 {
    free_block_t* node;
    unsigned long frame;
+   page_tablent_t* free_table_v = kvm_initial_table();
 
-   if(page == 0xfffce000) MAGIC_BREAK;
-   
    frame = table_v[ TABLE_OFFSET(page) ];
    if(!(FLAGS_OF(frame) & PTENT_PRESENT)) return -1;
-      
    frame = PAGE_OF(frame);
    
    /* Take the page away from user threads if necessary. */
-   table_v[ TABLE_OFFSET(page) ] = frame | PTENT_PRESENT | PTENT_RW; 
+   table_v[ TABLE_OFFSET(page) ] = 0;
    invalidate_page((void*)page);
    
-   /* Clear the frame.*/
-   memset((void*)page, 0, PAGE_SIZE);
-   node = (free_block_t*) page;
-  
    mutex_lock(&user_free_lock);
+   
+   free_table_v[ TABLE_OFFSET(FREE_PAGE) ] = frame | PTENT_PRESENT | PTENT_RW; 
+   invalidate_page((void*)FREE_PAGE);
+   
+   node = (free_block_t*) FREE_PAGE;
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
+
    n_free_frames++;
    n_available_frames++;
    mutex_unlock(&user_free_lock);
 
    /* This frame should now be invisible to the process. */
-   table_v[ TABLE_OFFSET(page) ] = 0;
    invalidate_page((void*)page);
 
    return 0;

@@ -190,6 +190,9 @@ void scheduler_next(tcb_t* tcb)
 		debug_print("scheduler", "reloading init");
       load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, 
 					strlen(INIT_PROGRAM) + 1);
+      /* FIXME It is a catastrophic failure if we cannot 
+       *  support the _first_ task. */
+      assert(0);
    }
    runnable = LIST_NEXT(runnable, scheduler_node);
 	debug_print("scheduler", "now running %p", runnable);

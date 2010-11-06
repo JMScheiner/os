@@ -107,7 +107,6 @@ void exec_handler(volatile regstate_t reg) {
 		args_ptr += arg_len;
 	}
 	
-	//load_new_task(execname_buf, argc, execargs_buf, total_bytes);
 	int err;
 	if ((err = elf_check_header(execname_buf)) != ELF_SUCCESS) {
 		RETURN(err);
@@ -123,8 +122,16 @@ void exec_handler(volatile regstate_t reg) {
    free_region_list(pcb);
    mm_free_user_space(pcb);
 
-	// TODO This probably shouldn't be an assert.
-	assert(initialize_memory(execname_buf, elf_hdr, pcb) == 0);
+	if(initialize_memory(execname_buf, elf_hdr, pcb) <  0)
+   {
+      /* This is a tough one - we can't return to user space, since
+       *  it's gone.... The "right-thing-to-do" is to reserve the 
+       *  frames before we make the call into initialize_memory, which
+       *  requires us to have some awareness of how much memory initialize
+       *  memory will allocate....FIXME
+       */
+      assert(0); 
+   }
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
 	unsigned int user_eflags = get_user_eflags();
@@ -152,8 +159,12 @@ void thread_fork_handler(volatile regstate_t reg)
    tcb_t* new_tcb;
 
    pcb = get_pcb();
-	 debug_print("thread_fork", "Called from process %p", pcb);
+	debug_print("thread_fork", "Called from process %p", pcb);
    new_tcb = initialize_thread(pcb);
+   
+   if(new_tcb == NULL)
+      RETURN(E_NOMEM);
+   
    newtid = new_tcb->tid;
 	debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
    
@@ -189,28 +200,45 @@ void fork_handler(volatile regstate_t reg)
       RETURN(E_MULTIPLE_THREADS);
    
    new_pcb = initialize_process(FALSE);
+   if(new_pcb == NULL) goto fork_fail_pcb;
+   
+   new_pcb->regions = duplicate_region_list(current_pcb);
+   if(new_pcb->regions == NULL) goto fork_fail_dup_regions;
+
    new_tcb = initialize_thread(new_pcb);
+   if(new_tcb == NULL) goto fork_fail_tcb;
+
 	debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
 	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
+   
    newpid = new_pcb->pid;
-	atomic_add(&current_pcb->unclaimed_children, 1);
-	mutex_lock(&current_pcb->child_lock);
-	LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
-	mutex_unlock(&current_pcb->child_lock);
   
    /* Duplicate the current address space in the new process. */
-   mm_duplicate_address_space(new_pcb);
-   new_pcb->regions = duplicate_region_list(current_pcb);
+   if(mm_duplicate_address_space(new_pcb) < 0) goto fork_fail_dup;
    
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
+   atomic_add(&current_pcb->unclaimed_children, 1);
+	mutex_lock(&current_pcb->child_lock);
+	LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
+	mutex_unlock(&current_pcb->child_lock);
+   
    /* Register the first thread in the new TCB. */
    sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);
    scheduler_register(new_tcb);
-   
    RETURN(newpid);
+
+fork_fail_dup: 
+   free_thread_resources(new_tcb);
+fork_fail_tcb:
+   sfree(new_pcb->status, sizeof(status_t));
+   free_process_resources(new_pcb);
+fork_fail_dup_regions: 
+fork_fail_pcb: 
+   lprintf(" Failed to allocate new PCB in fork() ");
+   RETURN(E_NOMEM);
 }
 
 /** 
@@ -304,7 +332,6 @@ void thread_kill(char* error_message)
 {
    putbytes(error_message, strlen(error_message));
    putbytes("\n", 2);
-   putbytes("\n", 2);
    
    pcb_t* pcb = get_pcb();
    pcb->status->status = STATUS_KILLED;
@@ -354,22 +381,15 @@ void vanish_handler()
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
       
-      mm_free_address_space(pcb);
-      
-      /* Remove ourselves from the global PCB list. */
-      mutex_t* global_lock = global_list_lock();
-      pcb_t* global = global_pcb();
-      mutex_lock(global_lock);
-      LIST_REMOVE(global, pcb, global_node); 
-      mutex_unlock(global_lock);
-      
-      free_region_list(pcb);
-      sfree(pcb, sizeof(pcb_t));
+      /* Continue execution in the global address space. */
+      set_cr3((int)global_pcb()->dir_p);
+      free_process_resources(pcb);
 	}
 	
 	mutex_lock(&zombie_stack_lock);
 	debug_print("vanish", "Freeing zombie %p", zombie_stack);
-	if (zombie_stack) kvm_free_page(zombie_stack);
+	if (zombie_stack) 
+      kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
 	scheduler_die(&zombie_stack_lock);
 	assert(FALSE);

@@ -21,6 +21,9 @@
 #include <simics.h>
 #include <scheduler.h>
 #include <cr.h>
+#include <ecodes.h>
+#include <mm.h>
+#include <region.h>
 
 #include <process.h>
 #include <thread.h>
@@ -172,13 +175,25 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	}
    
 	pcb_t* pcb = initialize_process(TRUE);
+   if(pcb == NULL) 
+      return E_NOMEM;
    
    set_cr3((int)pcb->dir_p);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
+      sfree(pcb->status, sizeof(status_t));
+      free_process_resources(pcb);
 		return err;
 	}
 	
    tcb_t* tcb = initialize_thread(pcb);
+   if(tcb == NULL)
+   {
+      /* Free all resources associated with the PCB. */
+      sfree(pcb->status, sizeof(status_t));
+      free_process_resources(pcb);
+      return E_NOMEM;
+   }
+
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	unsigned int user_eflags = get_user_eflags();

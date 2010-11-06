@@ -44,13 +44,21 @@ void init_thread_table(void)
 	//STATIC_INIT_HASHTABLE(tcb_table_t, tcb_table, default_hash, &tcb_table_lock);
 }
 
+void free_thread_resources(tcb_t* tcb)
+{
+   kvm_free_page(tcb->kstack);
+   sfree(tcb, sizeof(tcb_t));
+}
+
 tcb_t* initialize_thread(pcb_t *pcb) 
 {
 	assert(pcb);
    
-	void* kstack_page = kvm_new_page();
-   if(kstack_page == NULL)
+   if(mm_request_frames(1) < 0)
       return NULL;
+   
+	void* kstack_page = kvm_new_page();
+   assert(kstack_page);
 	
    debug_print("mm", "new kernel stack page at %p", kstack_page);
 

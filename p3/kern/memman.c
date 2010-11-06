@@ -37,7 +37,8 @@ void memman_init()
 */
 void new_pages_handler(volatile regstate_t reg)
 {
-   int len;
+   MAGIC_BREAK;
+   int len, ret;
    char* start, *addr, *arg_addr, *end;
    
    arg_addr = (void*)SYSCALL_ARG(reg);
@@ -66,8 +67,16 @@ void new_pages_handler(volatile regstate_t reg)
       RETURN(NEW_PAGES_INVALID_ARGS);
    
    debug_print("memman", " Allocating new region [%p, %p] for new_pages", start, end);
-   allocate_region(start, end, PTENT_USER | PTENT_RW, user_fault, get_pcb());
-   RETURN(0);
+   
+   if((ret = allocate_region(start, 
+      end, PTENT_USER | PTENT_RW, user_fault, get_pcb())) < 0)
+   {
+      MAGIC_BREAK;
+      RETURN(ret);
+   }
+   
+   
+   RETURN(E_SUCCESS);
 }
 
 /* @brief Deallocates the specified memory region, which must presently be 

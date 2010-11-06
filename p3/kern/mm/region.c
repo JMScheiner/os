@@ -14,6 +14,7 @@
 */
 #include <region.h>
 #include <kernel_types.h>
+#include <common_kern.h>
 
 #include <mm.h>
 #include <simics.h>
@@ -22,6 +23,7 @@
 #include <pagefault.h>
 #include <string.h>
 #include <debug.h>
+#include <ecodes.h>
 
 /** 
 * @brief Allocates a new region in the address space in PCB.
@@ -31,7 +33,7 @@
 * @param access_level The (flags) to give the region. (e.g. PTENT_RW)
 * @param void(*fault)(void*, int), The page fault handler for this region.
 * 
-* @return 0 on success. 
+* @return 0 on success. E_NOVM or E_NOMEM on failure. 
 */
 int allocate_region( 
    void *start,   
@@ -41,25 +43,34 @@ int allocate_region(
    pcb_t* pcb
 ) 
 {
-   region_t* region = smalloc(sizeof(region_t));
+   region_t* region;
+   if((region = (region_t*)smalloc(sizeof(region_t))) == NULL)
+   {
+      return E_NOMEM;
+   }
    memset(region, 0, sizeof(region_t));
    
    debug_print("region", "Allocated new region [%p, %p] at %p", 
       start, end, region);
+
+   int ret;
+   if((ret = mm_alloc(pcb, (void*)start, end - start, access_level)) < 0)
+   {
+      sfree(region, sizeof(region_t));
+      return ret;
+   }
    
    region->fault = fault;
    region->start = start;
    region->end = end;
-
+   
    mutex_lock(&pcb->region_lock);
-   if(pcb->regions == region)
-      MAGIC_BREAK;
+   assert(pcb->regions != region);
    region->next = pcb->regions;
    pcb->regions = region;
    mutex_unlock(&pcb->region_lock);
-   
-	mm_alloc(pcb, (void *)start, end - start, access_level);
-	return 0;
+
+	return mm_alloc(pcb, (void *)start, end - start, access_level);
 }
 
 /** 
@@ -72,11 +83,24 @@ int allocate_region(
 */
 int allocate_stack_region(pcb_t* pcb)
 {
-   region_t* region = (region_t*)smalloc(sizeof(region_t));
+   region_t* region;
+   if((region = (region_t*)smalloc(sizeof(region_t))) == NULL)
+   {
+      return E_NOMEM;
+   }
+   memset(region, 0, sizeof(region_t));
    
    region->fault = stack_fault;
    region->start = (void*)USER_STACK_START;
    region->end = (void*)USER_STACK_BASE;
+   
+   int ret;
+   if((ret = mm_alloc(pcb, (void *)(USER_STACK_BASE - PAGE_SIZE), 
+      PAGE_SIZE, PTENT_RW | PTENT_USER)) < 0)
+   {
+      sfree(region, sizeof(region_t));
+      return ret;
+   }
 
    mutex_lock(&pcb->region_lock);
    region->next = pcb->regions;
@@ -85,11 +109,8 @@ int allocate_stack_region(pcb_t* pcb)
    
    debug_print("region", "Allocated stack region [%p, %p] at %p", 
       (void*)USER_STACK_START, (void*)USER_STACK_BASE), region;
-	
-   mm_alloc(pcb, (void *)(USER_STACK_BASE - PAGE_SIZE), 
-      PAGE_SIZE, PTENT_RW | PTENT_USER);
    
-   return 0;
+   return E_SUCCESS;
 }
 
 /** 
@@ -113,6 +134,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
    
    head0 = pcb->regions;
    head1 = smalloc(sizeof(region_t));
+   assert(head1);
    
    iter0 = head0; iter1 = head1;
    for(;;)
@@ -124,6 +146,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
       if(iter0->next) 
       {
          iter1->next = smalloc(sizeof(region_t));
+         assert(iter1->next);
          iter0 = iter0->next; 
          iter1 = iter1->next;
       }
@@ -151,6 +174,7 @@ void free_region_list(pcb_t* pcb)
    mutex_lock(&pcb->region_lock);
    for(iter = pcb->regions; iter != NULL; iter = next)
    {
+      assert((void*)iter < (void*)USER_MEM_START);
       debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
       next = iter->next;
       sfree(iter, sizeof(region_t));

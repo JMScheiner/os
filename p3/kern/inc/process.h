@@ -14,6 +14,7 @@
 
 extern pcb_t *init_process;
 
+void free_process_resources(pcb_t* pcb);
 void init_process_table(void);
 int get_pid(void);
 

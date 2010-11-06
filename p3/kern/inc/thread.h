@@ -9,8 +9,9 @@
 
 int new_tid(void);
 void init_thread_table(void);
+
+void free_thread_resources(tcb_t* tcb);
 tcb_t* initialize_thread(pcb_t *pcb);
-void *allocate_kernel_stack(tcb_t *tcb);
 tcb_t *get_tcb(void);
 
 #endif

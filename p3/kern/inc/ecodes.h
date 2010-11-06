@@ -1,8 +1,10 @@
+/* TODO Change error codes to use an enum. */
 
 #ifndef SYSCALL_CODES_FDKJ3489
 #define SYSCALL_CODES_FDKJ3489
 
 #define E_SUCCESS 0
+#define E_FAIL (-1)
 #define SYSCALL_INVALID_ARGS (-1)
 
 #define READLINE_INVALID_LENGTH (-2)
@@ -28,6 +30,7 @@
 
 /* @brief No frames left for virtual memory allocation. */
 #define E_NOVM (-1)
+#define E_NOMEM (-2)
 
 #define REMOVE_PAGES_REGION_NOT_FOUND (-1)
 #endif

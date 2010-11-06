@@ -49,6 +49,7 @@ typedef page_tablent_t* page_dirent_t;
 void invalidate_page(void* addr);
 unsigned long mm_new_frame(unsigned long* table, unsigned long page);
 unsigned long mm_free_frame(unsigned long* table, unsigned long page);
+void mm_inc_available();
 
 #endif /* end of include guard: MM_INTERNAL_DR6WBXWC */
 

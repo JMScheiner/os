@@ -13,6 +13,7 @@
 #include <global_thread.h>
 #include <cond.h>
 #include <kvm.h>
+#include <ecodes.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -41,6 +42,31 @@ void init_process_table(void)
 	//		&pcb_table_lock);
 }
 
+/** 
+* @brief Frees everything except for the status - 
+*  which is required to remain around for calls to wait. 
+* 
+* @param pcb The pcb for the process. 
+*/
+void free_process_resources(pcb_t* pcb)
+{
+   assert(pcb);
+   assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
+   
+   mm_free_address_space(pcb);
+   free_region_list(pcb);
+	
+   mutex_destroy(&pcb->directory_lock);
+	mutex_destroy(&pcb->region_lock);
+	mutex_destroy(&pcb->status_lock);
+	mutex_destroy(&pcb->waiter_lock);
+	mutex_destroy(&pcb->check_waiter_lock);
+	mutex_destroy(&pcb->child_lock);
+	cond_destroy(&pcb->wait_signal);
+   
+   sfree(pcb, sizeof(pcb_t));
+}
+
 /**
  * @brief Get the pcb of the currently running process.
  *
@@ -60,14 +86,13 @@ pcb_t* get_pcb()
 
 pcb_t* initialize_process(boolean_t first_process) 
 {
-	pcb_t* pcb = (pcb_t*) smalloc(sizeof(pcb_t));
-	// TODO Do something smarter
-	assert(pcb);
-	if(kvm_new_directory(pcb) < 0)
-   {
-      sfree(pcb, sizeof(pcb_t));
-      return NULL;
-   }
+   pcb_t* pcb;
+	
+   if((pcb = (pcb_t*) smalloc(sizeof(pcb_t))) < 0) 
+      goto fail_pcb;
+	
+   if(kvm_new_directory(pcb) < 0) 
+      goto fail_new_directory;
    
    pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
@@ -79,10 +104,11 @@ pcb_t* initialize_process(boolean_t first_process)
 	}
 	pcb->thread_count = 0;
 	pcb->regions = NULL;
-	pcb->status = (status_t *)smalloc(sizeof(status_t));
-	// TODO Do something smarter
-	assert(pcb->status);
-	pcb->status->status = 0;
+	
+   if((pcb->status = (status_t *)smalloc(sizeof(status_t))) < 0) 
+      goto fail_status;
+	
+   pcb->status->status = 0;
 	INIT_LIST(pcb->children);
 	pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;
@@ -100,6 +126,13 @@ pcb_t* initialize_process(boolean_t first_process)
 	//HASHTABLE_PUT(pcb_table_t, pcb_table, pcb->pid, pcb);
 	
 	return pcb;
+
+fail_status: 
+   mm_free_address_space(pcb);
+fail_new_directory:
+   sfree(pcb, sizeof(pcb_t));
+fail_pcb: 
+   return NULL;
 }
 
 int get_pid() {
@@ -119,31 +152,29 @@ static void initialize_region(const char *file, unsigned long offset,
 
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
-	//int err;
-   
    // Allocate text region. FIXME Allocate text and rodata together.
-   allocate_region((char*)elf.e_txtstart, (char*)elf.e_rodatstart, 
-      PTENT_RO | PTENT_USER, txt_fault, pcb);
+   if(allocate_region((char*)elf.e_txtstart, (char*)elf.e_rodatstart, 
+      PTENT_RO | PTENT_USER, txt_fault, pcb) < 0) goto fail_init_mem;
       
    // Allocate rodata region.
-   allocate_region(
+   if(allocate_region(
       (char*)elf.e_rodatstart, elf.e_rodatstart + (char*)elf.e_rodatlen, 
-      PTENT_RO | PTENT_USER,  rodata_fault, pcb);
+      PTENT_RO | PTENT_USER,  rodata_fault, pcb) < 0) goto fail_init_mem;
    
    //Allocate data region.
-   allocate_region((char*)elf.e_datstart, 
+   if(allocate_region((char*)elf.e_datstart, 
       (char*)elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
-      PTENT_RW | PTENT_USER,  dat_fault, pcb);
+      PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) goto fail_init_mem;
       
    //Allocate bss region.
    // TODO Keep a global "zero" read only page for ZFOD regions (like bss).
-   allocate_region((char*)elf.e_datstart + elf.e_datlen, 
+   if(allocate_region((char*)elf.e_datstart + elf.e_datlen, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
-      PTENT_RW | PTENT_USER | PTENT_ZFOD, bss_fault, pcb);
+      PTENT_RW | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) goto fail_init_mem;
       
    
    // Allocate stack region (same for all processes).
-   allocate_stack_region(pcb);
+   if(allocate_stack_region(pcb) < 0) goto fail_init_mem;
 
    initialize_region(file, elf.e_txtoff, elf.e_txtlen, 
       elf.e_txtstart, elf.e_rodatstart);
@@ -154,5 +185,10 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
    initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen);
 			
-	return 0;
+	return E_SUCCESS;
+
+fail_init_mem:
+   free_region_list(pcb);
+   mm_free_user_space(pcb);
+   return E_FAIL;
 }

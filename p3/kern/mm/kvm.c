@@ -108,11 +108,9 @@ void* kvm_alloc_page(void* page)
    }
    else table = (page_tablent_t*)PAGE_OF(table);
    
-   /* FIXME Maybe this should never happen... */
-   if(FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT) 
-      return (void*)PAGE_OF(table[ TABLE_OFFSET(page) ]) ;
+   assert(!FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT);
    
-   debug_print("kvm", "Mapping %p in table %p", page, table);
+   //debug_print("kvm", "Mapping %p in table %p", page, table);
    frame = mm_new_frame((unsigned long*)table, (unsigned long)page);
 
    /* Set appropriate flags for the new frame. */
@@ -138,7 +136,9 @@ void* kvm_new_page()
       assert((void*)kernel_free_list > (void*)USER_MEM_END);
       new_page = kernel_free_list;
       kernel_free_list = kernel_free_list->next;
-
+      debug_print("kvm", " Allocated new page at %p, kernel_free_list = %p", 
+         new_page, kernel_free_list);
+      
       if((kernel_free_list != 0) && !((void*)kernel_free_list > (void*)USER_MEM_END))
          MAGIC_BREAK;
 
@@ -152,6 +152,10 @@ void* kvm_new_page()
          | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
       lprintf("Mapped page %p to %p", new_page, table[ TABLE_OFFSET(new_page) ]);*/
       invalidate_page(new_page);
+
+      /* Since our own free frames didn't come from the main free frame pool, 
+       *  we need to increment the number of available frames. */
+      mm_inc_available();
    
    }
    else
@@ -182,7 +186,10 @@ void kvm_free_page(void* page)
 
    if(kernel_free_list)
       assert((void*)kernel_free_list > (void*)USER_MEM_END);
-
+   
+   /* Clear the free frame list part of the recovered page. */
+   memset(page, 0, sizeof(free_block_t));
+   
    //page_dirent_t* global_dir = global_pcb()->dir_v;
    /* Will there be race conditions on freed kernel pages? (TODO No) */
    //page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
@@ -237,7 +244,7 @@ void* kvm_new_table(void* addr)
    /* Map the new table in every other PCB*/
    LIST_FORALL(global, iter, global_node)
    {
-      debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
+      //debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
@@ -263,7 +270,7 @@ void* kvm_vtop(void* vaddr)
    assert(vaddr > (void*)USER_MEM_END);
    
    page_dirent_t* dir = (page_dirent_t*)global_pcb()->dir_v;
-   debug_print("kvm", "kvm_vtop: dir = %p", dir);
+   //debug_print("kvm", "kvm_vtop: dir = %p", dir);
    page_tablent_t* table = dir[ DIR_OFFSET(vaddr) ];
    
    assert(FLAGS_OF(table) & PDENT_PRESENT);
@@ -301,19 +308,15 @@ int kvm_new_directory(pcb_t* pcb)
 {
    int i;
    page_dirent_t* global_dir = global_pcb()->dir_v;
-
-   page_dirent_t* dir_v = kvm_new_page();
-   if(dir_v == NULL)
-   {
-      return E_NOVM;
-   }
    
-   page_dirent_t* virtual_dir_v = kvm_new_page();
-   if(virtual_dir_v == NULL)
-   {
-      kvm_free_page(dir_v);
+   if(mm_request_frames(2) < 0)
       return E_NOVM;
-   }
+   
+   page_dirent_t* dir_v = kvm_new_page();
+   page_dirent_t* virtual_dir_v = kvm_new_page();
+
+   assert(dir_v);
+   assert(virtual_dir_v);
    
    debug_print("mm", "Global directory at %p", global_dir);
    

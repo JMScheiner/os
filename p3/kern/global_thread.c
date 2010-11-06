@@ -52,3 +52,19 @@ inline mutex_t* global_list_lock()
    return &_global_list_lock;
 }
 
+void global_list_remove(pcb_t* pcb)
+{
+   pcb_t* global = &_global_pcb;
+   
+   mutex_lock(&_global_list_lock);
+   LIST_REMOVE(global, pcb, global_node); 
+   mutex_unlock(&_global_list_lock);
+}
+
+void global_list_add(pcb_t* pcb)
+{
+
+}
+
+
+
