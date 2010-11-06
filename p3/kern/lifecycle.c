@@ -337,7 +337,6 @@ void thread_kill(char* error_message)
    
    pcb_t* pcb = get_pcb();
    pcb->status->status = STATUS_KILLED;
-   MAGIC_BREAK;
    vanish_handler();
 }
 
@@ -385,10 +384,9 @@ void vanish_handler()
 		mutex_unlock(&wait_vanish_lock);
       
       /* Continue execution in the global address space. */
-      set_cr3((int)global_pcb()->dir_p);
+      
       free_process_resources(pcb);
 	}
-
 
 	mutex_lock(&tcb_table.lock);
 	hashtable_remove(&tcb_table, tcb->tid);

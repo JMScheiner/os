@@ -108,7 +108,6 @@ tcb_t *get_tcb()
 
    assert(ret->sanity_constant == TCB_SANITY_CONSTANT);
    
-   /* TODO When is this NULL? */
    assert(ret->pcb != NULL);
    assert(ret->pcb->sanity_constant = PCB_SANITY_CONSTANT);
 	return ret;

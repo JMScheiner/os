@@ -14,6 +14,7 @@
 #include <cond.h>
 #include <kvm.h>
 #include <ecodes.h>
+#include <simics.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -102,6 +103,7 @@ pcb_t* initialize_process(boolean_t first_process)
       goto fail_status;
 	
    pcb->status->status = 0;
+   pcb->status->next = NULL;
 	
    pcb->unclaimed_children = 0;
    pcb->zombie_statuses = NULL;

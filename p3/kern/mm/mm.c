@@ -172,6 +172,8 @@ void mm_free_user_space(pcb_t* pcb)
 /** 
 * @brief Frees every frame and table that belongs to user space. 
 *  Releases the directories, and removes the PCB from the global list. 
+*
+*  If pcb is the current PCB, then we also jump to the global directory.
 * 
 * @param pcb The process that points to the relevant address space. 
 */
@@ -183,6 +185,8 @@ void mm_free_address_space(pcb_t* pcb)
    global = global_pcb();
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
+  
+   global_list_remove(pcb);
    
    /* All other tables are global - we don't need to worry about them. */
    mm_free_user_space(pcb);
@@ -191,7 +195,9 @@ void mm_free_address_space(pcb_t* pcb)
    pcb->dir_p = global->dir_p;
    pcb->virtual_dir = global->virtual_dir;
    
-   global_list_remove(pcb);
+   if(pcb == get_pcb())
+      set_cr3((int)global->dir_p);
+   
    kvm_free_page(dir_v);
    kvm_free_page(virtual_dir);
 }
@@ -595,6 +601,8 @@ inline void mm_inc_available()
 *  1. Allocates a new frame for the current process.
 *  2. Maps that frame to the place indicated by "page" in rw/supervisor mode.
 *  3. Uses the new mapping to update the free list.
+*
+*  FIXME ASSUMES table_v is in the current address space. 
 * 
 * @param table The page table that "page" belongs to. 
 * @param page The page to map. 
@@ -630,7 +638,7 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 * @brief Releases a frame into the free frame pool.
 *
 *  In the common case table_v is in our own address space, but this is not
-*   a guarantee. 
+*   a guarantee, since a process may not exit normally. 
 * 
 * @param table The page table the page occupies. 
 * @param page The page to free from the address space associated with table. 
