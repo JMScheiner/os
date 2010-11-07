@@ -8,6 +8,7 @@
 #include <mutex.h>
 #include <hashtable.h>
 #include <vstring.h>
+#include <debug.h>
 
 mutex_t deschedule_lock;
 
@@ -95,11 +96,14 @@ void deschedule_handler(volatile regstate_t reg)
 	mutex_lock(&deschedule_lock);
 	if (v_memcpy((char *)&reject, (char *)arg_addr, sizeof(int)) < 
 			sizeof(int)) {
+		debug_print("deschedule", "Failed to copy reject arg");
 		mutex_unlock(&deschedule_lock);
 		RETURN(SYSCALL_INVALID_ARGS);
 	}
 	if (reject == 0) {
+		debug_print("deschedule", "Descheduling %p now", get_tcb());
 		scheduler_deschedule();
+		debug_print("deschedule", "Rescheduling %p now", get_tcb());
 	}
 	mutex_unlock(&deschedule_lock);
 	RETURN(E_SUCCESS);

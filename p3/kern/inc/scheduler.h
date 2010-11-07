@@ -13,7 +13,7 @@ void scheduler_block();
 void scheduler_unblock(tcb_t* tcb);
 void scheduler_deschedule();
 boolean_t scheduler_reschedule(tcb_t *tcb);
-void scheduler_die(mutex_t *lock);
+void scheduler_die(mutex_t *lock, pcb_t *pcb);
 void scheduler_next();
 void scheduler_sleep(unsigned long ticks);
 

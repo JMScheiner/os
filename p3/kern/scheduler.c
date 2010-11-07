@@ -21,6 +21,7 @@
 #include <debug.h>
 #include <mutex.h>
 #include <lifecycle.h>
+#include <malloc.h>
 
 #define INIT_PROGRAM "init"
 
@@ -132,7 +133,7 @@ void scheduler_deschedule()
 	assert(!tcb->descheduled);
 	tcb->descheduled = TRUE;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
-	quick_unlock();
+	scheduler_next();
 }
 
 /**
@@ -163,13 +164,17 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
  * run again.
  *
  * @param A locked mutex we're holding before we die.
+ * @param A pcb to free if we are the last thread in our process, NULL
+ * otherwise.
  */
-void scheduler_die(mutex_t *lock)
+void scheduler_die(mutex_t *lock, pcb_t *pcb)
 {
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Dying %p", tcb);
 	quick_lock();
 	mutex_unlock(lock);
+	if (pcb != NULL)
+		sfree(pcb, sizeof(pcb_t));
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	scheduler_next();
 	assert(FALSE);

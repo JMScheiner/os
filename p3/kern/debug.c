@@ -12,6 +12,7 @@
 #define DEBUG_BREAK
 
 char *debug_print_strings[] = {
+	"deschedule", 
    //"scheduler", 
 	//"mutex", 
    //"sleep", 
