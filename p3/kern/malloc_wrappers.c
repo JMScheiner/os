@@ -86,8 +86,6 @@ void *smalloc(size_t size)
 {
    mutex_lock(&heap_lock);
    void* ret = _smalloc(size);
-   mutex_unlock(&heap_lock);
-
 
    if(ret)
    {
@@ -96,6 +94,7 @@ void *smalloc(size_t size)
       debug_print("malloc", "Malloc of size %d, allocated = %d", 
          size, allocated);
    }
+   mutex_unlock(&heap_lock);
    
    return ret;
 }
@@ -103,7 +102,8 @@ void *smalloc(size_t size)
 void *scalloc(size_t nmemb, size_t size)
 {
 	void *ret = smalloc(nmemb * size);
-	memset(ret, 0, nmemb * size);
+	if (ret != NULL) 
+		memset(ret, 0, nmemb * size);
 	return ret;
 }
 
@@ -127,7 +127,6 @@ void *smemalign(size_t alignment, size_t size)
 {
    mutex_lock(&heap_lock);
    void* ret = _smemalign(alignment, size);
-   mutex_unlock(&heap_lock);
    
    if(ret)
    {
@@ -137,6 +136,7 @@ void *smemalign(size_t alignment, size_t size)
          "Smemalign of size %d, alignment %d, allocated = %d", 
          alignment, size, allocated);
    }
+   mutex_unlock(&heap_lock);
    
    return ret;
 }
@@ -145,11 +145,11 @@ void sfree(void *buf, size_t size)
 {
    mutex_lock(&heap_lock);
    _sfree(buf, size);
-   mutex_unlock(&heap_lock);
    
    nfrees++;
    allocated -= size;
    debug_print("malloc", "Free of size %d, allocated = %d", size, allocated);
    assert(nallocs - nfrees > 0);
+   mutex_unlock(&heap_lock);
 }
 

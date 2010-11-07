@@ -22,6 +22,8 @@ int lock_depth = 1;
  * initialized. */
 boolean_t locks_enabled = FALSE;
 
+static void reset_lock_depth(int depth);
+
 /**
  * @brief Initialize a mutex.
  *
@@ -62,6 +64,7 @@ void mutex_lock(mutex_t *mp)
 	assert(mp->initialized);
 	if (!locks_enabled) return;
 
+	int depth = lock_depth;
 	mutex_node_t node;
 	node.tcb = get_tcb();
 	node.next = NULL;
@@ -80,7 +83,7 @@ void mutex_lock(mutex_t *mp)
 	}
 	mp->locked = TRUE;
 	mp->head = mp->head->next;
-	quick_unlock();
+	reset_lock_depth(depth);
 	debug_print("mutex", "Thread %p has acquired mutex %p", node.tcb, mp);
 }
 
@@ -117,8 +120,7 @@ void quick_lock() {
  * applied.
  */
 void quick_unlock() {
-	assert(lock_depth > 0);
-	assert((get_eflags() & EFL_IF) == 0);
+	quick_assert_locked();
 	if (--lock_depth == 0)
 		enable_interrupts();
 }
@@ -128,10 +130,20 @@ void quick_unlock() {
  * times it has been locked to 0.
  */
 void quick_unlock_all() {
-	assert(lock_depth > 0);
-	assert((get_eflags() & EFL_IF) == 0);
+	quick_assert_locked();
 	lock_depth = 0;
 	enable_interrupts();
 }
 
+void quick_assert_locked() {
+	assert(lock_depth > 0);
+	assert((get_eflags() & EFL_IF) == 0);
+}
+
+static void reset_lock_depth(int depth) {
+	quick_assert_locked();
+	lock_depth = depth;
+	if (lock_depth == 0)
+		enable_interrupts();
+}
 

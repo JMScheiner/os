@@ -10,6 +10,7 @@
 #include <cond.h>
 #include <scheduler.h>
 #include <thread.h>
+#include <mutex.h>
 
 /**
  * @brief Initialize a condition variable.
@@ -51,6 +52,7 @@ void cond_destroy(cond_t *cv) {
 void cond_wait(cond_t *cv) {
 	assert(cv);
 	assert(cv->initialized);
+	quick_assert_locked();
 
 	cv->tcb = get_tcb();
 	scheduler_block();

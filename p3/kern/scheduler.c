@@ -89,13 +89,15 @@ void scheduler_run(tcb_t* tcb)
 
 /**
  * @brief Remove ourself from the runnable list to avoid being scheduled and
- * run the next thread.
+ * run the next thread. Interrupts must be disabled, otherwise we could be
+ * in a situation where we start blocking, someone tries to unblock us,
+ * and then we block forever.
  */
 void scheduler_block()
 {
+	quick_assert_locked();
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Blocking myself, thread %p", tcb);
-	quick_lock();
 	blocked_count++;
 	tcb->blocked = TRUE;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
@@ -111,8 +113,8 @@ void scheduler_block()
 void scheduler_unblock(tcb_t* tcb)
 {
 	debug_print("scheduler", "Unblocking thread %p", tcb);
-	quick_lock();
 	assert(tcb->blocked);
+	quick_lock();
 	blocked_count--;
 	tcb->blocked = FALSE;
 	if (!tcb->descheduled && tcb->wakeup == 0) {
@@ -179,10 +181,14 @@ void scheduler_die(mutex_t *lock, pcb_t *pcb)
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Dying %p", tcb);
 	quick_lock();
+	quick_assert_locked();
 	mutex_unlock(lock);
+	quick_assert_locked();
 	if (pcb != NULL)
 		sfree(pcb, sizeof(pcb_t));
+	quick_assert_locked();
 	LIST_REMOVE(runnable, tcb, scheduler_node);
+	quick_assert_locked();
 	scheduler_next();
 	assert(FALSE);
 }
@@ -193,6 +199,7 @@ void scheduler_die(mutex_t *lock, pcb_t *pcb)
  */
 void scheduler_next()
 {
+	quick_assert_locked();
 	tcb_t *tcb = get_tcb();
    tcb_t *sleeper;
    unsigned long now;
