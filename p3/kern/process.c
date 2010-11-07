@@ -34,7 +34,8 @@ pcb_t *init_process;
 
 /** 
 * @brief Frees everything except for the status - 
-*  which is required to remain around for calls to wait. 
+*  which is required to remain around for calls to wait, and the pcb
+*  itself since it is required if we contex switch
 * 
 * @param pcb The pcb for the process. 
 */
@@ -53,8 +54,6 @@ void free_process_resources(pcb_t* pcb)
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
 	cond_destroy(&pcb->wait_signal);
-   
-   sfree(pcb, sizeof(pcb_t));
 }
 
 /**

@@ -87,7 +87,7 @@ void exec_handler(volatile regstate_t reg) {
 
    debug_print("exec", "Called with program %s", execname_buf);
 
-	/* Loop over every srgument, copying it to the kernel stack. */
+	/* Loop over every argument, copying it to the kernel stack. */
    for(argc = 0 ;; argc++, argvec++)
    {
       char* arg;
@@ -124,7 +124,7 @@ void exec_handler(volatile regstate_t reg) {
    free_region_list(pcb);
    mm_free_user_space(pcb);
 
-	if(initialize_memory(execname_buf, elf_hdr, pcb) <  0)
+	if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
       /* This is a tough one - we can't return to user space, since
        *  it's gone.... The "right-thing-to-do" is to reserve the 
@@ -254,6 +254,7 @@ fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb);
+	sfree(new_pcb, sizeof(pcb_t));
 fork_fail_pcb: 
    RETURN(E_NOMEM);
 }
@@ -351,7 +352,8 @@ void thread_kill(char* error_message)
    putbytes("\n", 1);
    
    pcb_t* pcb = get_pcb();
-   pcb->status->status = STATUS_KILLED;
+	if (pcb->thread_count == 1)
+	   pcb->status->status = STATUS_KILLED;
    vanish_handler();
 }
 
@@ -372,6 +374,7 @@ void vanish_handler()
 {
 	tcb_t *tcb = get_tcb();
 	pcb_t *pcb = tcb->pcb;
+	pcb_t *free_pcb = NULL;
 	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
@@ -398,9 +401,8 @@ void vanish_handler()
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
       
-      /* Continue execution in the global address space. */
-      
       free_process_resources(pcb);
+		free_pcb = pcb;
 	}
 
 	mutex_lock(&tcb_table.lock);
@@ -411,7 +413,7 @@ void vanish_handler()
 	if (zombie_stack) 
       kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
-	scheduler_die(&zombie_stack_lock);
+	scheduler_die(&zombie_stack_lock, free_pcb);
 	assert(FALSE);
 }
 

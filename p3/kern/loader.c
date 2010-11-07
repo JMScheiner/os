@@ -182,6 +182,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
       sfree(pcb->status, sizeof(status_t));
       free_process_resources(pcb);
+		sfree(pcb, sizeof(pcb_t));
 		return err;
 	}
 	
@@ -191,6 +192,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
       /* Free all resources associated with the PCB. */
       sfree(pcb->status, sizeof(status_t));
       free_process_resources(pcb);
+		sfree(pcb, sizeof(pcb_t));
       return E_NOMEM;
    }
 
