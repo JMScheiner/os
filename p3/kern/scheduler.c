@@ -173,22 +173,15 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
  * run again.
  *
  * @param A locked mutex we're holding before we die.
- * @param A pcb to free if we are the last thread in our process, NULL
  * otherwise.
  */
-void scheduler_die(mutex_t *lock, pcb_t *pcb)
+void scheduler_die(mutex_t *lock)
 {
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Dying %p", tcb);
 	quick_lock();
-	quick_assert_locked();
 	mutex_unlock(lock);
-	quick_assert_locked();
-	if (pcb != NULL)
-		sfree(pcb, sizeof(pcb_t));
-	quick_assert_locked();
 	LIST_REMOVE(runnable, tcb, scheduler_node);
-	quick_assert_locked();
 	scheduler_next();
 	assert(FALSE);
 }
@@ -230,7 +223,9 @@ void scheduler_next()
 			tcb_t *next	= global_tcb();
 			//debug_print("scheduler", "Now running global thread %p", next);
    		set_esp0((int)next->kstack);
-   		context_switch(&tcb->esp, &next->esp, next->pcb->dir_p);
+
+         assert(next->dir_p);
+   		context_switch(&tcb->esp, &next->esp, next->dir_p);
 			quick_unlock_all();
 			return;
       }
@@ -251,7 +246,8 @@ void scheduler_next()
 	runnable = LIST_NEXT(runnable, scheduler_node);
 	debug_print("scheduler", "now running %p", runnable);
    set_esp0((int)runnable->kstack);
-   context_switch(&tcb->esp, &runnable->esp, runnable->pcb->dir_p);
+   assert(runnable->dir_p);
+   context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);
 	quick_unlock_all();
 }
 

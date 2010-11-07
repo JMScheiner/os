@@ -18,5 +18,7 @@ int allocate_region(
 int allocate_stack_region(pcb_t* pcb);
 region_t* duplicate_region_list(pcb_t* pcb);
 void free_region_list(pcb_t* pcb);
+int free_region(pcb_t* pcb, void* start);
+boolean_t region_overlaps(pcb_t* pcb, void* start, void* end);
 
 #endif /* end of include guard: REGION_M98BMIN2 */

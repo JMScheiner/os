@@ -35,7 +35,7 @@ hashtable_t tcb_table;
 * 
 * @return A new tid. 
 */
-int new_tid()
+static int new_tid()
 {
 	return atomic_add(&next_tid, 1);
 }
@@ -66,6 +66,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	/* Put the TCB at the bottom of the kernel stack. */
 	tcb_t* tcb = (tcb_t*)kstack_page;
 	tcb->esp = kstack_page + PAGE_SIZE; 
+   tcb->dir_p = pcb->dir_p;
 	tcb->kstack = kstack_page + PAGE_SIZE;
 	
 	tcb->tid = new_tid();

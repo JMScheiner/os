@@ -9,7 +9,6 @@
 
 extern hashtable_t tcb_table;
 
-int new_tid(void);
 void free_thread_resources(tcb_t* tcb);
 void thread_init(void);
 tcb_t* initialize_thread(pcb_t *pcb);

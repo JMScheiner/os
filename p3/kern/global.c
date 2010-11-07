@@ -35,6 +35,7 @@ void global_thread_init()
    _global_tcb->pcb = &_global_pcb;
    _global_tcb->tid = -1;
    _global_tcb->sanity_constant = TCB_SANITY_CONSTANT;
+   _global_tcb->dir_p = _global_pcb.dir_p;
 
    arrange_global_context();
 }

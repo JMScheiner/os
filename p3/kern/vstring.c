@@ -44,7 +44,7 @@
 int v_strcpy(char *dst, char *src, int max_len) {
 	int i;
    
-   mutex_t* lock = remove_pages_lock();
+   mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
    if(!mm_validate_read(src, 1)){
@@ -66,7 +66,7 @@ int v_strcpy(char *dst, char *src, int max_len) {
       
       if((*dst = *src) == '\0') 
       {
-         mutex_unlock(remove_pages_lock());
+         mutex_unlock(new_pages_lock());
 			return i + 1;
 		}
    }
@@ -91,7 +91,7 @@ int v_strcpy(char *dst, char *src, int max_len) {
 int v_memcpy(char *dst, char *src, int len) 
 {
 	int i;
-   mutex_t* lock = remove_pages_lock();
+   mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
    if(!mm_validate_read(src, 1)){

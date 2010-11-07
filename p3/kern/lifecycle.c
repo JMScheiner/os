@@ -254,7 +254,6 @@ fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb);
-	sfree(new_pcb, sizeof(pcb_t));
 fork_fail_pcb: 
    RETURN(E_NOMEM);
 }
@@ -374,7 +373,6 @@ void vanish_handler()
 {
 	tcb_t *tcb = get_tcb();
 	pcb_t *pcb = tcb->pcb;
-	pcb_t *free_pcb = NULL;
 	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
@@ -402,7 +400,6 @@ void vanish_handler()
 		mutex_unlock(&wait_vanish_lock);
       
       free_process_resources(pcb);
-		free_pcb = pcb;
 	}
 
 	mutex_lock(&tcb_table.lock);
@@ -413,7 +410,7 @@ void vanish_handler()
 	if (zombie_stack) 
       kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
-	scheduler_die(&zombie_stack_lock, free_pcb);
+	scheduler_die(&zombie_stack_lock);
 	assert(FALSE);
 }
 

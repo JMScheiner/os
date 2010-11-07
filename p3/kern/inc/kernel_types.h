@@ -162,6 +162,9 @@ struct THREAD_CONTROL_BLOCK{
 
 	/** @brief Saved kernel stack pointer for this thread. */
 	void *esp;
+   
+   /** @brief A pointer to our current directory, for context switching. */
+   void *dir_p; 
 	
    /** @brief Bottom of the kernel stack. */
 	void *kstack;

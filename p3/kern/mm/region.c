@@ -1,12 +1,13 @@
 /** 
 * @file region.c
 * @brief A simple region list manager. 
-* 
-*  The main utility of keeping a region list for every process is to 
-*   be able to dispatch the correct page fault handler for a given 
-*   region.  While our page fault handler is relatively simple, 
-*   a region list will make it easier to implement the autostack, 
-*   ZFOD, and COW.
+*
+* The region list helps with management of user memory. 
+*
+* This region list and this file are responsible for 
+*  - allocating regions (which may overlap)
+*  - dispatching the correct page fault handler
+*  - checking for allocated memory in new_pages
 *
 * @author Justin Scheiner
 * @author Tim Wilson 
@@ -181,4 +182,78 @@ void free_region_list(pcb_t* pcb)
    pcb->regions = NULL;
    mutex_unlock(&pcb->region_lock);
 }
+
+/** 
+* @brief A utility function for region_overlaps.
+*/
+inline boolean_t region_overlaps_helper(void* start0, void* end0, void* start1, void* end1)
+{
+   return ((start0 < start1 && start1 < end0) ||
+           (start1 < start0 && start0 < end1));
+}
+
+/** 
+* @brief Returns true if the address range specifies overlaps 
+*  with an existing region. 
+*   
+*   A utility function for new_pages. 
+* 
+* @param pcb The pcb containing the region list. 
+* @param start The starting address of the "proposed" region. 
+* @param end The ending address of the "proposed" region. 
+* 
+* @return True if the region overlaps with an existing region.
+*/
+boolean_t region_overlaps(pcb_t* pcb, void* start, void* end)
+{
+   region_t *iter;
+
+   mutex_lock(&pcb->region_lock);
+   for(iter = pcb->regions; iter != NULL; iter = iter->next)
+   {
+      assert((void*)iter < (void*)USER_MEM_START);
+      if(region_overlaps_helper(iter->start, iter->end, start, end))
+      {
+         mutex_unlock(&pcb->region_lock);
+         return TRUE;
+      }
+   }
+   mutex_unlock(&pcb->region_lock);
+   return FALSE;
+}
+
+int free_region(pcb_t* pcb, void* start)
+{
+   region_t *region, *last_region = NULL;
+   void* end;
+
+   mutex_lock(&pcb->region_lock);
+   for(region = pcb->regions; region; region = region->next)
+   {
+      if(region->start == start && (region->fault == user_fault))
+      {
+         /* Remove the region from the region list. */
+         if(last_region == NULL)
+            pcb->regions = region->next;
+         else
+            last_region->next = region->next;
+         
+         end = region->end;
+         sfree(region, sizeof(region_t));
+         mutex_unlock(&pcb->region_lock);
+
+         /* Free the memory associated with the region. 
+          *  (Note we are the only thread that knows about it) */
+         debug_print("region", " Removing region [%p, %p]", start, end);
+         mm_remove_pages(pcb, start, end);
+         return 0;
+      }
+      else last_region = region;
+   }
+   
+   /* The region wasn't found. */
+   mutex_unlock(&pcb->region_lock);
+   return -1;
+}
+
 

@@ -21,6 +21,7 @@
 #include <simics.h>
 #include <region.h>
 #include <assert.h>
+#include <thread.h>
 
 #include <common_kern.h>
 #include <string.h>        // memcpy, memset
@@ -89,6 +90,7 @@ int mm_init()
    
    /* Initialize global page directory. V = P */
    global_pcb()->dir_v = global_pcb()->dir_p = (void*)mm_new_kp_page();
+   global_tcb()->dir_p = global_pcb()->dir_p;
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
    
    /* Iterate over directory entries in direct mapped kernel region. */
@@ -197,7 +199,12 @@ void mm_free_address_space(pcb_t* pcb)
    pcb->virtual_dir = global->virtual_dir;
    
    if(pcb == get_pcb())
+   {
+      /* This should only run in vanish. */
+      tcb_t* tcb = get_tcb();
+      tcb->dir_p = global->dir_p;
       set_cr3((int)global->dir_p);
+   }
    
    kvm_free_page(dir_v);
    kvm_free_page(virtual_dir);

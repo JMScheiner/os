@@ -14,12 +14,12 @@
 
 /* @brief Protects us from the user removing pages while we try 
  *  to execute a validated copy from user space. */
-mutex_t _remove_pages_lock;
-inline mutex_t* remove_pages_lock(){ return &_remove_pages_lock; }
+mutex_t _new_pages_lock;
+inline mutex_t* new_pages_lock(){ return &_new_pages_lock; }
 
 void memman_init()
 {
-   mutex_init(&_remove_pages_lock);
+   mutex_init(&_new_pages_lock);
 }
 
 /** 
@@ -37,8 +37,9 @@ void memman_init()
 */
 void new_pages_handler(volatile regstate_t reg)
 {
+   assert(0);
    int len, ret;
-   char* start, *addr, *arg_addr, *end;
+   char* start, *arg_addr, *end;
    
    arg_addr = (void*)SYSCALL_ARG(reg);
    if(v_memcpy((char*)&start, arg_addr, sizeof(char*)) < sizeof(char*))
@@ -46,35 +47,40 @@ void new_pages_handler(volatile regstate_t reg)
    
    if(v_memcpy((char*)&len, arg_addr + sizeof(char*), sizeof(int)) < sizeof(int))
       RETURN(NEW_PAGES_INVALID_ARGS);
-
+   
+   end = start + len;
+   
+   /* Check that the requested memory is in user space. */
+   if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
+      RETURN(NEW_PAGES_INVALID_ARGS);
+   
+   /* Check that the requested memory is page aligned. */
    if((PAGE_OFFSET(start) != 0) || (len % PAGE_SIZE != 0))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
+   pcb_t* pcb = get_pcb();
+   
    /* Check that the pages the user is asking for aren't already 
     * already allocated. */
-   for(addr = start; addr < start + len; addr += PAGE_SIZE)
-      if(mm_validate_read(start, PAGE_SIZE))
-         RETURN(NEW_PAGES_INVALID_ARGS);
    
-   end = addr;
-   
-   /* Check that the pages aren't in the autostack region. 
-    *  Or in reserved kernel virtual memory. */
-   if((end > (char*)USER_STACK_START && end < (char*)USER_STACK_BASE) || 
-      (start > (char*)USER_STACK_START && start < (char*)USER_STACK_BASE) ||
-      (start < (char*)USER_MEM_START || end > (char*)USER_MEM_END))
+   mutex_lock(&_new_pages_lock);
+   if(region_overlaps(pcb, start, end))
+   {
+      mutex_unlock(&_new_pages_lock);
       RETURN(NEW_PAGES_INVALID_ARGS);
+   }
    
    debug_print("memman", " Allocating new region [%p, %p] for new_pages", start, end);
    
    if((ret = allocate_region(start, 
       end, PTENT_USER | PTENT_RW, user_fault, get_pcb())) < 0)
    {
-      MAGIC_BREAK;
+      lprintf("new_pages failure.");
+      mutex_unlock(&_new_pages_lock);
       RETURN(ret);
    }
    
-   
+   mutex_unlock(&_new_pages_lock);
    RETURN(E_SUCCESS);
 }
 
@@ -87,42 +93,22 @@ void new_pages_handler(volatile regstate_t reg)
 */
 void remove_pages_handler(volatile regstate_t reg)
 {
-   region_t* region, *last_region = NULL;
+   assert(0);
    pcb_t* pcb;
-   void* start, *end;
+   void* start;
    
    start = (char*)SYSCALL_ARG(reg);
-   pcb = get_pcb();
-
-   mutex_lock(&_remove_pages_lock);
-   mutex_lock(&pcb->region_lock);
-   for(region = pcb->regions; region; region = region->next)
-   {
-      if(region->start == start && (region->fault == user_fault))
-      {
-         /* Remove the region from the region list. */
-         if(last_region == NULL)
-            pcb->regions = region->next;
-         else
-            last_region->next = region->next;
-         
-         end = region->end;
-         sfree(region, sizeof(region_t));
-         mutex_unlock(&pcb->region_lock);
-         mutex_unlock(&_remove_pages_lock);
-
-         /* Free the memory associated with the region. */
-         debug_print("memman", " Removing region [%p, %p] for remove_pages", start, end);
-         mm_remove_pages(pcb, start, end);
-         RETURN(0);
-      }
-      else last_region = region;
-   }
+   if(start < (void*)USER_MEM_START || start > (void*)USER_MEM_END)
+      RETURN(REMOVE_PAGES_INVALID_ARGS);
    
-   mutex_unlock(&pcb->region_lock);
-   mutex_unlock(&_remove_pages_lock);
-   RETURN(REMOVE_PAGES_REGION_NOT_FOUND);
+   pcb = get_pcb();
+   
+   int ret;
+   mutex_lock(&_new_pages_lock);
+   ret = free_region(pcb, start);
+   mutex_unlock(&_new_pages_lock);
 
+   RETURN(ret);
 }
 
 
