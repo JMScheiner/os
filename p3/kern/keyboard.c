@@ -160,7 +160,8 @@ int readchar(void)
 * @brief Process a scancode from the keyboard port. If there is space
 * available, store it in the keybuf queue.
 *
-* If a character is read that can unblock a thread waiting for a line, do so.
+* If a character is read that can unblock a thread waiting for a line, 
+* do so.
 */
 void keyboard_handler(void)
 {
@@ -183,9 +184,7 @@ void keyboard_handler(void)
 			putbyte(c);
 		}
 
-		/* A blocked thread can be released if a full line has been read, 
-		 * or if more characters have been read than are currently being 
-		 * waited for. */
+		/* A blocked thread can be released if a full line has been read. */
 		if (c == '\n') {
 			newlines++;
 			keybuf_divider = keybuf_tail;
@@ -227,7 +226,6 @@ int readline(char *buf, int len) {
 
 /** 
 * @brief Initialize keyboard driver.
-* 	(Really does nothing for now).
 */
 void keyboard_init(void)
 {

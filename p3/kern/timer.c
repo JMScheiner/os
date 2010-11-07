@@ -56,7 +56,6 @@ void timer_handler(regstate_t reg)
    atomic_add_volatile(&ticks, 1);
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 
-	/* Pretend to apply a lock to indicate we are at lock depth 1. */
 	quick_lock();
    
    /* Run the next thread. */

@@ -10,7 +10,6 @@
 * @author Justin Scheiner
 * @author Tim Wilson
 * @date 2010-10-23
-* @bug Not thoroughly tested yet. 
 */
 
 #include <kernel_types.h>

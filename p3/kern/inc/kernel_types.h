@@ -1,10 +1,19 @@
-#ifndef KERNEL_TYPES_7FFQEKPQ
+/** @file kernel_types.h
+ *
+ * @brief Data structures used throughout the kernel
+ *
+ * @author Justin Scheiner
+ * @author Tim Wilson
+ */
 
+#ifndef KERNEL_TYPES_7FFQEKPQ
 #define KERNEL_TYPES_7FFQEKPQ
 
 #include <list.h>
 #include <types.h>
 
+/** @brief Arbitrary magic constants to identify corruption of our data
+ * structures. */
 #define TCB_SANITY_CONSTANT 0xdeadbeef
 #define PCB_SANITY_CONSTANT 0xcafebabe
 
@@ -130,10 +139,15 @@ struct PROCESS_CONTROL_BLOCK
    /** @brief A reference to a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */
    pcb_node_t global_node;
+
+	/** @brief A list of our children that have not exited yet. */
 	pcb_node_t child_node;
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;
+
+	/** @brief A magic constant that should not be changed. If it changes,
+	 * memory has been corrupted. */
    int sanity_constant;
 };
 
@@ -152,41 +166,68 @@ struct THREAD_CONTROL_BLOCK{
    /** @brief Bottom of the kernel stack. */
 	void *kstack;
 
-	/** @brief Next thread in the same process. */
-	//struct THREAD_CONTROL_BLOCK *next;
-
+	/** @brief Pointer to our place in either the scheduled list or
+	 * descheduled list. If we are blocked we will be in neither list. */
    tcb_node_t scheduler_node;
-   tcb_node_t mutex_node;
 
+	/** @brief True iff we are currently blocked. */
 	boolean_t blocked;
+
+	/** @brief True iff we are currently descheduled. */
 	boolean_t descheduled;
 
+	/** @brief If non-zero, we are sleeping and this is the time we should
+	 * be woken up at. */
    unsigned long wakeup;
+
+	/** @brief Our position in the sleep heap. */
    int sleep_index;
+
+	/** @brief A magic constant that should not be changed. If it changes,
+	 * the kernel stacks have probably been overflowed. */
    int sanity_constant;
 };
 
 struct SLEEP_HEAP 
 {
-   /* Refers to the first free slot. */
+   /** @brief Index of the first empty slot in the heap (size of heap + 1). */
    int index;
+
+	/** @brief Number of allocated entries in the heap. */
    int size; 
+
+	/** @brief Table of elements in the heap. */
    tcb_t** data; 
 };
 
 struct HASHTABLE_LINK
 {
+	/** @brief ID of the thread in this link. */
 	int tid;
+
+	/** @brief tcb of the thread in this link. */
 	tcb_t *tcb;
+
+	/** @brief Next link in the same table slot. */
 	struct HASHTABLE_LINK *next;
 };
 
 struct HASHTABLE
 {
+	/** @brief Number of elements in the table. */
 	size_t size;
+
+	/** @brief Index into prime_table_sizes indicating the number of slots
+	 * in the table. */
 	size_t table_index;
+
+	/** @brief Hash function mapping keys to table slots. */
 	unsigned int (*hash)(int);
+
+	/** @brief Mutual exclusion lock to protect the data. */
 	mutex_t lock;
+
+	/** @brief The hashtable. */
 	hashtable_link_t **table;
 };
 
