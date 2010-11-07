@@ -45,9 +45,8 @@ int allocate_region(
 {
    region_t* region;
    if((region = (region_t*)smalloc(sizeof(region_t))) == NULL)
-   {
       return E_NOMEM;
-   }
+   
    memset(region, 0, sizeof(region_t));
    
    debug_print("region", "Allocated new region [%p, %p] at %p", 

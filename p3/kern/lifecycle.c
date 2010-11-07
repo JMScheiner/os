@@ -202,13 +202,25 @@ void fork_handler(volatile regstate_t reg)
       RETURN(E_MULTIPLE_THREADS);
    
    new_pcb = initialize_process(FALSE);
-   if(new_pcb == NULL) goto fork_fail_pcb;
+   if(new_pcb == NULL)
+   {
+      lprintf("Fork: Failed to allocate resources for new PCB. ");
+      goto fork_fail_pcb;
+   }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
-   if(new_pcb->regions == NULL) goto fork_fail_dup_regions;
+   if(new_pcb->regions == NULL)
+   {
+      lprintf("Fork: Failed to allocate resources for duplicate region list. ");
+      goto fork_fail_dup_regions;
+   }
 
    new_tcb = initialize_thread(new_pcb);
-   if(new_tcb == NULL) goto fork_fail_tcb;
+   if(new_tcb == NULL)
+   {
+      lprintf("Fork: Failed to allocate resources for new TCB. ");
+      goto fork_fail_tcb;
+   }
 
 	debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
 	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
@@ -216,7 +228,11 @@ void fork_handler(volatile regstate_t reg)
    newpid = new_pcb->pid;
   
    /* Duplicate the current address space in the new process. */
-   if(mm_duplicate_address_space(new_pcb) < 0) goto fork_fail_dup;
+   if(mm_duplicate_address_space(new_pcb) < 0)
+   {
+      lprintf("Fork: Failed to duplicate address space. ");
+      goto fork_fail_dup;
+   }
    
    /* Arrange the new processes context for it's first context switch. */
    new_tcb->esp = arrange_fork_context(
@@ -239,7 +255,6 @@ fork_fail_dup_regions:
    sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb);
 fork_fail_pcb: 
-   lprintf(" Failed to allocate new PCB in fork() ");
    RETURN(E_NOMEM);
 }
 

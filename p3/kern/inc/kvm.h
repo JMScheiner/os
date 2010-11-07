@@ -5,17 +5,22 @@
 
 #define KVM_TOP      ((void*)(-3 * PAGE_SIZE))
 
+/* Initialization */
 void kvm_init();
-int kvm_new_directory(pcb_t* pcb);
-void* kvm_new_table(void* addr);
-void* kvm_initial_table();
 
+/* Request */
+int kvm_request_frames(int n_user, int n_kernel);
+
+/* Allocation. */
+int kvm_new_directory(pcb_t* pcb);
 void* kvm_new_page(void);
+
+/* Deallocation */
 void kvm_free_page(void* page);
 
-/* This is the table that VIRTUAL_TABLE_PAGE and VIRTUAL_COPY_PAGE 
- * are mapped in.  V = P, and it is allocated in mm_init. */
+/* Utility */
 void* kvm_vtop();
+void* kvm_initial_table();
 
 #endif /* end of include guard: KVM_OMG6HOB6 */
 

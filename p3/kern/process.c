@@ -80,7 +80,9 @@ pcb_t* initialize_process(boolean_t first_process)
 	
    if((pcb = (pcb_t*) smalloc(sizeof(pcb_t))) < 0) 
       goto fail_pcb;
-	
+   
+   memset(pcb, 0, sizeof(pcb_t));
+
    LIST_INIT_EMPTY(pcb->children);
 	LIST_INIT_NODE(pcb, global_node);
 	LIST_INIT_NODE(pcb, child_node);
@@ -101,6 +103,8 @@ pcb_t* initialize_process(boolean_t first_process)
 	
    if((pcb->status = (status_t *)smalloc(sizeof(status_t))) < 0) 
       goto fail_status;
+   
+   memset(pcb->status, 0, sizeof(status_t));
 	
    pcb->status->status = 0;
    pcb->status->next = NULL;
@@ -185,3 +189,5 @@ fail_init_mem:
    mm_free_user_space(pcb);
    return E_FAIL;
 }
+
+

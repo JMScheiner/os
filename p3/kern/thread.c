@@ -55,7 +55,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 {
 	assert(pcb);
    
-   if(mm_request_frames(1) < 0)
+   if(kvm_request_frames(0, 1) < 0)
       return NULL;
    
 	void* kstack_page = kvm_new_page();

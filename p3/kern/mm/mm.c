@@ -27,6 +27,7 @@
 #include <global_thread.h>
 #include <debug.h>
 #include <ecodes.h>
+#include <atomic.h>
 
 #define COPY_PAGE ((void*)(-PAGE_SIZE))
 #define FREE_PAGE ((void*)(-2 * PAGE_SIZE))
@@ -35,7 +36,7 @@
  *  mm implementation assumes contiguous memory. */
 static int n_phys_frames;
 static int n_free_frames;
-static int n_available_frames;
+static int n_user_frames;
 
 static free_block_t* user_free_list;
 
@@ -75,7 +76,7 @@ int mm_init()
 
    /* This makes an assumption that initially memory is contiguous. */
    n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
-   n_available_frames = n_free_frames;
+   n_user_frames = n_free_frames;
 
    /* Build a very simple link structure on free frames. */
    for(i = 0, iter = user_free_list; 
@@ -212,7 +213,7 @@ void mm_free_address_space(pcb_t* pcb)
 int mm_duplicate_address_space(pcb_t* new_pcb) 
 {
    /* Declarations. */
-   unsigned long d_index, necessary_frames;
+   unsigned long d_index, user_frames, kernel_frames;
    unsigned long t_index;
    unsigned long flags;
    unsigned long page;
@@ -235,8 +236,8 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
     *    Since this is essentially a helper function for fork, 
     *    there is only one thread - us.
     **/
-   
-   necessary_frames = 0;
+   user_frames = 0;
+   kernel_frames = 0;
    for(d_index = (USER_MEM_START >> DIR_SHIFT); 
       d_index < (USER_MEM_END >> DIR_SHIFT); d_index++)
    {
@@ -246,18 +247,17 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
          continue;
       
       /* Require a frame for the table. */
-      necessary_frames++;
+      kernel_frames++;
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
          current_frame = current_table_v[t_index];
          if((FLAGS_OF(current_frame) & PTENT_PRESENT))
-            necessary_frames++;
+            user_frames++;
       }
    }
    
    /* Request the frames we need. */
-   assert(necessary_frames > 0);
-   if(mm_request_frames(necessary_frames) < 0)
+   if(kvm_request_frames(user_frames, kernel_frames) < 0)
       return E_NOVM;
    
    /* Proceed with the duplication */
@@ -573,28 +573,25 @@ void* mm_new_kp_page()
 * 
 * @param n The number of frames we are requesting. 
 * 
-* @return True if we are free to allocate n frames. 
-*         False if we need to fail. 
+* @return 0 on success. 
+*         negative on failure. 
 */
 int mm_request_frames(int n)
 {
    int ret = E_NOVM;
+   
+   if(n == 0) return 0;
+
    mutex_lock(&request_lock);
-   if((n_available_frames - n) >= 0)
+   if((n_user_frames - n) >= 0)
    {
-      n_available_frames -= n;
+      n_user_frames -= n;
       ret = 0;
    }
    mutex_unlock(&request_lock);
-   assert(n_available_frames < n_free_frames);
+   assert(n_user_frames < n_free_frames);
    return ret;
 }
-
-inline void mm_inc_available()
-{
-   n_available_frames++;
-}
-
 
 /** 
 * @brief Safely allocates a new frame.
@@ -613,6 +610,8 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 {
    unsigned long new_frame;
    free_block_t* free_block;
+   
+   assert(FLAGS_OF(table_v) == 0);
    assert(FLAGS_OF(page) == 0);
    
    mutex_lock(&user_free_lock);
@@ -649,15 +648,19 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
 {
    free_block_t* node;
    unsigned long frame;
+   
+   assert(FLAGS_OF(table_v) == 0);
+   assert(FLAGS_OF(page) == 0);
+
    page_tablent_t* free_table_v = kvm_initial_table();
 
    frame = table_v[ TABLE_OFFSET(page) ];
    if(!(FLAGS_OF(frame) & PTENT_PRESENT)) return -1;
    frame = PAGE_OF(frame);
    
-   /* Take the page away from user threads if necessary. */
    table_v[ TABLE_OFFSET(page) ] = 0;
    invalidate_page((void*)page);
+   /* This frame should now be invisible to the process. */
    
    mutex_lock(&user_free_lock);
    
@@ -668,12 +671,13 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
 
-   n_free_frames++;
-   n_available_frames++;
    mutex_unlock(&user_free_lock);
 
-   /* This frame should now be invisible to the process. */
-   invalidate_page((void*)page);
+   mutex_lock(&request_lock);
+   n_user_frames++;
+   mutex_unlock(&request_lock);
+   
+   atomic_add(&n_free_frames, 1);
 
    return 0;
 }

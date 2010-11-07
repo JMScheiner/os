@@ -25,9 +25,11 @@
 #include <common_kern.h>
 #include <string.h>
 #include <ecodes.h>
+#include <atomic.h>
 
 static void* _kvm_initial_table;
 inline void* kvm_initial_table() { return _kvm_initial_table; }
+
 
 /* A list of pages (virtual) that can be allocated.
  *    They are already mapped in the global directory.*/
@@ -37,6 +39,37 @@ static mutex_t kernel_free_lock;
 static mutex_t new_table_lock;
 
 static void* kvm_alloc_page(void* page);
+static void* kvm_new_table(void* addr);
+
+static int n_kernel_frames;
+static mutex_t kernel_request_lock;
+
+/** 
+* @brief Requests frames for allocation. 
+* 
+* @param n_user The number of user frames to allocate. 
+* @param n_kernel The number of kernel frames to allocate. 
+*/
+int kvm_request_frames(int n_user, int n_kernel)
+{
+   int ret = E_NOVM;
+   mutex_lock(&kernel_request_lock);
+   
+   /* If there aren't enough kernel frames to satisfy the request, 
+    *  we'll need to allocate from the general frame pool. */
+   if((n_kernel_frames - n_kernel) < 0)
+   {
+      n_user += (n_kernel - n_kernel_frames);
+      n_kernel = n_kernel_frames;
+   }
+   
+   ret = mm_request_frames(n_user);
+   if(ret == 0)
+      n_kernel_frames -= n_kernel;
+
+   mutex_unlock(&kernel_request_lock);
+   return ret;
+}
 
 /** 
 * @brief Responsible for allocating the first KVM table and mapping it in 
@@ -52,6 +85,8 @@ void kvm_init()
    kvm_bottom = KVM_TOP;
    mutex_init(&kernel_free_lock);
    mutex_init(&new_table_lock);
+   mutex_init(&kernel_request_lock);
+   n_kernel_frames = 0;
    
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
    global_dir[ DIR_OFFSET(KVM_TOP) ] = (page_dirent_t)
@@ -153,10 +188,6 @@ void* kvm_new_page()
          | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
       
       invalidate_page(new_page);
-
-      /* Since our own free frames didn't come from the main free frame pool, 
-       *  we need to increment the number of available frames. */
-      mm_inc_available();
    }
    else
    {
@@ -200,8 +231,11 @@ void kvm_free_page(void* page)
    next = kernel_free_list;
    kernel_free_list = page;
    kernel_free_list->next = next;
-   
    mutex_unlock(&kernel_free_lock);
+   
+   mutex_lock(&kernel_request_lock);
+   n_kernel_frames++;
+   mutex_unlock(&kernel_request_lock);
    
    /* Wipe all flags, unmap the page. */
    //table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
@@ -252,9 +286,7 @@ void* kvm_new_table(void* addr)
    
    mutex_unlock(global_lock);
    
-   lprintf("*****************************");
    lprintf("Returning table at %p", table);
-   lprintf("*****************************");
    return table;
 }
 
@@ -310,7 +342,7 @@ int kvm_new_directory(pcb_t* pcb)
    int i;
    page_dirent_t* global_dir = global_pcb()->dir_v;
    
-   if(mm_request_frames(2) < 0)
+   if(kvm_request_frames(0, 2) < 0)
       return E_NOVM;
    
    page_dirent_t* dir_v = kvm_new_page();
