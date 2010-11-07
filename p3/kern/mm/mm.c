@@ -380,30 +380,39 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    page_tablent_t* table_v;
 
    unsigned int page;
-   unsigned int npages =   
-      (PAGE_OF((unsigned long)addr + len - 1) - PAGE_OF(addr)) / PAGE_SIZE + 1;
-   unsigned int ntables;
+   unsigned int kernel_frames = 0, user_frames = 0;
    unsigned long frame;
    int i;
    
-   ntables = 0;
-   for(i = DIR_OFFSET(addr); i <= DIR_OFFSET(addr + len); i++)
+   /* Determine the resources for this request in advance. */
+   for(page = PAGE_OF(addr); page <= PAGE_OF(addr + len - 1); page += PAGE_SIZE) 
    {
-      table_p = (page_tablent_t*)dir_v[i];
+      table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
       if(!(FLAGS_OF(table_p) & PTENT_PRESENT))
       {
-         ntables++;
+         user_frames++;
+      }
+      else
+      {
+         table_v = (page_tablent_t*)virtual_dir[ DIR_OFFSET(page) ];
+         if(!(FLAGS_OF(table_v[ TABLE_OFFSET(page) ]) & PTENT_PRESENT)) 
+            user_frames++;
       }
    }
 
-   if(mm_request_frames(npages + ntables) < 0)
+   for(i = DIR_OFFSET(addr); i <= DIR_OFFSET(addr + len - 1); i++)
    {
-      return E_NOVM;
+      table_p = (page_tablent_t*)dir_v[ i ];
+      if(!(FLAGS_OF(table_p) & PTENT_PRESENT))
+         kernel_frames++;
    }
+   
+   if(kvm_request_frames(user_frames, kernel_frames) < 0)
+      return E_NOVM;
    
    mutex_lock(&pcb->directory_lock);
    page = PAGE_OF(addr);
-   for (i = 0; i < npages; i++, page += PAGE_SIZE) 
+   for(page = PAGE_OF(addr); page <= PAGE_OF(addr + len - 1); page += PAGE_SIZE) 
    {
       table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
       if( !(FLAGS_OF(table_p) & PTENT_PRESENT) )
@@ -589,7 +598,7 @@ int mm_request_frames(int n)
       ret = 0;
    }
    mutex_unlock(&request_lock);
-   assert(n_user_frames < n_free_frames);
+   assert(n_user_frames <= n_free_frames);
    return ret;
 }
 
@@ -671,6 +680,8 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
 
+   free_table_v[ TABLE_OFFSET(FREE_PAGE) ] = 0;
+   invalidate_page((void*)FREE_PAGE);
    mutex_unlock(&user_free_lock);
 
    mutex_lock(&request_lock);

@@ -204,21 +204,21 @@ void fork_handler(volatile regstate_t reg)
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
    {
-      lprintf("Fork: Failed to allocate resources for new PCB. ");
+      //lprintf("Fork: Failed to allocate resources for new PCB. ");
       goto fork_fail_pcb;
    }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
    if(new_pcb->regions == NULL)
    {
-      lprintf("Fork: Failed to allocate resources for duplicate region list. ");
+      //lprintf("Fork: Failed to allocate resources for duplicate region list. ");
       goto fork_fail_dup_regions;
    }
 
    new_tcb = initialize_thread(new_pcb);
    if(new_tcb == NULL)
    {
-      lprintf("Fork: Failed to allocate resources for new TCB. ");
+      //lprintf("Fork: Failed to allocate resources for new TCB. ");
       goto fork_fail_tcb;
    }
 
