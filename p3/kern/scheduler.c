@@ -124,12 +124,16 @@ void scheduler_unblock(tcb_t* tcb)
 /**
  * @brief Deschedule ourself, preventing the kernel from running us until
  * someone reschedules us.
+ *
+ * @param lock A locked mutual exclusion lock that prevents make_runnable
+ * from preempting us.
  */
-void scheduler_deschedule()
+void scheduler_deschedule(mutex_t *lock)
 {
 	tcb_t *tcb = get_tcb();
 	debug_print("scheduler", "Descheduling thread %p", tcb);
 	quick_lock();
+	mutex_unlock(lock);
 	assert(!tcb->descheduled);
 	tcb->descheduled = TRUE;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
@@ -146,12 +150,15 @@ void scheduler_deschedule()
  */
 boolean_t scheduler_reschedule(tcb_t *tcb)
 {
-	debug_print("scheduler", "Rescheduling thread %p", tcb);
+	debug_print("make_runnable", "Rescheduling thread %p", tcb);
 	quick_lock();
 	if (tcb->descheduled) {
 		tcb->descheduled = FALSE;
-		if (!tcb->blocked && tcb->wakeup == 0)
+		debug_print("make_runnable", "Marking %p not descheduled", tcb);
+		if (!tcb->blocked && tcb->wakeup == 0) {
 			LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+			debug_print("make_runnable", "Adding %p to scheduler", tcb);
+		}
 		quick_unlock();
 		return TRUE;
 	}
