@@ -79,8 +79,8 @@ tcb_t* initialize_thread(pcb_t *pcb)
 		pcb->status->tid = tcb->tid;
 	}
 
+	// TODO Figure out why this breaks stuff
 	//LIST_INIT_NODE(tcb, scheduler_node);
-	LIST_INIT_NODE(tcb, mutex_node);
 
 	mutex_lock(&tcb_table.lock);
 	hashtable_put(&tcb_table, tcb->tid, tcb);

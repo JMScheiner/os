@@ -20,13 +20,10 @@
 #include <mutex.h>
 #include <simics.h>
 
-#define CHECK_SRC(src) \
-   if((!SAME_PAGE(src, src - 1)) && \
-      !mm_validate_read(src, 1)) break;
-
-#define CHECK_DEST(dst) \
-   if((!SAME_PAGE(dst, dst - 1)) && \
-      !mm_validate_read(dst, 1)){  break; }
+/** @brief Check that the given address can be safely read. */
+#define CHECK_ADDR(addr) \
+   if((!SAME_PAGE(addr, addr - 1)) && \
+      !mm_validate_read(addr, 1)) break;
 
 /**
  * @brief Perform a validated strcpy.
@@ -64,8 +61,8 @@ int v_strcpy(char *dst, char *src, int max_len) {
    for(i = 0; i < max_len; i++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      CHECK_SRC(src);
-      CHECK_DEST(dst);
+      CHECK_ADDR(src);
+      CHECK_ADDR(dst);
       
       if((*dst = *src) == '\0') 
       {
@@ -111,8 +108,8 @@ int v_memcpy(char *dst, char *src, int len)
    for(i = 0; i < len; i++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      CHECK_SRC(src);
-      CHECK_DEST(dst);
+      CHECK_ADDR(src);
+      CHECK_ADDR(dst);
       *dst = *src; 
    }
    
