@@ -29,10 +29,10 @@ char *debug_print_strings[] = {
    //"page", 
    //"readline", 
    //"lifecycle", 
-   //"region", 
+   "region", 
    //"malloc", 
    //"console", 
-   //"memman", 
+   "memman", 
    NULL};
 char *debug_break_strings[] = {NULL};
 

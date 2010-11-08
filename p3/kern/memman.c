@@ -11,6 +11,7 @@
 #include <common_kern.h>
 #include <ecodes.h>
 #include <debug.h>
+#include <eflags.h>
 
 /* @brief Protects us from the user removing pages while we try 
  *  to execute a validated copy from user space. */
@@ -41,19 +42,23 @@ void new_pages_handler(volatile regstate_t reg)
    char* start, *arg_addr, *end;
    
    arg_addr = (void*)SYSCALL_ARG(reg);
+   assert((get_eflags() & EFL_IF) != 0);
    if(v_memcpy((char*)&start, arg_addr, sizeof(char*)) < sizeof(char*))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
+   assert((get_eflags() & EFL_IF) != 0);
    if(v_memcpy((char*)&len, arg_addr + sizeof(char*), sizeof(int)) < sizeof(int))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
    end = start + len;
    
    /* Check that the requested memory is in user space. */
+   assert((get_eflags() & EFL_IF) != 0);
    if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
    /* Check that the requested memory is page aligned. */
+   assert((get_eflags() & EFL_IF) != 0);
    if((PAGE_OFFSET(start) != 0) || (len % PAGE_SIZE != 0))
       RETURN(NEW_PAGES_INVALID_ARGS);
    
@@ -62,10 +67,13 @@ void new_pages_handler(volatile regstate_t reg)
    /* Check that the pages the user is asking for aren't already 
     * already allocated. */
    
+   assert((get_eflags() & EFL_IF) != 0);
    mutex_lock(&_new_pages_lock);
    if(region_overlaps(pcb, start, end))
    {
+      assert((get_eflags() & EFL_IF) != 0);
       mutex_unlock(&_new_pages_lock);
+      assert((get_eflags() & EFL_IF) != 0);
       RETURN(NEW_PAGES_INVALID_ARGS);
    }
    
@@ -74,8 +82,9 @@ void new_pages_handler(volatile regstate_t reg)
    if((ret = allocate_region(start, 
       end, PTENT_USER | PTENT_RW, user_fault, get_pcb())) < 0)
    {
-      lprintf("new_pages failure.");
+      debug_print("memman", "new_pages failure");
       mutex_unlock(&_new_pages_lock);
+      MAGIC_BREAK;
       RETURN(ret);
    }
    

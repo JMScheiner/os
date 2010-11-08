@@ -44,8 +44,7 @@ typedef char* trap_gate_t;
       tg[2] = ((ss) & 0x00FF);         \
    }
 
-#define IDT_SET_DPL(tg, dpl) tg[5] = (tg[5] & 0x9f) | ((dpl << 5) & 0x60);
-
+#define IDT_SET_DPL(tg, dpl) tg[5] = ((tg[5] & 0x9f) | ((dpl << 5) & 0x60));
 #define IDT_MAKE_INTERRUPT(tg) tg[5] = ((tg[5]) & (~0x1))
 
 #define INSTALL_HANDLER(tg, func)                  \

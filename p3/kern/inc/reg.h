@@ -68,7 +68,7 @@ typedef struct REGSTATE
  */
 #define RETURN(ret) \
 	do { \
-		reg.pusha.eax = ret; \
+		reg.pusha.eax = (ret); \
 		return; \
 	} while (0)
 

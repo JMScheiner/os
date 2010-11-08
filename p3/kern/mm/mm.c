@@ -392,6 +392,7 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    int i;
    
    /* Determine the resources for this request in advance. */
+   mutex_lock(&pcb->directory_lock);
    for(page = PAGE_OF(addr); page <= PAGE_OF(addr + len - 1); page += PAGE_SIZE) 
    {
       table_p = (page_tablent_t*)dir_v[ DIR_OFFSET(page) ];
@@ -415,9 +416,12 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    }
    
    if(kvm_request_frames(user_frames, kernel_frames) < 0)
+   {
+      lprintf("mm: Failed request!");
+      mutex_unlock(&pcb->directory_lock);
       return E_NOVM;
+   }
    
-   mutex_lock(&pcb->directory_lock);
    page = PAGE_OF(addr);
    for(page = PAGE_OF(addr); page <= PAGE_OF(addr + len - 1); page += PAGE_SIZE) 
    {

@@ -44,8 +44,8 @@ void free_process_resources(pcb_t* pcb)
    assert(pcb);
    assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
    
-   mm_free_address_space(pcb);
    free_region_list(pcb);
+   mm_free_address_space(pcb);
 	
    mutex_destroy(&pcb->directory_lock);
 	mutex_destroy(&pcb->region_lock);

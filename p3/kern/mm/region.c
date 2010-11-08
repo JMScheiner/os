@@ -50,16 +50,9 @@ int allocate_region(
    
    memset(region, 0, sizeof(region_t));
    
-   debug_print("region", "Allocated new region [%p, %p] at %p", 
-      start, end, region);
+   debug_print("region", "Allocated new region_t at %p", 
+      region);
 
-   int ret;
-   if((ret = mm_alloc(pcb, (void*)start, end - start, access_level)) < 0)
-   {
-      sfree(region, sizeof(region_t));
-      return ret;
-   }
-   
    region->fault = fault;
    region->start = start;
    region->end = end;
@@ -70,7 +63,15 @@ int allocate_region(
    pcb->regions = region;
    mutex_unlock(&pcb->region_lock);
    
-	return mm_alloc(pcb, (void *)start, end - start, access_level);
+   int ret;
+   if((ret = mm_alloc(pcb, (void*)start, end - start, access_level)) < 0)
+   {
+      debug_print("region", "Failed to allocate region [%p, %p]", start, end); 
+      sfree(region, sizeof(region_t));
+      return ret;
+   }
+   
+	return E_SUCCESS;
 }
 
 /** 
