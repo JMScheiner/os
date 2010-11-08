@@ -48,7 +48,7 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
 	cond_destroy(&pcb->wait_signal);
-		
+	memset(pcb, 0, sizeof(pcb_t));	
    sfree(pcb, sizeof(pcb_t));
 }
 

@@ -14,13 +14,6 @@
  *             loop. Need not be initialized.
  * @param max The maximum number of iterations to perform.
  */
-#define SAFE_LOOP(addr, cntr, max) \
-	for ((cntr) = 0 ; \
-			((cntr) == (max)) ? 0 : \
-         ((cntr) == 0 || !SAME_PAGE(addr, (addr) - 1)) ? \
-            mm_validate_read(addr, 1) : 1 ; \
-         (cntr)++, (addr)++)
-
 #define NOT_NULL_TERMINATED -1
 #define INVALID_MEMORY -2
 

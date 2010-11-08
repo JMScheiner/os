@@ -48,7 +48,6 @@ void thread_init(void)
 void free_thread_resources(tcb_t* tcb)
 {
    kvm_free_page(tcb->kstack);
-   sfree(tcb, sizeof(tcb_t));
 }
 
 tcb_t* initialize_thread(pcb_t *pcb) 

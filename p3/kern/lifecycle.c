@@ -379,6 +379,9 @@ void vanish_handler()
 	if (remaining_threads == 1) {
 		
 		pcb_t *child;
+
+      if(pcb->child_lock.initialized == FALSE)
+         MAGIC_BREAK;
 		mutex_lock(&pcb->child_lock);
 		LIST_FORALL(pcb->children, child, child_node) {
 			child->parent = init_process;

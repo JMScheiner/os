@@ -22,11 +22,6 @@
 #include <eflags.h>
 #include <mm.h>
 
-/** @brief Check that the given address can be safely read. */
-#define CHECK_ADDR(addr) \
-   if((!SAME_PAGE(addr, addr - 1)) && \
-      !mm_validate_read(addr, 1)) break;
-
 static boolean_t validate_user_read(pcb_t* pcb, void* addr)
 {
    int flags = mm_getflags(pcb, addr);
