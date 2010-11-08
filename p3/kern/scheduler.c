@@ -225,6 +225,7 @@ void scheduler_next()
    		set_esp0((int)next->kstack);
 
          assert(next->dir_p);
+			quick_fake_unlock();
    		context_switch(&tcb->esp, &next->esp, next->dir_p);
 			quick_unlock_all();
 			return;
@@ -247,6 +248,7 @@ void scheduler_next()
 	debug_print("scheduler", "now running %p", runnable);
    set_esp0((int)runnable->kstack);
    assert(runnable->dir_p);
+	quick_fake_unlock();
    context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);
 	quick_unlock_all();
 }

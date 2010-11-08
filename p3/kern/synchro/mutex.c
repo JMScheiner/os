@@ -10,6 +10,7 @@
 #include <scheduler.h>
 #include <debug.h>
 #include <eflags.h>
+#include <global_thread.h>
 
 /**
  * @brief Global count of how many times interrupts have been disabled
@@ -21,8 +22,6 @@ int lock_depth = 1;
 /** @brief Global flag preventing use of mutexes until the kernel has been
  * initialized. */
 boolean_t locks_enabled = FALSE;
-
-static void reset_lock_depth(int depth);
 
 /**
  * @brief Initialize a mutex.
@@ -64,11 +63,12 @@ void mutex_lock(mutex_t *mp)
 	assert(mp->initialized);
 	if (!locks_enabled) return;
 
-	int depth = lock_depth;
 	mutex_node_t node;
 	node.tcb = get_tcb();
 	node.next = NULL;
 	debug_print("mutex", "Thread %p is entering mutex %p", node.tcb, mp);
+	if (node.tcb != global_tcb())
+		quick_assert_unlocked();
 	quick_lock();
 	if (mp->head == NULL) {
 		mp->head = mp->tail = &node;
@@ -83,7 +83,7 @@ void mutex_lock(mutex_t *mp)
 	}
 	mp->locked = TRUE;
 	mp->head = mp->head->next;
-	reset_lock_depth(depth);
+	quick_unlock();
 	debug_print("mutex", "Thread %p has acquired mutex %p", node.tcb, mp);
 }
 
@@ -125,25 +125,33 @@ void quick_unlock() {
 		enable_interrupts();
 }
 
+/** @brief Pretend to drop all quick locks, but don't enable interrupts.
+ *
+ * This should only be called before we switch to a newly crafted hand
+ * loaded process. This allows us to continue with interrupts disabled,
+ * but have interrupts enabled and no quick_locks applied when we jump
+ * back later to kernel mode. */
+void quick_fake_unlock() {
+	lock_depth = 0;
+}
+
 /**
  * @brief Release the global lock unconditionally and reset the number of
  * times it has been locked to 0.
  */
 void quick_unlock_all() {
-	quick_assert_locked();
+	assert((get_eflags() & EFL_IF) == 0);
 	lock_depth = 0;
 	enable_interrupts();
 }
 
-void quick_assert_locked() {
-	assert(lock_depth > 0);
-	assert((get_eflags() & EFL_IF) == 0);
+void quick_assert_unlocked() {
+	assert((get_eflags() & EFL_IF) != 0);
+	assert(lock_depth == 0);
 }
 
-static void reset_lock_depth(int depth) {
-	quick_assert_locked();
-	lock_depth = depth;
-	if (lock_depth == 0)
-		enable_interrupts();
+void quick_assert_locked() {
+	assert((get_eflags() & EFL_IF) == 0);
+	assert(lock_depth > 0);
 }
 

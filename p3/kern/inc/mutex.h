@@ -14,6 +14,8 @@ void mutex_unlock(mutex_t *mp);
 void quick_lock();
 void quick_unlock();
 void quick_unlock_all();
+void quick_fake_unlock();
+void quick_assert_unlocked();
 void quick_assert_locked();
 
 #endif
