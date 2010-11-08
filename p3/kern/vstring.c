@@ -19,6 +19,7 @@
 #include <memman.h>
 #include <mutex.h>
 #include <simics.h>
+#include <eflags.h>
 
 /** @brief Check that the given address can be safely read. */
 #define CHECK_ADDR(addr) \
@@ -94,17 +95,21 @@ int v_memcpy(char *dst, char *src, int len)
    mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
+   assert((get_eflags() & EFL_IF) != 0);
    if(!mm_validate_read(src, 1)){
       MAGIC_BREAK;
       mutex_unlock(lock);
       return INVALID_MEMORY;
    }
+   
+   assert((get_eflags() & EFL_IF) != 0);
    if(!mm_validate_write(dst, 1)){
       MAGIC_BREAK;
       mutex_unlock(lock);
       return INVALID_MEMORY;
    }
       
+   assert((get_eflags() & EFL_IF) != 0);
    for(i = 0; i < len; i++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
@@ -113,6 +118,7 @@ int v_memcpy(char *dst, char *src, int len)
       *dst = *src; 
    }
    
+   assert((get_eflags() & EFL_IF) != 0);
    mutex_unlock(lock);
 	return i;
 }
