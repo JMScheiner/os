@@ -178,17 +178,23 @@ void keyboard_handler(void)
 			}
 		}
 		else {
+			if (next_tail == keybuf_head && newlines == 0) {
+				// Backup one char so we can place the new char
+				next_tail = keybuf_tail;
+				keybuf_tail = PREV(keybuf_tail);
+				putbyte('\b');
+			}
 			if (next_tail != keybuf_head) {
 				keybuf[keybuf_tail] = c;
 				keybuf_tail = next_tail;
 				putbyte(c);
-			}
-			if (c == '\n') {
-				/* A blocked thread can be released if a full line has 
-				 * been read. */
-				newlines++;
-				keybuf_divider = keybuf_tail;
-				cond_signal(&keyboard_signal);
+				if (c == '\n') {
+					/* A blocked thread can be released if a full line has 
+					 * been read. */
+					newlines++;
+					keybuf_divider = keybuf_tail;
+					cond_signal(&keyboard_signal);
+				}
 			}
 		}
 	}
