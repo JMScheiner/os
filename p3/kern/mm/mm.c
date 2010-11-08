@@ -41,10 +41,10 @@ static int n_user_frames;
 
 static free_block_t* user_free_list;
 
-/* Locks requests for frames. */
+/* Protects requests for frames. */
 static mutex_t request_lock;
 
-/* Lock for the user free list structure. */
+/* Protects the user free list structure. */
 static mutex_t user_free_lock;
 
 /* Since we use the same addressable space for copying, 
@@ -65,7 +65,7 @@ static void mm_free_table(pcb_t* pcb, void* addr);
 int mm_init()
 {
    int i, j;
-   uint32_t addr = 0;
+   unsigned long addr;
    
    page_tablent_t* table;
    page_dirent_t* global_dir;
@@ -94,7 +94,7 @@ int mm_init()
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
    
    /* Iterate over directory entries in direct mapped kernel region. */
-   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
+   for(i = 0, addr = 0; i < DIR_OFFSET(USER_MEM_START); i++)
    {
       /* Allocate a direct mapped page table for each. */
       table = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
@@ -114,7 +114,7 @@ int mm_init()
    assert(addr == USER_MEM_START);
    
    /* Everything else is not present, so doesn't matter. */
-   for(; i < (USER_MEM_END >> DIR_SHIFT); i++) 
+   for(; i < DIR_OFFSET(USER_MEM_END); i++) 
          global_dir[i] = 0;
 
    mutex_init(&user_free_lock);
@@ -143,6 +143,7 @@ void mm_free_user_space(pcb_t* pcb)
    unsigned long d_index;
    unsigned long t_index;
    unsigned long frame, page;
+   
    pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
    page_tablent_t *table_v, *table_p;
@@ -157,17 +158,20 @@ void mm_free_user_space(pcb_t* pcb)
       table_v = virtual_dir[d_index];
       table_p = dir_v[d_index];
 
-      if(!(FLAGS_OF(table_p) & PDENT_PRESENT)) continue;
+      if(!TABLE_PRESENT(table_p))
+         continue;
       
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
          frame = table_v[t_index];
-         if(!(FLAGS_OF(frame) & PTENT_PRESENT)) continue;
+         if(!PAGE_PRESENT(frame))
+            continue;
          
-         page = (d_index << DIR_SHIFT) + (t_index << TABLE_SHIFT);
+         page = PAGE_FROM_INDEX(d_index, t_index);
          mm_free_frame(table_v, page);
       }
-      mm_free_table(pcb, (void*)(d_index << DIR_SHIFT));
+
+      mm_free_table(pcb, (void*)PAGE_FROM_INDEX(d_index, 0));
       dir_v[d_index] = 0;
    }
 }
@@ -180,16 +184,17 @@ void mm_free_user_space(pcb_t* pcb)
 * 
 * @param pcb The process that points to the relevant address space. 
 */
-void mm_free_address_space(pcb_t* pcb)
+void mm_free_address_space(pcb_t* pcb, boolean_t vanishing)
 {
    pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
    
+   /* Remove the PCB from the global list before removing its directory. */
+   global_list_remove(pcb);
+   
    global = global_pcb();
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
-  
-   global_list_remove(pcb);
    
    /* All other tables are global - we don't need to worry about them. */
    mm_free_user_space(pcb);
@@ -198,7 +203,7 @@ void mm_free_address_space(pcb_t* pcb)
    pcb->dir_p = global->dir_p;
    pcb->virtual_dir = global->virtual_dir;
    
-   if(pcb == get_pcb())
+   if(vanishing)
    {
       /* This should only run in vanish. */
       tcb_t* tcb = get_tcb();

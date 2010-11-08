@@ -95,14 +95,18 @@ void yield_handler(volatile regstate_t reg)
 */
 void deschedule_handler(volatile regstate_t reg)
 {
-	int *reject = (int *)SYSCALL_ARG(reg);
-
-   //FIXME We don't atomically dereference reject! We don't validate it!
-   // What we need to do is validate, hold remove pages lock, and atomic exchange.
-   // ...or just validate and read in scheduler_deschedule.
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int reject;
 
 	mutex_lock(&deschedule_lock);
-	if (*reject == 0) {
+   
+   if(v_copy_in_int(&reject, arg_addr) < 0)
+   {
+      debug_print("deschedule", "Failed to copy reject arg");
+	   mutex_unlock(&deschedule_lock);
+      RETURN(SYSCALL_INVALID_ARGS);
+   }
+	if (reject == 0) {
 		debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
 		scheduler_deschedule(&deschedule_lock);
 		debug_print("deschedule", "Rescheduling %d now", get_tcb()->tid);

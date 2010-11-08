@@ -75,11 +75,12 @@ int mm_request_frames(int n);
 /** Release resources **/
 void mm_remove_pages(pcb_t* pcb, void* start, void* end);
 void mm_free_user_space(pcb_t* pcb);
-void mm_free_address_space(pcb_t* pcb);
+void mm_free_address_space(pcb_t* pcb, boolean_t last_thread);
 
 /** Requests information **/
 int mm_getflags(pcb_t* pcb, void* addr);
-boolean_t mm_validate_read(void* addr, int len);
+
+/* FIXME mm_validate_write should be deleted!!! */
 boolean_t mm_validate_write(void* addr, int len);
 
 #endif /* end of include guard: MM_1PZ6H5QE */

@@ -24,29 +24,22 @@ static int next_pid = 1;
 /** @brief pcb of the init process. */
 pcb_t *init_process;
 
-//DEFINE_HASHTABLE(pcb_table_t, int, pcb_t *);
-
-/** @brief Hashtable mapping pids to pcbs. */
-//pcb_table_t pcb_table;
-
-/** @brief Mutual exclusion lock for pcb_table. */
-//mutex_t pcb_table_lock;
-
 /** 
 * @brief Frees everything except for the status - 
-*  which is required to remain around for calls to wait, and the pcb
-*  itself since it is required if we contex switch
+*  which is required to remain around for calls to wait.
 * 
 * @param pcb The pcb for the process. 
+* @param vanishing True if we are running in the PCB's address space. 
+*     (Which only occurs when we are vanishing) 
 */
-void free_process_resources(pcb_t* pcb)
+void free_process_resources(pcb_t* pcb, boolean_t vanishing)
 {
    assert(pcb);
 	assert(pcb->thread_count == 0);
    assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
    
    free_region_list(pcb);
-   mm_free_address_space(pcb);
+   mm_free_address_space(pcb, vanishing);
 	
    mutex_destroy(&pcb->directory_lock);
 	mutex_destroy(&pcb->region_lock);
@@ -88,7 +81,7 @@ pcb_t* initialize_process(boolean_t first_process)
    LIST_INIT_EMPTY(pcb->children);
 	LIST_INIT_NODE(pcb, global_node);
 	LIST_INIT_NODE(pcb, child_node);
-	
+   
    if(kvm_new_directory(pcb) < 0) 
       goto fail_new_directory;
    
@@ -127,7 +120,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	return pcb;
 
 fail_status: 
-   mm_free_address_space(pcb);
+   mm_free_address_space(pcb, FALSE);
 fail_new_directory:
    sfree(pcb, sizeof(pcb_t));
 fail_pcb: 

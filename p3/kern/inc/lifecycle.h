@@ -9,7 +9,7 @@
  
 /** @brief Maxixmum allowed size of the kernel stack to use for exec 
  * arguments. Should be some constant fraction of the kernel stack. */
-#define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 6)
+#define MAX_TOTAL_LENGTH ((KERNEL_STACK_SIZE * PAGE_SIZE) / 4)
 #define MAX_NAME_LENGTH 127
 #define STATUS_KILLED -2
 

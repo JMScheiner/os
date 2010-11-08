@@ -66,7 +66,6 @@ void exec_handler(volatile regstate_t reg) {
    char** argvec;
 	
    char execname_buf[MAX_NAME_LENGTH];
-   lprintf("MAX_TOTAL_LENGTH = %d", MAX_TOTAL_LENGTH);
 	char execargs_buf[MAX_TOTAL_LENGTH];
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
@@ -129,12 +128,10 @@ void exec_handler(volatile regstate_t reg) {
 
 	if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
-      /* This is a tough one - we can't return to user space, since
-       *  it's gone.... The "right-thing-to-do" is to reserve the 
-       *  frames before we make the call into initialize_memory, which
-       *  requires us to have some awareness of how much memory initialize
-       *  memory will allocate....FIXME
-       */
+      /* Since user memory is gone - the only thing to do is die. 
+       * TODO  Ideally we would recognize that we can't satisfy 
+       *  the request before freeing the old userspace...
+       * */
       assert(0); 
    }
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
@@ -257,7 +254,7 @@ fork_fail_dup:
 fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
-   free_process_resources(new_pcb);
+   free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
    RETURN(E_NOMEM);
 }
@@ -403,7 +400,7 @@ void vanish_handler()
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
       
-      free_process_resources(pcb);
+      free_process_resources(pcb, TRUE);
 	}
 
 	mutex_lock(&tcb_table.lock);

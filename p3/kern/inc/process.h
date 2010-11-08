@@ -14,7 +14,7 @@
 
 extern pcb_t *init_process;
 
-void free_process_resources(pcb_t* pcb);
+void free_process_resources(pcb_t* pcb, boolean_t vanishing);
 int get_pid(void);
 
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);

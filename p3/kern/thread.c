@@ -66,22 +66,28 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	/* Put the TCB at the bottom of the kernel stack. */
 	tcb_t* tcb = (tcb_t*)kstack_page;
 	tcb->esp = kstack_page + PAGE_SIZE; 
+   
+   /* Keep a copy of the physical directory, since we can context switch 
+    *  without the PCB */
    tcb->dir_p = pcb->dir_p;
-	tcb->kstack = kstack_page + PAGE_SIZE;
+   assert(tcb->dir_p);
+	
+   tcb->kstack = kstack_page + PAGE_SIZE;
 	
 	tcb->tid = new_tid();
 	tcb->pcb = pcb;
 	tcb->wakeup = 0;
+	tcb->sleep_index = 0;
 	tcb->blocked = FALSE;
 	tcb->descheduled = FALSE;
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
-	int siblings = atomic_add(&pcb->thread_count, 1);
+	
+   int siblings = atomic_add(&pcb->thread_count, 1);
 	if (siblings == 0) {
 		pcb->status->tid = tcb->tid;
 	}
 
-	// TODO Figure out why this breaks stuff
-	//LIST_INIT_NODE(tcb, scheduler_node);
+	LIST_INIT_NODE(tcb, scheduler_node);
 
 	mutex_lock(&tcb_table.lock);
 	hashtable_put(&tcb_table, tcb->tid, tcb);
