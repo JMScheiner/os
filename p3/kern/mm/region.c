@@ -57,12 +57,6 @@ int allocate_region(
    region->start = start;
    region->end = end;
    
-   mutex_lock(&pcb->region_lock);
-   assert(pcb->regions != region);
-   region->next = pcb->regions;
-   pcb->regions = region;
-   mutex_unlock(&pcb->region_lock);
-   
    int ret;
    if((ret = mm_alloc(pcb, (void*)start, end - start, access_level)) < 0)
    {
@@ -70,6 +64,13 @@ int allocate_region(
       sfree(region, sizeof(region_t));
       return ret;
    }
+   
+   /* Insert the region into the list. */
+   mutex_lock(&pcb->region_lock);
+   assert(pcb->regions != region);
+   region->next = pcb->regions;
+   pcb->regions = region;
+   mutex_unlock(&pcb->region_lock);
    
 	return E_SUCCESS;
 }
