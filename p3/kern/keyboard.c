@@ -97,18 +97,11 @@ void readline_handler(volatile regstate_t reg)
    int len;
    char* buf;
    
-   if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
-   {
-      debug_print("readline", "arg len unreadable.");
+   if(v_copy_in_int(&len, arg_addr) < 0)
       RETURN(SYSCALL_INVALID_ARGS);
-   }
    
-   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
-			 sizeof(char*))
-   {
-      debug_print("readline", "arg buf unreadable.");
+   if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
       RETURN(SYSCALL_INVALID_ARGS);
-   }
    
 	if (len < 0 || len > KEY_BUF_SIZE) {
       debug_print("readline", "len %d unreasonable.", len);

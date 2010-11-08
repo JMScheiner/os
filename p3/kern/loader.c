@@ -124,6 +124,7 @@ unsigned int get_user_eflags()
 void *copy_to_stack(int argc, char *argv, int arg_len) {
 	char *ptr = (char *)USER_STACK_BASE;
 	char *args = ptr - arg_len;
+   assert(args > (char*)(USER_STACK_BASE - PAGE_SIZE));
 
 	/* Copy the value of the arguments onto the stack. */
 	memcpy(args, argv, arg_len);

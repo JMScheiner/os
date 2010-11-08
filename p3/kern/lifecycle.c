@@ -38,6 +38,7 @@
 #include <console.h>
 #include <thread.h>
 #include <hashtable.h>
+#include <common_kern.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -65,17 +66,17 @@ void exec_handler(volatile regstate_t reg) {
    char** argvec;
 	
    char execname_buf[MAX_NAME_LENGTH];
+   lprintf("MAX_TOTAL_LENGTH = %d", MAX_TOTAL_LENGTH);
 	char execargs_buf[MAX_TOTAL_LENGTH];
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
 	int argc;
    
 	/* Verify that the arguments lie in valid memory. */
-   if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
+   if(v_copy_in_ptr(&execname, arg_addr) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
    
-   if(v_memcpy((char*)&argvec, 
-      arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
+   if(v_copy_in_dptr(&argvec, arg_addr + sizeof(char*)) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
    
    pcb_t* pcb = get_pcb();
@@ -83,7 +84,7 @@ void exec_handler(volatile regstate_t reg) {
    if(pcb->thread_count > 1)
       RETURN(E_MULTIPLE_THREADS);
    
-   if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
+   if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH, TRUE) < 0) 
 		RETURN(EXEC_INVALID_NAME);
 
    debug_print("exec", "Called with program %s", execname_buf);
@@ -95,13 +96,14 @@ void exec_handler(volatile regstate_t reg) {
 		if (total_bytes == MAX_TOTAL_LENGTH) 
 			RETURN(EXEC_ARGS_TOO_LONG);
 	   
-      if(v_memcpy((char*)&arg, (char*)argvec, sizeof(char*)) < 0)
+      if(v_copy_in_ptr(&arg, (char*)argvec) < 0)
 			RETURN(EXEC_INVALID_ARG);
-
+      
       if(arg == NULL)
          break;
-		
-		int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
+	   
+      int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes, TRUE);
+      
       if (arg_len < 0) 
 			RETURN(EXEC_INVALID_ARG);
 		
@@ -430,8 +432,8 @@ void wait_handler(volatile regstate_t reg)
 			!mm_validate_write(status_addr, sizeof(int))) {
 		RETURN(SYSCALL_INVALID_ARGS);
 	}
-
-	pcb_t *pcb = get_pcb();
+	
+   pcb_t *pcb = get_pcb();
 	debug_print("wait", "pcb = %p", pcb);
 	mutex_lock(&pcb->check_waiter_lock);
 	if (pcb != init_process && pcb->unclaimed_children == 0) {
@@ -469,7 +471,7 @@ void wait_handler(volatile regstate_t reg)
 
 	if (status_addr) {
 		// There's nothing we can do if the copy fails, but don't crash. */
-		v_memcpy((char *)status_addr, (char *)&status->status, sizeof(int));
+      v_copy_out_int(status_addr, status->status);
 	}
 	int tid = status->tid;
 	sfree(status, sizeof(status_t));

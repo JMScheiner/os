@@ -225,24 +225,28 @@ void kvm_free_page(void* page)
    //page_dirent_t* global_dir = global_pcb()->dir_v;
    //page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
    
+   mutex_lock(&kernel_request_lock);
    mutex_lock(&kernel_free_lock);
    
    debug_print("kvm", "Adding page %p to kernel_free_list=%p", page, kernel_free_list);
    next = kernel_free_list;
    kernel_free_list = page;
    kernel_free_list->next = next;
-   mutex_unlock(&kernel_free_lock);
    
-   mutex_lock(&kernel_request_lock);
    n_kernel_frames++;
+   
+   /* Is this all that needs to be done? */
+   if((void*)kernel_free_list < (void*)USER_MEM_END)
+      MAGIC_BREAK;
+   assert((void*)kernel_free_list > (void*)USER_MEM_END);
+   
+   mutex_unlock(&kernel_free_lock);
    mutex_unlock(&kernel_request_lock);
    
    /* Wipe all flags, unmap the page. */
    //table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
    //invalidate_page(page);
    
-   /* Is this all that needs to be done? */
-   assert((void*)kernel_free_list > (void*)USER_MEM_END);
 }
 
 /** 

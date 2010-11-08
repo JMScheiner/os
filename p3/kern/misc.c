@@ -4,6 +4,7 @@
 #include <exec2obj.h>
 #include <vstring.h>
 #include <string.h>
+#include <ecodes.h>
 
 /**
  * @brief Halt the system
@@ -39,17 +40,16 @@ void ls_handler(volatile regstate_t reg)
 {
 	char *arg_addr, *filename, *buf; 
    char zero = 0;
-   int i;
-   size_t total, copied, len;
+   int i, len;
+   size_t total, copied;
 	
    arg_addr = (char *)SYSCALL_ARG(reg);
-
-	if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int))
-		RETURN(-1);
-	
-   if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
-			sizeof(char*))
-		RETURN(-1);
+   
+   if(v_copy_in_int(&len, arg_addr) < 0)
+		RETURN(SYSCALL_INVALID_ARGS);
+   
+   if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
+		RETURN(SYSCALL_INVALID_ARGS);
    
    total = 0;
    for(i = 0; i < exec2obj_userapp_count; i++)
@@ -57,7 +57,7 @@ void ls_handler(volatile regstate_t reg)
       filename = (char*)exec2obj_userapp_TOC[i].execname;
       lprintf(" Copying %s ", filename);
       
-      copied = v_strcpy(buf, filename, len);
+      copied = v_strcpy(buf, filename, len, FALSE);
       
       /* If we couldn't copy the whole filename, return with failure. */
       if(copied < strlen(filename))
@@ -68,9 +68,7 @@ void ls_handler(volatile regstate_t reg)
       total++;
    }
    
-   
-   v_memcpy(buf, &zero, 1);
-
+   v_memcpy(buf, &zero, 1, FALSE);
    RETURN(total);
 }
 

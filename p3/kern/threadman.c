@@ -95,16 +95,14 @@ void yield_handler(volatile regstate_t reg)
 */
 void deschedule_handler(volatile regstate_t reg)
 {
-	int *arg_addr = (int *)SYSCALL_ARG(reg);
-	int reject;
+	int *reject = (int *)SYSCALL_ARG(reg);
+
+   //FIXME We don't atomically dereference reject! We don't validate it!
+   // What we need to do is validate, hold remove pages lock, and atomic exchange.
+   // ...or just validate and read in scheduler_deschedule.
+
 	mutex_lock(&deschedule_lock);
-	if (v_memcpy((char *)&reject, (char *)arg_addr, sizeof(int)) < 
-			sizeof(int)) {
-		debug_print("deschedule", "Failed to copy reject arg");
-		mutex_unlock(&deschedule_lock);
-		RETURN(SYSCALL_INVALID_ARGS);
-	}
-	if (reject == 0) {
+	if (*reject == 0) {
 		debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
 		scheduler_deschedule(&deschedule_lock);
 		debug_print("deschedule", "Rescheduling %d now", get_tcb()->tid);
@@ -132,11 +130,8 @@ void make_runnable_handler(volatile regstate_t reg)
 {
 	int tid = (int)SYSCALL_ARG(reg);
 	int ret = 0;
-	debug_print("make_runnable", "%d trying to make %d runnable", get_tcb()->tid, tid);
 	mutex_lock(&tcb_table.lock);
-	debug_print("make_runnable", "Acquired table lock");
 	tcb_t *tcb = hashtable_get(&tcb_table, tid);
-	debug_print("make_runnable", "Fetched tcb");
 	mutex_lock(&deschedule_lock);
 	debug_print("make_runnable", "Acquired deschedule_lock");
 	if (tcb == NULL) {

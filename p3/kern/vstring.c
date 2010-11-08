@@ -20,11 +20,36 @@
 #include <mutex.h>
 #include <simics.h>
 #include <eflags.h>
+#include <mm.h>
 
 /** @brief Check that the given address can be safely read. */
 #define CHECK_ADDR(addr) \
    if((!SAME_PAGE(addr, addr - 1)) && \
       !mm_validate_read(addr, 1)) break;
+
+static boolean_t validate_user_read(pcb_t* pcb, void* addr)
+{
+   int flags = mm_getflags(pcb, addr);
+   return (flags == (flags | PTENT_USER | PTENT_PRESENT));
+}
+
+static boolean_t validate_user_write(pcb_t* pcb, void* addr)
+{
+   int flags = mm_getflags(pcb, addr);
+   return (flags == (flags | PTENT_USER | PTENT_PRESENT | PTENT_RW));
+}
+
+static boolean_t validate_kernel_read(pcb_t* pcb, void* addr)
+{
+   int flags = mm_getflags(pcb, addr);
+   return (flags == (flags | PTENT_PRESENT));
+}
+
+static boolean_t validate_kernel_write(pcb_t* pcb, void* addr)
+{
+   int flags = mm_getflags(pcb, addr);
+   return (flags == (flags | PTENT_PRESENT | PTENT_RW));
+}
 
 /**
  * @brief Perform a validated strcpy.
@@ -42,42 +67,55 @@
  *
  * @return The number of characters copied. Or a negative number on failure. 
  */
-int v_strcpy(char *dst, char *src, int max_len) {
-	int i;
+int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
+	
+   int n;
+   pcb_t* pcb = get_pcb();
+   boolean_t (*validate_write)(pcb_t*,void*);
+   boolean_t (*validate_read)(pcb_t*,void*);
    
+   if(user_source)
+   {
+      validate_read = validate_user_read;
+      validate_write = validate_kernel_write;
+   }
+   else
+   {
+      validate_read = validate_kernel_read;
+      validate_write = validate_user_write;
+   }
+
    mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
-   if(!mm_validate_read(src, 1)){
-      MAGIC_BREAK;
+   if(!validate_read(pcb, src) || !validate_write(pcb, dst))
+   {
       mutex_unlock(lock);
       return INVALID_MEMORY;
    }
-   if(!mm_validate_write(dst, 1)){
-      MAGIC_BREAK;
-      mutex_unlock(lock);
-      return INVALID_MEMORY;
-   }
-      
-   for(i = 0; i < max_len; i++, src++, dst++)
+   
+   for(n = 0; n < max_len; n++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      CHECK_ADDR(src);
-      CHECK_ADDR(dst);
-      
+      if(!SAME_PAGE(src, src - 1) && (!validate_read(pcb, src)))
+         break;
+         
+      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(pcb, dst))) 
+         break;
+
       if((*dst = *src) == '\0') 
       {
-         mutex_unlock(new_pages_lock());
-			return i + 1;
+         mutex_unlock(lock);
+			return n + 1;
 		}
    }
    
    mutex_unlock(lock);
    
-   if (i == max_len) {
+   if (n == max_len)
 		return NOT_NULL_TERMINATED;
-	}
-   return INVALID_MEMORY;
+   else
+      return INVALID_MEMORY;
 }
 
 /**
@@ -89,36 +127,47 @@ int v_strcpy(char *dst, char *src, int max_len) {
  *
  * @return The number of bytes copied (may be less then len).
  */
-int v_memcpy(char *dst, char *src, int len) 
+int v_memcpy(char *dst, char *src, int len, boolean_t user_source) 
 {
 	int i;
+   
+   pcb_t* pcb = get_pcb();
+   boolean_t (*validate_write)(pcb_t*,void*);
+   boolean_t (*validate_read)(pcb_t*,void*);
+   
+   if(user_source)
+   {
+      validate_read = validate_user_read;
+      validate_write = validate_kernel_write;
+   }
+   else
+   {
+      validate_read = validate_kernel_read;
+      validate_write = validate_user_write;
+   }
+
    mutex_t* lock = new_pages_lock();
+   
    mutex_lock(lock);
    
-   assert((get_eflags() & EFL_IF) != 0);
-   if(!mm_validate_read(src, 1)){
-      MAGIC_BREAK;
+   if(!validate_read(pcb, src) || !validate_write(pcb, dst))
+   {
       mutex_unlock(lock);
       return INVALID_MEMORY;
    }
    
-   assert((get_eflags() & EFL_IF) != 0);
-   if(!mm_validate_write(dst, 1)){
-      MAGIC_BREAK;
-      mutex_unlock(lock);
-      return INVALID_MEMORY;
-   }
-      
-   assert((get_eflags() & EFL_IF) != 0);
    for(i = 0; i < len; i++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      CHECK_ADDR(src);
-      CHECK_ADDR(dst);
+      if(!SAME_PAGE(src, src - 1) && (!validate_read(pcb, src)))
+         break;
+         
+      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(pcb, dst))) 
+         break;
+
       *dst = *src; 
    }
    
-   assert((get_eflags() & EFL_IF) != 0);
    mutex_unlock(lock);
 	return i;
 }

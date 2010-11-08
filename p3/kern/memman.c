@@ -43,11 +43,11 @@ void new_pages_handler(volatile regstate_t reg)
    
    arg_addr = (void*)SYSCALL_ARG(reg);
    assert((get_eflags() & EFL_IF) != 0);
-   if(v_memcpy((char*)&start, arg_addr, sizeof(char*)) < sizeof(char*))
+
+   if(v_copy_in_ptr(&start, arg_addr) < 0)
       RETURN(NEW_PAGES_INVALID_ARGS);
    
-   assert((get_eflags() & EFL_IF) != 0);
-   if(v_memcpy((char*)&len, arg_addr + sizeof(char*), sizeof(int)) < sizeof(int))
+   if(v_copy_in_int(&len, arg_addr + sizeof(char*)) < 0)
       RETURN(NEW_PAGES_INVALID_ARGS);
    
    end = start + len;
@@ -84,7 +84,6 @@ void new_pages_handler(volatile regstate_t reg)
    {
       debug_print("memman", "new_pages failure");
       mutex_unlock(&_new_pages_lock);
-      MAGIC_BREAK;
       RETURN(ret);
    }
    

@@ -512,6 +512,7 @@ int mm_getflags(pcb_t* pcb, void* addr)
    page_dirent_t* virtual_dir_v = (page_dirent_t*) pcb->virtual_dir;
    page_tablent_t* table_p = dir_v[ DIR_OFFSET(page) ];
    page_tablent_t* table_v = virtual_dir_v[ DIR_OFFSET(page) ];
+   assert(FLAGS_OF(table_v) == 0);
    
    dflags = ((unsigned long)table_p) & PAGE_MASK;
    
@@ -647,6 +648,8 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    free_block = (free_block_t*)page;
    user_free_list = free_block->next;
    n_free_frames--;
+   if(user_free_list == NULL)
+      MAGIC_BREAK;
    mutex_unlock(&user_free_lock);
 
    memset((void*)page, 0, PAGE_SIZE);
@@ -690,6 +693,8 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    node = (free_block_t*) FREE_PAGE;
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
+   if(user_free_list == NULL)
+      MAGIC_BREAK;
 
    free_table_v[ TABLE_OFFSET(FREE_PAGE) ] = 0;
    invalidate_page((void*)FREE_PAGE);
