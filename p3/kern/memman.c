@@ -37,7 +37,6 @@ void memman_init()
 */
 void new_pages_handler(volatile regstate_t reg)
 {
-   assert(0);
    int len, ret;
    char* start, *arg_addr, *end;
    
@@ -93,7 +92,6 @@ void new_pages_handler(volatile regstate_t reg)
 */
 void remove_pages_handler(volatile regstate_t reg)
 {
-   assert(0);
    pcb_t* pcb;
    void* start;
    
