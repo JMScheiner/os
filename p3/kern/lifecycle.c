@@ -59,6 +59,7 @@ void lifecycle_init() {
  * @param reg The register state of the user upon calling exec.
  */
 void exec_handler(volatile regstate_t reg) {
+	quick_assert_unlocked();
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
    char** argvec;
@@ -195,6 +196,7 @@ void fork_handler(volatile regstate_t reg)
    pcb_t *new_pcb; 
    tcb_t *new_tcb;
 
+	quick_assert_unlocked();
    tcb_t *current_tcb = get_tcb();
    pcb_t *current_pcb = current_tcb->pcb;
    

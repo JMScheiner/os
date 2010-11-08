@@ -56,6 +56,8 @@ void timer_handler(regstate_t reg)
    atomic_add_volatile(&ticks, 1);
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
 
+	/* Interrupts are disabled, so set the lock depth to 1 to indicate
+	 * this. */
 	quick_lock();
    
    /* Run the next thread. */

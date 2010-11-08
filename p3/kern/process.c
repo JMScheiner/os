@@ -42,6 +42,7 @@ pcb_t *init_process;
 void free_process_resources(pcb_t* pcb)
 {
    assert(pcb);
+	assert(pcb->thread_count == 0);
    assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
    
    mm_free_address_space(pcb);

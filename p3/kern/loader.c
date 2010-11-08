@@ -33,6 +33,7 @@
 #include <assert.h>
 #include <types.h>
 #include <debug.h>
+#include <mutex.h>
 
 /* --- Local function prototypes --- */ 
 
@@ -196,6 +197,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
+	quick_fake_unlock();
 	unsigned int user_eflags = get_user_eflags();
 	scheduler_register(tcb);
 	debug_print("loader", "Running %s", exec);

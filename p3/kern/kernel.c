@@ -102,6 +102,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    locks_enabled = TRUE;
    quick_unlock();
+	quick_assert_unlocked();
 
    while(1) { } 
    

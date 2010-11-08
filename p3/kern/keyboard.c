@@ -167,10 +167,9 @@ void keyboard_handler(void)
 {
 	int next_tail = NEXT(keybuf_tail);
 	kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
-	if (next_tail != keybuf_head && 
-			KH_HASDATA(augchar) && 
-			KH_ISMAKE(augchar)) {
+	if (KH_HASDATA(augchar) && KH_ISMAKE(augchar)) {
 		char c = KH_GETCHAR(augchar);
+
 		if (c == '\b') {
 			if (keybuf_tail != keybuf_head && 
 					keybuf_tail != keybuf_divider) {
@@ -179,16 +178,18 @@ void keyboard_handler(void)
 			}
 		}
 		else {
-			keybuf[keybuf_tail] = c;
-			keybuf_tail = next_tail;
-			putbyte(c);
-		}
-
-		/* A blocked thread can be released if a full line has been read. */
-		if (c == '\n') {
-			newlines++;
-			keybuf_divider = keybuf_tail;
-			cond_signal(&keyboard_signal);
+			if (next_tail != keybuf_head) {
+				keybuf[keybuf_tail] = c;
+				keybuf_tail = next_tail;
+				putbyte(c);
+			}
+			if (c == '\n') {
+				/* A blocked thread can be released if a full line has 
+				 * been read. */
+				newlines++;
+				keybuf_divider = keybuf_tail;
+				cond_signal(&keyboard_signal);
+			}
 		}
 	}
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
