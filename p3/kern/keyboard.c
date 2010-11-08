@@ -38,6 +38,7 @@ static unsigned int keybuf_head = 0;
 static unsigned int keybuf_divider = 0;
 static unsigned int keybuf_tail = 0;
 static int newlines = 0;
+static int readers = 0;
 
 static mutex_t keyboard_lock;
 
@@ -174,7 +175,7 @@ void keyboard_handler(void)
 			if (keybuf_tail != keybuf_head && 
 					keybuf_tail != keybuf_divider) {
 				keybuf_tail = PREV(keybuf_tail);
-				putbyte(c);
+				if (readers > 0) putbyte(c);
 			}
 		}
 		else {
@@ -182,15 +183,16 @@ void keyboard_handler(void)
 				// Backup one char so we can place the new char
 				next_tail = keybuf_tail;
 				keybuf_tail = PREV(keybuf_tail);
-				putbyte('\b');
+				if (readers > 0) putbyte('\b');
 			}
 			if (next_tail != keybuf_head) {
 				keybuf[keybuf_tail] = c;
 				keybuf_tail = next_tail;
-				putbyte(c);
+				if (readers > 0) putbyte(c);
 				if (c == '\n') {
 					/* A blocked thread can be released if a full line has 
 					 * been read. */
+					atomic_add(&readers, -1);
 					newlines++;
 					keybuf_divider = keybuf_tail;
 					cond_signal(&keyboard_signal);
@@ -204,6 +206,7 @@ void keyboard_handler(void)
 int readline(char *buf, int len) {
 	/* Prevent other readers from interfering. They can't accomplish 
 	 * anything until we're done anyway. */
+	atomic_add(&readers, 1);
 	mutex_lock(&keyboard_lock);
 	
 	quick_lock();
