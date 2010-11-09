@@ -200,21 +200,18 @@ void fork_handler(volatile regstate_t reg)
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for new PCB. ");
       goto fork_fail_pcb;
    }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
    if(new_pcb->regions == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for duplicate region list. ");
       goto fork_fail_dup_regions;
    }
 
    new_tcb = initialize_thread(new_pcb);
    if(new_tcb == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for new TCB. ");
       goto fork_fail_tcb;
    }
 
@@ -231,6 +228,8 @@ void fork_handler(volatile regstate_t reg)
    }
    
    /* Arrange the new processes context for it's first context switch. */
+   if(new_tcb->kstack == NULL)
+      MAGIC_BREAK;
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
@@ -246,6 +245,7 @@ void fork_handler(volatile regstate_t reg)
 
 fork_fail_dup: 
    free_thread_resources(new_tcb);
+   new_pcb->thread_count = 0;
 fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
@@ -372,16 +372,23 @@ void vanish_handler()
 	tcb_t *tcb = get_tcb();
 	pcb_t *pcb = tcb->pcb;
 	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
+   
+   /* 
+    * Doing this protects against context switching back and setting 
+    *  cr3 to a directory that has been freed by the last thread
+    *   running in the same address space as us.
+    **/
+   tcb->dir_p = global_pcb()->dir_p;
+
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
 		/* We are the last thread in the process. We should free our process
 		 * resources and notify our next of kin before exiting. */
 		pcb_t *child;
-
+      
 		/* Block until our children finish vanishing if they are currently
 		 * vanishing. */
 		mutex_lock(&pcb->vanish_lock);
-
 		mutex_lock(&pcb->child_lock);
 		/* Tell all of our children we are dead. */
 		LIST_FORALL(pcb->children, child, child_node) {
@@ -430,10 +437,11 @@ void vanish_handler()
 
       assert(pcb->thread_count == 0);
 
-		/* Free our process resources. */
+		/* Jump to the global directory and free our process resources. */
+      set_cr3((int)tcb->dir_p);
       free_process_resources(pcb, TRUE);
 	}
-
+   
 	mutex_lock(&tcb_table.lock);
 	/* Remove ourself from the global table of threads. */
 	hashtable_remove(&tcb_table, tcb->tid);
@@ -495,6 +503,8 @@ void wait_handler(volatile regstate_t reg)
 
 	debug_print("wait", "zombie child status = %p after cond_wait", 
 			pcb->zombie_statuses);
+
+   /* Remove the first childs status. */
 	mutex_lock(&pcb->status_lock);
 	/* Remove the most recently exited child status from our list. */
 	status_t *status = pcb->zombie_statuses;

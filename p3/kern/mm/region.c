@@ -113,6 +113,18 @@ int allocate_stack_region(pcb_t* pcb)
    return E_SUCCESS;
 }
 
+void free_region_list_helper(region_t* regions)
+{
+   region_t *iter, *next; 
+   for(iter = regions; iter != NULL; iter = next)
+   {
+      debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
+      next = iter->next;
+      lprintf("Freeing region %p", iter);
+      sfree(iter, sizeof(region_t));
+   }
+}
+
 /** 
 * @brief Duplicates the region list in pcb and returns a pointer
 *  to the copied region list.
@@ -134,9 +146,14 @@ region_t* duplicate_region_list(pcb_t* pcb)
    
    head0 = pcb->regions;
    head1 = scalloc(1, sizeof(region_t));
-   assert(head1);
-   
-   iter0 = head0; iter1 = head1;
+   if(head1 == NULL)
+   {
+      mutex_unlock(&pcb->region_lock);
+      return NULL;
+   }
+   iter0 = head0; 
+   iter1 = head1;
+
    for(;;)
    {
       memcpy(iter1, iter0, sizeof(region_t));
@@ -146,7 +163,12 @@ region_t* duplicate_region_list(pcb_t* pcb)
       if(iter0->next) 
       {
          iter1->next = scalloc(1, sizeof(region_t));
-         assert(iter1->next);
+         if(iter1->next == NULL)
+         {
+            mutex_unlock(&pcb->region_lock);
+            free_region_list_helper(head1);
+            return NULL;
+         }
          iter0 = iter0->next; 
          iter1 = iter1->next;
       }
@@ -168,16 +190,9 @@ region_t* duplicate_region_list(pcb_t* pcb)
 */
 void free_region_list(pcb_t* pcb)
 {
-   region_t *iter, *next; 
    assert(pcb->regions);
-
    mutex_lock(&pcb->region_lock);
-   for(iter = pcb->regions; iter != NULL; iter = next)
-   {
-      debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
-      next = iter->next;
-      sfree(iter, sizeof(region_t));
-   }
+   free_region_list_helper(pcb->regions);
    pcb->regions = NULL;
    mutex_unlock(&pcb->region_lock);
 }

@@ -47,7 +47,7 @@ void thread_init(void)
 
 void free_thread_resources(tcb_t* tcb)
 {
-   kvm_free_page(tcb->kstack);
+   kvm_free_page((void*)tcb);
 }
 
 tcb_t* initialize_thread(pcb_t *pcb) 
@@ -59,6 +59,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
    
 	void* kstack_page = kvm_new_page();
    assert(kstack_page);
+   assert(mm_getflags(pcb, kstack_page) & PTENT_PRESENT);
 	
    debug_print("mm", "new kernel stack page at %p", kstack_page);
 

@@ -178,6 +178,7 @@ void* kvm_new_page()
       page_tablent_t* table = 
          (page_tablent_t*)PAGE_OF(global_dir[ DIR_OFFSET(new_page) ]);
       
+      assert(FLAGS_OF(table) == 0);
       table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
          | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
       invalidate_page(new_page);
@@ -190,8 +191,6 @@ void* kvm_new_page()
          MAGIC_BREAK;
 
       mutex_unlock(&kernel_free_lock);
-      
-      
    }
    else
    {
@@ -247,6 +246,7 @@ void kvm_free_page(void* page)
    assert((void*)kernel_free_list > (void*)USER_MEM_END);
    
    /* Unmap the page to make illegal accesses show up in debugging. */
+   assert(FLAGS_OF(table) == 0);
    table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
    invalidate_page(page);
    
@@ -270,6 +270,7 @@ void* kvm_new_table(void* addr)
    void* table;
    pcb_t *global, *iter;
    page_dirent_t* dir_v;
+   page_dirent_t* virtual_dir;
    
    global = global_pcb();
    dir_v = global->dir_v;
@@ -278,9 +279,6 @@ void* kvm_new_table(void* addr)
    /* kvm tables are direct mapped. */
    if((table = mm_new_kp_page()) == NULL)
       return NULL;
-
-   /* When this assertion fails, time to do something smarter...*/
-   assert(table);
 
    /* Need to update ALL directories. Luckily this only happens when the 
     *  kernel uses up 4M of space. */
@@ -292,8 +290,12 @@ void* kvm_new_table(void* addr)
    {
       debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
+      virtual_dir = iter->virtual_dir;
+
+      assert(FLAGS_OF(table) == 0);
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
+      virtual_dir[ DIR_OFFSET(addr) ] = table;
    }
    
    mutex_unlock(global_lock);
@@ -358,7 +360,7 @@ int kvm_new_directory(pcb_t* pcb)
    
    page_dirent_t* dir_v = kvm_new_page();
    page_dirent_t* virtual_dir_v = kvm_new_page();
-
+   
    assert(dir_v);
    assert(virtual_dir_v);
    
@@ -384,13 +386,13 @@ int kvm_new_directory(pcb_t* pcb)
       global_dir + DIR_OFFSET(kvm_bottom), 
       (DIR_SIZE - DIR_OFFSET(kvm_bottom)) * sizeof(page_tablent_t*));
    
-   global_list_add(pcb);
-   mutex_unlock(&new_table_lock);
-   
    pcb->dir_v = dir_v;
    pcb->dir_p = kvm_vtop(dir_v);
    pcb->virtual_dir = virtual_dir_v;
 
+   global_list_add(pcb);
+   mutex_unlock(&new_table_lock);
+   
    return E_SUCCESS;
 }
 
