@@ -169,7 +169,6 @@ void thread_fork_handler(volatile regstate_t reg)
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
    
-   /* TODO Does something need to happen here for user level debugging? */
    scheduler_register(new_tcb);
    RETURN(newtid);
 }

@@ -308,7 +308,7 @@ void* kvm_new_table(void* addr)
 * 
 * @param vaddr The virtual address translate. 
 * 
-* @return The virtual address, or NULL if the page isn't framed.
+* @return The physical address, or NULL if the page isn't framed.
 */
 void* kvm_vtop(void* vaddr)
 {
