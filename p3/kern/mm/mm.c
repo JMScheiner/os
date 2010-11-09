@@ -342,7 +342,6 @@ void* mm_new_table(pcb_t* pcb, void* addr)
    
    table_p = kvm_vtop(table_v); 
 
-   memset(table_v, 0, PAGE_SIZE);
    dir_v[ DIR_OFFSET(addr) ] = (page_dirent_t)((unsigned long)table_p 
       | PDENT_USER | PDENT_PRESENT | PDENT_RW);
       

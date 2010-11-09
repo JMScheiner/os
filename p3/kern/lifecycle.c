@@ -397,7 +397,7 @@ void vanish_handler()
 
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
-      
+      assert(pcb->thread_count == 0);
       free_process_resources(pcb, TRUE);
 	}
 

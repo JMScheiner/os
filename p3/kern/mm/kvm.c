@@ -205,6 +205,7 @@ void* kvm_new_page()
       if(kvm_alloc_page(new_page) == NULL)
          return NULL;
    }
+	memset(new_page, 0, PAGE_SIZE);
    return new_page;
 }
 
@@ -362,10 +363,6 @@ int kvm_new_directory(pcb_t* pcb)
    assert(virtual_dir_v);
    
    debug_print("kvm", "Global directory at %p", global_dir);
-   
-   /* The global parts of every directory should be the same. */
-   memset(dir_v, 0, PAGE_SIZE);
-   memset(virtual_dir_v, 0, PAGE_SIZE);
    
    for(i = 0; i < DIR_OFFSET(USER_MEM_START); i++)
       virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);

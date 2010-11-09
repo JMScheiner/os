@@ -25,6 +25,7 @@
 #include <string.h>
 #include <debug.h>
 #include <ecodes.h>
+#include <malloc_wrappers.h>
 
 /** 
 * @brief Allocates a new region in the address space in PCB.
@@ -45,10 +46,8 @@ int allocate_region(
 ) 
 {
    region_t* region;
-   if((region = (region_t*)smalloc(sizeof(region_t))) == NULL)
+   if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
       return E_NOMEM;
-   
-   memset(region, 0, sizeof(region_t));
    
    debug_print("region", "Allocated new region_t at %p", 
       region);
@@ -86,11 +85,10 @@ int allocate_region(
 int allocate_stack_region(pcb_t* pcb)
 {
    region_t* region;
-   if((region = (region_t*)smalloc(sizeof(region_t))) == NULL)
+   if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
    {
       return E_NOMEM;
    }
-   memset(region, 0, sizeof(region_t));
    
    region->fault = stack_fault;
    region->start = (void*)USER_STACK_START;
@@ -135,8 +133,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
    mutex_lock(&pcb->region_lock);
    
    head0 = pcb->regions;
-   head1 = smalloc(sizeof(region_t));
-   memset(head1, 0, sizeof(region_t));
+   head1 = scalloc(1, sizeof(region_t));
    assert(head1);
    
    iter0 = head0; iter1 = head1;
@@ -148,8 +145,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
       
       if(iter0->next) 
       {
-         iter1->next = smalloc(sizeof(region_t));
-         memset(iter1->next, 0, sizeof(region_t));
+         iter1->next = scalloc(1, sizeof(region_t));
          assert(iter1->next);
          iter0 = iter0->next; 
          iter1 = iter1->next;

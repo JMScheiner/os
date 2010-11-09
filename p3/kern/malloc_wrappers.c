@@ -148,6 +148,7 @@ void *smemalign(size_t alignment, size_t size)
 
 void sfree(void *buf, size_t size)
 {
+	memset(buf, 0, size);
    mutex_lock(&heap_lock);
   
    assert(heap_sanity_start <= buf && buf < (void*)USER_MEM_START);
