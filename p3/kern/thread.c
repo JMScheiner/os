@@ -120,7 +120,7 @@ tcb_t *get_tcb()
 }
 
 void check_invariants(boolean_t check_thread_count) {
-	tcb_t *tcb = get_tcb();
+	/*tcb_t *tcb = get_tcb();
 	assert(tcb);
 	pcb_t *pcb = tcb->pcb;
 	assert(pcb);
@@ -150,5 +150,5 @@ void check_invariants(boolean_t check_thread_count) {
 	assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
 	assert(tcb->wakeup == 0);
 	assert(tcb->sleep_index == 0);
-	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);
+	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);*/
 }

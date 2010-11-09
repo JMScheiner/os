@@ -270,7 +270,12 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
    if(copy_page == 0)
    {
       lprintf(" *** Failed to find a page to copy through. ***  ");
-      copy_table_v = mm_new_table(current_pcb, (void*)DEFAULT_COPY_PAGE);
+      
+      if(!TABLE_PRESENT(current_dir_v[ DIR_OFFSET(DEFAULT_COPY_PAGE) ]))
+         copy_table_v = mm_new_table(current_pcb, (void*)DEFAULT_COPY_PAGE);
+      else 
+         copy_table_v = current_virtual_dir[ DIR_OFFSET(DEFAULT_COPY_PAGE)];
+      
       copy_page = (unsigned long)DEFAULT_COPY_PAGE;
    }
    
