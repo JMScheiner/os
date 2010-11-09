@@ -45,6 +45,7 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
    mutex_destroy(&pcb->directory_lock);
 	mutex_destroy(&pcb->region_lock);
 	mutex_destroy(&pcb->status_lock);
+	mutex_destroy(&pcb->vanish_lock);
 	mutex_destroy(&pcb->waiter_lock);
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
@@ -107,6 +108,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
 	mutex_init(&pcb->status_lock);
+	mutex_init(&pcb->vanish_lock);
 	mutex_init(&pcb->waiter_lock);
 	mutex_init(&pcb->check_waiter_lock);
 	mutex_init(&pcb->child_lock);

@@ -130,7 +130,7 @@ struct PROCESS_CONTROL_BLOCK
 	void *virtual_dir;
 	
 	/** @brief Mutual exclusion locks for pcb. */
-	mutex_t region_lock, directory_lock, status_lock, 
+	mutex_t region_lock, directory_lock, status_lock, vanish_lock, 
 					waiter_lock, check_waiter_lock, child_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 

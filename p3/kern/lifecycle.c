@@ -42,7 +42,7 @@
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
-mutex_t wait_vanish_lock;
+mutex_t parent_access_lock;
 
 extern pcb_t *init_process;
 
@@ -51,7 +51,7 @@ extern pcb_t *init_process;
  */
 void lifecycle_init() {
 	mutex_init(&zombie_stack_lock);
-	mutex_init(&wait_vanish_lock);
+	mutex_init(&parent_access_lock);
 }
 
 /**
@@ -379,8 +379,10 @@ void vanish_handler()
 		 * resources and notify our next of kin before exiting. */
 		pcb_t *child;
 
-      if(pcb->child_lock.initialized == FALSE)
-         MAGIC_BREAK;
+		/* Block until our children finish vanishing if they are currently
+		 * vanishing. */
+		mutex_lock(&pcb->vanish_lock);
+
 		mutex_lock(&pcb->child_lock);
 		/* Tell all of our children we are dead. */
 		LIST_FORALL(pcb->children, child, child_node) {
@@ -388,22 +390,45 @@ void vanish_handler()
 		}
 		mutex_unlock(&pcb->child_lock);
 		
-		mutex_lock(&wait_vanish_lock);
-		/* Tell our parent we are dead. */
+		/* Guarantee we get a parent whose identity does not change by
+		 * briefly applying a global lock and then locking their vanish
+		 * lock. */
+		mutex_lock(&parent_access_lock);
 		pcb_t *parent = pcb->parent;
+		mutex_lock(&parent->vanish_lock);
+		mutex_unlock(&parent_access_lock);
+		
+		/* Tell our parent we are dead. */
+		mutex_lock(&parent->child_lock);
 		if (parent != init_process)
 			LIST_REMOVE(parent->children, pcb, child_node);
 		debug_print("vanish", "Last thread, signalling %p", parent);
+		mutex_unlock(&parent->child_lock);
+		
+		/* Free the statuses left to us by children that have exited since
+		 * they will never be collected. */
+		mutex_lock(&pcb->status_lock);
+		status_t *status = pcb->zombie_statuses;
+		status_t *free_status;
+		while (status != NULL) {
+			free_status = status;
+			status = status->next;
+			sfree(free_status, sizeof(status_t));
+		}
+		mutex_unlock(&pcb->status_lock);
 
-		status_t *status = pcb->status;
-		mutex_lock(&parent->status_lock);
 		/* Give our status to our parent. */
+		mutex_lock(&parent->status_lock);
+		status = pcb->status;
 		status->next = parent->zombie_statuses;
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
 
+		/* Signal our parent of our demise and release the vanish locks. */
 		cond_signal(&parent->wait_signal);
-		mutex_unlock(&wait_vanish_lock);
+		mutex_unlock(&parent->vanish_lock);
+		mutex_unlock(&pcb->vanish_lock);
+
       assert(pcb->thread_count == 0);
 
 		/* Free our process resources. */
