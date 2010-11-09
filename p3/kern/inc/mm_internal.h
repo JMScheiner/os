@@ -3,6 +3,9 @@
 
 #include <kernel_types.h>
 
+#define DEFAULT_COPY_PAGE ((void*)(USER_MEM_END))
+#define FREE_PAGE ((void*)(-1 * PAGE_SIZE))
+
 #define DIR_SIZE 1024
 #define TABLE_SIZE 1024
 #define DIR_SHIFT 22
@@ -50,7 +53,8 @@ typedef page_tablent_t* page_dirent_t;
 void invalidate_page(void* addr);
 unsigned long mm_new_frame(unsigned long* table, unsigned long page);
 unsigned long mm_free_frame(unsigned long* table, unsigned long page);
-void mm_inc_available();
+void* mm_new_table(pcb_t* pcb, void* addr);
+void mm_free_table(pcb_t* pcb, void* addr);
 
 #endif /* end of include guard: MM_INTERNAL_DR6WBXWC */
 

@@ -120,7 +120,6 @@ pcb_t* initialize_process(boolean_t first_process)
 fail_status: 
    mm_free_address_space(pcb);
 fail_new_directory:
-   lprintf("HEEEEEELLLLLLOOOOO");
    free(pcb/*, sizeof(pcb_t)*/);
 fail_pcb: 
    return NULL;

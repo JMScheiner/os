@@ -15,7 +15,9 @@
 #include <types.h>
 #include <process.h>
 
-/* The top n MB of addressable space will be used exclusively for kvm */
+/* The top n MB of addressable space will be used exclusively for kvm 
+ *    This value must be table aligned. 
+ **/
 #define USER_MEM_END 0xF0000000
 
 #define PTENT_PRESENT      0x1

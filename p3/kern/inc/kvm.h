@@ -3,7 +3,10 @@
 
 #include <kernel_types.h>
 
-#define KVM_TOP      ((void*)(-3 * PAGE_SIZE))
+#define KVM_END ((void*)(-2 * PAGE_SIZE))
+
+/* Allow for a table of addressable space exclusive to this process. */
+#define KVM_START (USER_MEM_END + (TABLE_SIZE * PAGE_SIZE))
 
 /* Initialization */
 void kvm_init();

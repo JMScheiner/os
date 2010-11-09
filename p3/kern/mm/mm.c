@@ -30,9 +30,6 @@
 #include <ecodes.h>
 #include <atomic.h>
 
-#define COPY_PAGE ((void*)(-PAGE_SIZE))
-#define FREE_PAGE ((void*)(-2 * PAGE_SIZE))
-
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
 static int n_phys_frames;
@@ -46,13 +43,6 @@ static mutex_t request_lock;
 
 /* Protects the user free list structure. */
 static mutex_t user_free_lock;
-
-/* Since we use the same addressable space for copying, 
- *  we need to lock that address in the global table.  */
-static mutex_t copy_lock;
-
-static void* mm_new_table(pcb_t* pcb, void* addr);
-static void mm_free_table(pcb_t* pcb, void* addr);
 
 /** 
 * @brief Initialize the user frame list, enable paging.
@@ -121,7 +111,6 @@ int mm_init()
          global_dir[i] = 0;
 
    mutex_init(&user_free_lock);
-   mutex_init(&copy_lock);
    mutex_init(&request_lock);
    
    /* Initialize kernel virtual memory which lives above 
@@ -217,15 +206,15 @@ void mm_free_address_space(pcb_t* pcb)
 */
 int mm_duplicate_address_space(pcb_t* new_pcb) 
 {
-   /* Declarations. */
    unsigned long d_index, user_frames, kernel_frames;
    unsigned long t_index;
    unsigned long flags;
    unsigned long page;
+   unsigned long copy_page = 0;
    pcb_t* current_pcb;
    
    page_dirent_t *current_dir_v, *new_dir_v, *current_virtual_dir;
-   page_tablent_t *copy_table_v, *current_table_v, *new_table_v, 
+   page_tablent_t *copy_table_v = NULL, *current_table_v, *new_table_v, 
       *current_table_p;
 
    page_tablent_t current_frame, new_frame;
@@ -235,7 +224,6 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
    current_dir_v = current_pcb->dir_v;
    new_dir_v = new_pcb->dir_v;
    current_virtual_dir = current_pcb->virtual_dir;
-   copy_table_v = kvm_initial_table();
 
    /* First determine the resources we will need. 
     *    Since this is essentially a helper function for fork, 
@@ -257,16 +245,36 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
       {
          current_frame = current_table_v[t_index];
          if(PAGE_PRESENT(current_frame))
+         {
             user_frames++;
+         }
+         else 
+         {
+            copy_page = PAGE_FROM_INDEX(d_index, t_index);
+            copy_table_v = current_table_v; 
+         }
       }
    }
+   
+   /* If we didn't find a safe addressable page to copy through, 
+    *    we need to allocate a table with one. */
+   if(copy_page == 0)
+      kernel_frames++;
    
    /* Request the frames we need. */
    if(kvm_request_frames(user_frames, kernel_frames) < 0)
       return ENOVM;
    
+   /* Allocate the copy table if necessary 
+    *    (this should be rare) */
+   if(copy_page == 0)
+   {
+      lprintf(" *** Failed to find a page to copy through. ***  ");
+      copy_table_v = mm_new_table(current_pcb, (void*)DEFAULT_COPY_PAGE);
+      copy_page = (unsigned long)DEFAULT_COPY_PAGE;
+   }
+   
    /* Proceed with the duplication */
-   mutex_lock(&copy_lock);
    for(d_index = DIR_OFFSET(USER_MEM_START);
          d_index < DIR_OFFSET(USER_MEM_END); d_index++)
    {
@@ -278,14 +286,12 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
       
       flags = FLAGS_OF(current_table_p);
       
-      /* mm_new_table maps the table in the new process's 
-       *    directory and virtual directory. */
       new_table_v = 
          mm_new_table(new_pcb, (void*)(PAGE_FROM_INDEX(d_index, 0)));
-      assert(FLAGS_OF(new_table_v) == 0);
 
       /* This always passes, since we've already requested the frames. */
       assert(new_table_v);
+      assert(FLAGS_OF(new_table_v) == 0);
       
       for(t_index = 0; t_index < TABLE_SIZE; t_index++)
       {
@@ -296,23 +302,24 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
          flags = FLAGS_OF(current_frame);
          page = PAGE_FROM_INDEX(d_index, t_index);
          
-         debug_print("mm", "Copying page 0x%lx", page);
+         if(page == copy_page)
+            continue;
+         
          new_frame = mm_new_frame((unsigned long*)copy_table_v, 
-            (unsigned long)COPY_PAGE);
+            (unsigned long)copy_page);
          
          /* This always passes, since we've already requested the frames. */
          assert(new_frame);
 
-         memcpy((void*)COPY_PAGE, (void*)page, PAGE_SIZE);
+         memcpy((void*)copy_page, (void*)page, PAGE_SIZE);
          new_table_v[t_index] = new_frame | flags;
       }
    }
 
    /* Unmap the page we used for copying for good measure. */
    assert(FLAGS_OF(copy_table_v) == 0);
-   copy_table_v[ TABLE_OFFSET(COPY_PAGE) ] = 0;
-   invalidate_page((void*)COPY_PAGE);
-   mutex_unlock(&copy_lock);
+   copy_table_v[ TABLE_OFFSET(copy_page) ] = 0;
+   invalidate_page((void*)copy_page);
    
    return ESUCCESS;
 }
@@ -493,7 +500,6 @@ void mm_remove_pages(pcb_t* pcb, void* start, void* end)
       table_v = (page_tablent_t*)virtual_dir_v[ DIR_OFFSET(page) ];
       assert(mm_free_frame(table_v, (unsigned long)page) >= 0);
    }
-   lprintf("Finishing remove pages.");
    mutex_unlock(&pcb->directory_lock);
 }
 
@@ -631,8 +637,8 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
    free_block = (free_block_t*)page;
    user_free_list = free_block->next;
    n_free_frames--;
-   if(user_free_list == NULL)
-      MAGIC_BREAK;
+   assert(n_user_frames <= n_free_frames);
+      
    mutex_unlock(&user_free_lock);
 
    memset((void*)page, 0, PAGE_SIZE);
@@ -689,9 +695,10 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
 
    mutex_lock(&request_lock);
    n_user_frames++;
+   n_free_frames++;
+   assert(n_user_frames <= n_free_frames);
    mutex_unlock(&request_lock);
    
-   atomic_add(&n_free_frames, 1);
    return 0;
 }
 

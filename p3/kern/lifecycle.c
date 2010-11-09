@@ -223,7 +223,6 @@ void fork_handler(volatile regstate_t reg)
    /* Duplicate the current address space in the new process. */
    if(mm_duplicate_address_space(new_pcb) < 0)
    {
-      lprintf("Fork: Failed to duplicate address space. ");
       goto fork_fail_dup;
    }
    

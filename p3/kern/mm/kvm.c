@@ -2,12 +2,11 @@
 * @file kvm.c
 *
 * @brief Implementation of kernel virtual memory. 
-*  - All KVM tables are global, shared, and direct mapped. 
-*  - There are at most (USER_MEM_END >> DIR_SHIFT) of these tables. 
-*  - Not direct mapping the kvm tables was too much for
-*     my puny brain to handle.
+*  - All kvm tables are global, shared, and direct mapped. 
+*  - There are at most DIR_OFFSET(KVM_END - KVM_START) of these tables. 
+*  - kvm tables are direct mapped. 
 *
-*  - KVM is NOT responsible for requesting frames. This should occur 
+*  - kvm is NOT responsible for requesting frames. This should occur 
 *    at the highest reasonable level. 
 *  
 * @author Justin Scheiner
@@ -72,7 +71,7 @@ int kvm_request_frames(int n_user, int n_kernel)
 }
 
 /** 
-* @brief Responsible for allocating the first KVM table and mapping it in 
+* @brief Responsible for allocating the first kvm table and mapping it in 
 *  the global directory. 
 */
 void kvm_init()
@@ -82,14 +81,14 @@ void kvm_init()
    assert(_kvm_initial_table);
    
    kernel_free_list = NULL;
-   kvm_bottom = KVM_TOP;
+   kvm_bottom = KVM_END;
    mutex_init(&kernel_free_lock);
    mutex_init(&new_table_lock);
    mutex_init(&kernel_request_lock);
    n_kernel_frames = 0;
    
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
-   global_dir[ DIR_OFFSET(KVM_TOP) ] = (page_dirent_t)
+   global_dir[ DIR_OFFSET(KVM_END) ] = (page_dirent_t)
       ((int)_kvm_initial_table | PDENT_PRESENT | PDENT_RW | PDENT_GLOBAL);
 }
 
@@ -112,7 +111,7 @@ void* kvm_alloc_page(void* page)
    assert(PAGE_OFFSET(page) == 0);
    assert((unsigned long)page >= USER_MEM_END);
    
-   /* KVM tables are direct mapped. */
+   /* kvm tables are direct mapped. */
    page_dirent_t* dir;
    page_tablent_t* table;
    
@@ -161,7 +160,7 @@ void* kvm_alloc_page(void* page)
 * @brief Allocates a new kernel virtual page.  
 *  Since the tables are all shared, we use the global pcb. 
 * 
-* @return The virtual address of the framed page above USER_MEM_END
+* @return The virtual address of the framed page above KVM_START
 */
 void* kvm_new_page()
 {
@@ -170,7 +169,7 @@ void* kvm_new_page()
    mutex_lock(&kernel_free_lock);
    if(kernel_free_list)
    {
-      assert((void*)kernel_free_list > (void*)USER_MEM_END);
+      assert((void*)kernel_free_list > (void*)KVM_START);
       new_page = kernel_free_list;
       
       /* Remap the page. */
@@ -187,7 +186,8 @@ void* kvm_new_page()
       debug_print("kvm", " Allocated new page at %p, kernel_free_list = %p", 
          new_page, kernel_free_list);
       
-      if((kernel_free_list != 0) && !((void*)kernel_free_list > (void*)USER_MEM_END))
+      if((kernel_free_list != 0) && 
+        !((void*)kernel_free_list > (void*)KVM_START))
          MAGIC_BREAK;
 
       mutex_unlock(&kernel_free_lock);
@@ -197,7 +197,7 @@ void* kvm_new_page()
       new_page = kvm_bottom = kvm_bottom - PAGE_SIZE;
       
       /* When we fail this assertion it's time to do something smarter. */
-      assert(kvm_bottom > (void*)USER_MEM_END);
+      assert(kvm_bottom > (void*)KVM_START);
       mutex_unlock(&kernel_free_lock);
       
       /* Frame the new page */
@@ -217,10 +217,10 @@ void* kvm_new_page()
 void kvm_free_page(void* page)
 {
    void* next;
-   assert(page > (void*)USER_MEM_END);
+   assert(page > (void*)KVM_START);
 
    if(kernel_free_list)
-      assert((void*)kernel_free_list > (void*)USER_MEM_END);
+      assert((void*)kernel_free_list > (void*)KVM_START);
    
    /* Clear the free frame list part of the recovered page. */
    memset(page, 0, sizeof(free_block_t));
@@ -240,10 +240,9 @@ void kvm_free_page(void* page)
    
    n_kernel_frames++;
    
-   /* Is this all that needs to be done? */
-   if((void*)kernel_free_list < (void*)USER_MEM_END)
+   if((void*)kernel_free_list < (void*)KVM_START)
       MAGIC_BREAK;
-   assert((void*)kernel_free_list > (void*)USER_MEM_END);
+   assert((void*)kernel_free_list > (void*)KVM_START);
    
    /* Unmap the page to make illegal accesses show up in debugging. */
    assert(FLAGS_OF(table) == 0);
@@ -315,7 +314,7 @@ void* kvm_new_table(void* addr)
 void* kvm_vtop(void* vaddr)
 {
    void* paddr;
-   assert(vaddr > (void*)USER_MEM_END);
+   assert(vaddr > (void*)KVM_START);
    
    page_dirent_t* dir = (page_dirent_t*)global_pcb()->dir_v;
    page_tablent_t* table = dir[ DIR_OFFSET(vaddr) ];
@@ -374,8 +373,7 @@ int kvm_new_directory(pcb_t* pcb)
    
    /* Need to acquire the new table lock here, otherwise a new global 
     *  table could get allocated, and we would never find out about it, 
-    *  since we aren't on the global list. TODO Can the interaction of 
-    *  the global and table locks deadlock? Which should we acquire first? */
+    *  since we aren't on the global list.*/
    mutex_lock(&new_table_lock);
    
    /* When we do this copy the directory itself gets mapped as well. */
