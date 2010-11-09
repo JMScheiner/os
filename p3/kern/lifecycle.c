@@ -80,6 +80,7 @@ void exec_handler(volatile regstate_t reg) {
    
    pcb_t* pcb = get_pcb();
 
+	/* If we pass this every other thread has exited or is exiting. */
    if(pcb->thread_count > 1)
       RETURN(E_MULTIPLE_THREADS);
    
@@ -347,6 +348,10 @@ void thread_kill(char* error_message)
    putbytes("\n", 1);
    
    pcb_t* pcb = get_pcb();
+
+	/* If we really are the only thread in our process, this cannot be
+	 * changed between the time we chack and act, because there is no one
+	 * else to change it. */
 	if (pcb->thread_count == 1)
 	   pcb->status->status = STATUS_KILLED;
    vanish_handler();
@@ -362,8 +367,6 @@ void thread_kill(char* error_message)
 *
 *  If the parent task is no longer running, exit status of the task is 
 *  made available to the kernel-launched "init" task instead. 
-* 
-* @param reg Ignored.
 */
 void vanish_handler()
 {
@@ -372,18 +375,21 @@ void vanish_handler()
 	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
 	int remaining_threads = atomic_add(&pcb->thread_count, -1);
 	if (remaining_threads == 1) {
-		
+		/* We are the last thread in the process. We should free our process
+		 * resources and notify our next of kin before exiting. */
 		pcb_t *child;
 
       if(pcb->child_lock.initialized == FALSE)
          MAGIC_BREAK;
 		mutex_lock(&pcb->child_lock);
+		/* Tell all of our children we are dead. */
 		LIST_FORALL(pcb->children, child, child_node) {
 			child->parent = init_process;
 		}
 		mutex_unlock(&pcb->child_lock);
 		
 		mutex_lock(&wait_vanish_lock);
+		/* Tell our parent we are dead. */
 		pcb_t *parent = pcb->parent;
 		if (parent != init_process)
 			LIST_REMOVE(parent->children, pcb, child_node);
@@ -391,6 +397,7 @@ void vanish_handler()
 
 		status_t *status = pcb->status;
 		mutex_lock(&parent->status_lock);
+		/* Give our status to our parent. */
 		status->next = parent->zombie_statuses;
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
@@ -398,17 +405,24 @@ void vanish_handler()
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
       assert(pcb->thread_count == 0);
+
+		/* Free our process resources. */
       free_process_resources(pcb, TRUE);
 	}
 
 	mutex_lock(&tcb_table.lock);
+	/* Remove ourself from the global table of threads. */
 	hashtable_remove(&tcb_table, tcb->tid);
 	mutex_unlock(&tcb_table.lock);
+	mutex_destroy(&tcb->deschedule_lock);
 	mutex_lock(&zombie_stack_lock);
 	debug_print("vanish", "Freeing zombie %p", zombie_stack);
+	/* Free the stack of he last thread who exited. */
 	if (zombie_stack) 
       kvm_free_page(zombie_stack);
 	zombie_stack = tcb;
+	/* Pass off our lock so no one frees us before we jump off our stack
+	 * for the last time. */
 	scheduler_die(&zombie_stack_lock);
 	assert(FALSE);
 }
@@ -443,6 +457,7 @@ void wait_handler(volatile regstate_t reg)
 	assert(pcb == init_process || pcb->unclaimed_children >= 0);
 	mutex_unlock(&pcb->check_waiter_lock);
 
+	/* Serialize waits so only one thread per process collects at one time. */
 	mutex_lock(&pcb->waiter_lock);
 	debug_print("wait", "zombie child status = %p before cond_wait", 
 			pcb->zombie_statuses);
@@ -457,6 +472,7 @@ void wait_handler(volatile regstate_t reg)
 	debug_print("wait", "zombie child status = %p after cond_wait", 
 			pcb->zombie_statuses);
 	mutex_lock(&pcb->status_lock);
+	/* Remove the most recently exited child status from our list. */
 	status_t *status = pcb->zombie_statuses;
 	assert(status != NULL);
 	pcb->zombie_statuses = pcb->zombie_statuses->next;

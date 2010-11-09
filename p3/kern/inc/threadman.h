@@ -5,7 +5,6 @@
 
 #include <reg.h>
 
-void threadman_init();
 void gettid_handler(volatile regstate_t reg);
 void yield_handler(volatile regstate_t reg);
 void deschedule_handler(volatile regstate_t reg);

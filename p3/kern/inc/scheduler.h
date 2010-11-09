@@ -8,7 +8,7 @@
 void scheduler_init();
 void scheduler_register(tcb_t* tcb);
 
-void scheduler_run(tcb_t *tcb);
+void scheduler_run(tcb_t *tcb, mutex_t *lock);
 void scheduler_block();
 void scheduler_unblock(tcb_t* tcb);
 void scheduler_deschedule(mutex_t *lock);

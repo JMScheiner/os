@@ -10,12 +10,6 @@
 #include <vstring.h>
 #include <debug.h>
 
-mutex_t deschedule_lock;
-
-void threadman_init() {
-	mutex_init(&deschedule_lock);
-}
-
 /** 
 * @brief Returns the TID of the current thread in %eax. 
 * 
@@ -47,27 +41,27 @@ void gettid_handler(volatile regstate_t reg)
 void yield_handler(volatile regstate_t reg)
 {
 	int tid = (int)SYSCALL_ARG(reg);
-	quick_lock();
 	if (tid == -1) {
 		debug_print("yield", "%d yielding to anyone", get_tcb()->tid);
+		quick_lock();
 		scheduler_next();
 		RETURN(E_SUCCESS);
 	}
 	else {
-		// No need to lock, interrupts are disabled
+		mutex_lock(&tcb_table.lock);
 		tcb_t *next = hashtable_get(&tcb_table, tid);
 		if (next == NULL) {
+			mutex_unlock(&tcb_table.lock);
 			debug_print("yield", "%d failed to find desired yield", get_tcb()->tid);
-			quick_unlock();
 			RETURN(YIELD_NONEXISTENT);
 		}
 		else if (next->descheduled || next->blocked) {
+			mutex_unlock(&tcb_table.lock);
 			debug_print("yield", "%d desired yield is descheduled or blocked", get_tcb()->tid);
-			quick_unlock();
 			RETURN(YIELD_BLOCKED);
 		}
 		debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
-		scheduler_run(next);
+		scheduler_run(next, &tcb_table.lock);
 		RETURN(E_SUCCESS);
 	}
 }
@@ -97,23 +91,24 @@ void deschedule_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    int reject;
-
-	mutex_lock(&deschedule_lock);
+	tcb_t *tcb = get_tcb();
+	mutex_lock(&tcb->deschedule_lock);
    
    if(v_copy_in_int(&reject, arg_addr) < 0)
    {
       debug_print("deschedule", "Failed to copy reject arg");
-	   mutex_unlock(&deschedule_lock);
+	   mutex_unlock(&tcb->deschedule_lock);
       RETURN(SYSCALL_INVALID_ARGS);
    }
 	if (reject == 0) {
 		debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
-		scheduler_deschedule(&deschedule_lock);
+		/* deschedule will release our lock */
+		scheduler_deschedule(&tcb->deschedule_lock);
 		debug_print("deschedule", "Rescheduling %d now", get_tcb()->tid);
 	}
 	else {
 		debug_print("deschedule", "Reject nonzero");
-		mutex_unlock(&deschedule_lock);
+		mutex_unlock(&tcb->deschedule_lock);
 	}
 	RETURN(E_SUCCESS);
 }
@@ -136,17 +131,21 @@ void make_runnable_handler(volatile regstate_t reg)
 	int ret = 0;
 	mutex_lock(&tcb_table.lock);
 	tcb_t *tcb = hashtable_get(&tcb_table, tid);
-	mutex_lock(&deschedule_lock);
 	debug_print("make_runnable", "Acquired deschedule_lock");
 	if (tcb == NULL) {
-		debug_print("make_runnable", "%d failed, does not exist", get_tcb()->tid);
+		debug_print("make_runnable", "%d failed, target does not exist", 
+				get_tcb()->tid);
 		ret = MAKE_RUNNABLE_NONEXISTENT;
 	}
-	else if (!scheduler_reschedule(tcb)) {
-		debug_print("make_runnable", "%d failed, already runnable", get_tcb()->tid);
-		ret = MAKE_RUNNABLE_SCHEDULED;
+	else {
+		mutex_lock(&tcb->deschedule_lock);
+		if (!scheduler_reschedule(tcb)) {
+			debug_print("make_runnable", "%d failed, %d is already runnable", 
+					tcb->tid, get_tcb()->tid);
+			ret = MAKE_RUNNABLE_SCHEDULED;
+		}
+		mutex_unlock(&tcb->deschedule_lock);
 	}
-	mutex_unlock(&deschedule_lock);
 	mutex_unlock(&tcb_table.lock);
 	RETURN(ret);
 }

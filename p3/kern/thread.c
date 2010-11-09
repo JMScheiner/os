@@ -79,6 +79,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
 	tcb->sleep_index = 0;
 	tcb->blocked = FALSE;
 	tcb->descheduled = FALSE;
+	mutex_init(&tcb->deschedule_lock);
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
 	
    int siblings = atomic_add(&pcb->thread_count, 1);

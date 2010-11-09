@@ -179,6 +179,10 @@ struct THREAD_CONTROL_BLOCK{
 	/** @brief True iff we are currently descheduled. */
 	boolean_t descheduled;
 
+	/** @brief Mutual exclusion lock to prevent us from interleaving
+	 * deschedules with make_runnables. */
+	mutex_t deschedule_lock;
+
 	/** @brief If non-zero, we are sleeping and this is the time we should
 	 * be woken up at. */
    unsigned long wakeup;

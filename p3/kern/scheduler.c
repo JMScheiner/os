@@ -73,15 +73,16 @@ void scheduler_register(tcb_t* tcb)
 /**
  * @brief Run the thread with the given tcb
  *
- * Interrupts must always be disabled before calling this
- * function, otherwise we may accidently try to run a zombie thread.
- *
  * @param tcb The tcb of the thread to run.
+ * @param lock A lock preventing tcb from becoming invalid before we start
+ * running it.
  */
-void scheduler_run(tcb_t* tcb)
+void scheduler_run(tcb_t* tcb, mutex_t *lock)
 {
 	assert(tcb->blocked == FALSE);
 	assert(tcb->descheduled == FALSE);
+	quick_lock();
+	mutex_unlock(lock);
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
 	scheduler_next();
@@ -127,8 +128,8 @@ void scheduler_unblock(tcb_t* tcb)
  * @brief Deschedule ourself, preventing the kernel from running us until
  * someone reschedules us.
  *
- * @param lock A locked mutual exclusion lock that prevents make_runnable
- * from preempting us.
+ * @param lock The invoking thread's deschedule lock to prevent a
+ * make_runnable call from preempting.
  */
 void scheduler_deschedule(mutex_t *lock)
 {
@@ -172,8 +173,8 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
  * @brief Remove ourself from the runnable queue, ensuring that we never
  * run again.
  *
- * @param A locked mutex we're holding before we die.
- * otherwise.
+ * @param A locked mutex we're holding before we die. Prevents our stack
+ * from being freed before we finish.
  */
 void scheduler_die(mutex_t *lock)
 {
