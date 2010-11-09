@@ -97,14 +97,14 @@ void readline_handler(volatile regstate_t reg)
    char* buf;
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-      RETURN(SYSCALL_INVALID_ARGS);
+      RETURN(EARGS);
    
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-      RETURN(SYSCALL_INVALID_ARGS);
+      RETURN(EARGS);
    
 	if (len < 0 || len > KEY_BUF_SIZE) {
       debug_print("readline", "len %d unreasonable.", len);
-		RETURN(READLINE_INVALID_LENGTH);
+		RETURN(ELEN);
 	}
    
    /* FIXME We copy a string here - and so should use v_strcpy to avoid
@@ -112,7 +112,7 @@ void readline_handler(volatile regstate_t reg)
     * */
 	if (!mm_validate_write(buf, len)) {
       debug_print("readline", "buf unwritable.");
-		RETURN(READLINE_INVALID_BUFFER);
+		RETURN(EBUF);
 	}
 
 	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 

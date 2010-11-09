@@ -187,7 +187,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	
 	pcb_t* pcb = initialize_process(TRUE);
    if(pcb == NULL) 
-      return E_NOMEM;
+      return ENOMEM;
    
    set_cr3((int)pcb->dir_p);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
@@ -202,7 +202,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
       /* Free all resources associated with the PCB. */
       free(pcb->status/*, sizeof(status_t)*/);
       free_process_resources(pcb, FALSE);
-      return E_NOMEM;
+      return ENOMEM;
    }
 
 	void *stack = copy_to_stack(argc, argv, arg_len);

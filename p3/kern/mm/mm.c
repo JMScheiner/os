@@ -263,7 +263,7 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
    
    /* Request the frames we need. */
    if(kvm_request_frames(user_frames, kernel_frames) < 0)
-      return E_NOVM;
+      return ENOVM;
    
    /* Proceed with the duplication */
    mutex_lock(&copy_lock);
@@ -314,7 +314,7 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
    invalidate_page((void*)COPY_PAGE);
    mutex_unlock(&copy_lock);
    
-   return E_SUCCESS;
+   return ESUCCESS;
 }
 
 /** 
@@ -423,7 +423,7 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
    {
       debug_print("mm", "Failed request in mm_alloc!");
       mutex_unlock(&pcb->directory_lock);
-      return E_NOVM;
+      return ENOVM;
    }
    
    for(page = PAGE_OF(addr); 
@@ -582,7 +582,7 @@ void* mm_new_kp_page()
 */
 int mm_request_frames(int n)
 {
-   int ret = E_NOVM;
+   int ret = ENOVM;
    
    if(n == 0) return 0;
 

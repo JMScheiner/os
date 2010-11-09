@@ -176,12 +176,12 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
    initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
       elf.e_datstart + elf.e_datlen + elf.e_bsslen);
 			
-	return E_SUCCESS;
+	return ESUCCESS;
 
 fail_init_mem:
    free_region_list(pcb);
    mm_free_user_space(pcb);
-   return E_FAIL;
+   return EFAIL;
 }
 
 

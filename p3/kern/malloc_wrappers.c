@@ -148,7 +148,6 @@ void *smemalign(size_t alignment, size_t size)
 
 void sfree(void *buf, size_t size)
 {
-   char* ptr;
 	memset(buf, 0, size);
    mutex_lock(&heap_lock);
   

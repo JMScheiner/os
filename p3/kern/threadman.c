@@ -45,7 +45,7 @@ void yield_handler(volatile regstate_t reg)
 		debug_print("yield", "%d yielding to anyone", get_tcb()->tid);
 		quick_lock();
 		scheduler_next();
-		RETURN(E_SUCCESS);
+		RETURN(ESUCCESS);
 	}
 	else {
 		mutex_lock(&tcb_table.lock);
@@ -53,16 +53,16 @@ void yield_handler(volatile regstate_t reg)
 		if (next == NULL) {
 			mutex_unlock(&tcb_table.lock);
 			debug_print("yield", "%d failed to find desired yield", get_tcb()->tid);
-			RETURN(YIELD_NONEXISTENT);
+			RETURN(ENAME);
 		}
 		else if (next->descheduled || next->blocked) {
 			mutex_unlock(&tcb_table.lock);
 			debug_print("yield", "%d desired yield is descheduled or blocked", get_tcb()->tid);
-			RETURN(YIELD_BLOCKED);
+			RETURN(ESTATE);
 		}
 		debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
 		scheduler_run(next, &tcb_table.lock);
-		RETURN(E_SUCCESS);
+		RETURN(ESUCCESS);
 	}
 }
 
@@ -98,7 +98,7 @@ void deschedule_handler(volatile regstate_t reg)
    {
       debug_print("deschedule", "Failed to copy reject arg");
 	   mutex_unlock(&tcb->deschedule_lock);
-      RETURN(SYSCALL_INVALID_ARGS);
+      RETURN(EARGS);
    }
 	if (reject == 0) {
 		debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
@@ -110,7 +110,7 @@ void deschedule_handler(volatile regstate_t reg)
 		debug_print("deschedule", "Reject nonzero");
 		mutex_unlock(&tcb->deschedule_lock);
 	}
-	RETURN(E_SUCCESS);
+	RETURN(ESUCCESS);
 }
 
 /** 
@@ -135,14 +135,14 @@ void make_runnable_handler(volatile regstate_t reg)
 	if (tcb == NULL) {
 		debug_print("make_runnable", "%d failed, target does not exist", 
 				get_tcb()->tid);
-		ret = MAKE_RUNNABLE_NONEXISTENT;
+		ret = ENAME;
 	}
 	else {
 		mutex_lock(&tcb->deschedule_lock);
 		if (!scheduler_reschedule(tcb)) {
 			debug_print("make_runnable", "%d failed, %d is already runnable", 
 					tcb->tid, get_tcb()->tid);
-			ret = MAKE_RUNNABLE_SCHEDULED;
+			ret = ESTATE;
 		}
 		mutex_unlock(&tcb->deschedule_lock);
 	}
@@ -176,11 +176,11 @@ void sleep_handler(volatile regstate_t reg)
 {
    int ticks = (int)SYSCALL_ARG(reg);
    
-   if(ticks < 0) RETURN(SYSCALL_INVALID_ARGS); 
-   if(ticks == 0) RETURN(E_SUCCESS);
+   if(ticks < 0) RETURN(EARGS); 
+   if(ticks == 0) RETURN(ESUCCESS);
 
    scheduler_sleep(ticks);
-   RETURN(E_SUCCESS);
+   RETURN(ESUCCESS);
 }
 
 

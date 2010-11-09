@@ -45,22 +45,22 @@ void new_pages_handler(volatile regstate_t reg)
    assert((get_eflags() & EFL_IF) != 0);
 
    if(v_copy_in_ptr(&start, arg_addr) < 0)
-      RETURN(NEW_PAGES_INVALID_ARGS);
+      RETURN(EARGS);
    
    if(v_copy_in_int(&len, arg_addr + sizeof(char*)) < 0)
-      RETURN(NEW_PAGES_INVALID_ARGS);
+      RETURN(EARGS);
    
    end = start + len;
    
    /* Check that the requested memory is in user space. */
    assert((get_eflags() & EFL_IF) != 0);
    if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
-      RETURN(NEW_PAGES_INVALID_ARGS);
+      RETURN(EARGS);
    
    /* Check that the requested memory is page aligned. */
    assert((get_eflags() & EFL_IF) != 0);
    if((PAGE_OFFSET(start) != 0) || (len % PAGE_SIZE != 0))
-      RETURN(NEW_PAGES_INVALID_ARGS);
+      RETURN(EARGS);
    
    pcb_t* pcb = get_pcb();
    
@@ -74,7 +74,7 @@ void new_pages_handler(volatile regstate_t reg)
       assert((get_eflags() & EFL_IF) != 0);
       mutex_unlock(&_new_pages_lock);
       assert((get_eflags() & EFL_IF) != 0);
-      RETURN(NEW_PAGES_INVALID_ARGS);
+      RETURN(ESTATE);
    }
    
    debug_print("memman", " Allocating new region [%p, %p] for new_pages", start, end);
@@ -88,7 +88,7 @@ void new_pages_handler(volatile regstate_t reg)
    }
    
    mutex_unlock(&_new_pages_lock);
-   RETURN(E_SUCCESS);
+   RETURN(ESUCCESS);
 }
 
 /* @brief Deallocates the specified memory region, which must presently be 
@@ -105,7 +105,7 @@ void remove_pages_handler(volatile regstate_t reg)
    
    start = (char*)SYSCALL_ARG(reg);
    if(start < (void*)USER_MEM_START || start > (void*)USER_MEM_END)
-      RETURN(REMOVE_PAGES_INVALID_ARGS);
+      RETURN(EARGS);
    
    pcb = get_pcb();
    

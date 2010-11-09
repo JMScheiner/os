@@ -46,10 +46,10 @@ void ls_handler(volatile regstate_t reg)
    arg_addr = (char *)SYSCALL_ARG(reg);
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
    
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
    
    total = 0;
    for(i = 0; i < exec2obj_userapp_count; i++)
@@ -61,7 +61,7 @@ void ls_handler(volatile regstate_t reg)
       
       /* If we couldn't copy the whole filename, return with failure. */
       if(copied < strlen(filename))
-         RETURN(-1);
+         RETURN(EBUF);
       
       len -= copied;
       buf += copied;

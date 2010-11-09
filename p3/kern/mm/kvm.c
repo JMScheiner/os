@@ -52,7 +52,7 @@ static mutex_t kernel_request_lock;
 */
 int kvm_request_frames(int n_user, int n_kernel)
 {
-   int ret = E_NOVM;
+   int ret = ENOVM;
    mutex_lock(&kernel_request_lock);
    
    /* If there aren't enough kernel frames to satisfy the request, 
@@ -356,7 +356,7 @@ int kvm_new_directory(pcb_t* pcb)
    page_dirent_t* global_dir = global_pcb()->dir_v;
    
    if(kvm_request_frames(0, 2) < 0)
-      return E_NOVM;
+      return ENOVM;
    
    page_dirent_t* dir_v = kvm_new_page();
    page_dirent_t* virtual_dir_v = kvm_new_page();
@@ -393,6 +393,6 @@ int kvm_new_directory(pcb_t* pcb)
    global_list_add(pcb);
    mutex_unlock(&new_table_lock);
    
-   return E_SUCCESS;
+   return ESUCCESS;
 }
 

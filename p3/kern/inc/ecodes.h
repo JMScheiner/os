@@ -1,43 +1,17 @@
-/* TODO Change error codes to use an enum. */
-
 #ifndef SYSCALL_CODES_FDKJ3489
 #define SYSCALL_CODES_FDKJ3489
 
-#define E_SUCCESS 0
-#define E_FAIL (-1)
-#define SYSCALL_INVALID_ARGS (-1)
+#define ESUCCESS  0     /* Generic success code. */
+#define EFAIL     (-1)  /* Generic failure code. */
+#define EARGS     (-2)  /* Invalid arguments. */
+#define ELEN      (-3)  /* Invalid length */
+#define EBUF      (-4)  /* Invalid user buffer. */
+#define ENAME     (-5)  /* Invalid name (or tid / pid) */
+#define EMULTHR   (-6)  /* Multiple threads when there shouldn't be. */
+#define ECHILD    (-7)  /* No child status's to collect. */
+#define ENOVM     (-8)  /* Out of virtual memory. */
+#define ENOMEM    (-9)  /* Out of physical (direct mapped) memory */
+#define ESTATE    (-10) /* System state is inconsistent with request. */
 
-#define READLINE_INVALID_LENGTH (-2)
-#define READLINE_INVALID_BUFFER (-2)
-
-/** @brief Error code indicating one of the string arguments is not in 
- * the user's memory region. */
-#define EXEC_INVALID_ARG (-2)
-
-/** @brief Error code indicating that the total size of 
- *    the arguments to exec is too large. */
-#define EXEC_ARGS_TOO_LONG (-3)
-
-/** @brief Error indicating the executable name could not be read. */
-#define EXEC_INVALID_NAME (-4)
-
-/** @brief Error indicating exec was called in a multithreaded process. */
-#define E_MULTIPLE_THREADS (-5)
-
-/** @brief Error indicating there are no available children to 
- * wait on. */
-#define WAIT_NO_CHILDREN (-2)
-
-/* @brief No frames left for virtual memory allocation. */
-#define E_NOVM (-1)
-#define E_NOMEM (-2)
-#define YIELD_NONEXISTENT (-2)
-#define YIELD_BLOCKED (-3)
-
-#define MAKE_RUNNABLE_NONEXISTENT (-2)
-#define MAKE_RUNNABLE_SCHEDULED (-3)
-
-#define REMOVE_PAGES_REGION_NOT_FOUND (-1)
-#define REMOVE_PAGES_INVALID_ARGS (-1)
 #endif
 

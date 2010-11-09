@@ -64,13 +64,13 @@ void print_handler(volatile regstate_t reg)
 	char* buf;
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
 	if (len < 0 || len > PRINT_BUF_SIZE) {
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 	}
 
 	char printbuf[PRINT_BUF_SIZE];
@@ -78,14 +78,14 @@ void print_handler(volatile regstate_t reg)
 	/* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
 	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EBUF);
 	}
 
 	/* Ensure sequential access to the console screen. */
 	mutex_lock(&print_lock);
 	putbytes(printbuf, len);
 	mutex_unlock(&print_lock);
-	RETURN(E_SUCCESS);
+	RETURN(ESUCCESS);
 }
 
 /** 
@@ -99,10 +99,10 @@ void set_term_color_handler(volatile regstate_t reg)
 {
 	int color = (int)SYSCALL_ARG(reg);
 	if(0 < color || color > MAX_VALID_COLOR)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
 	set_term_color(color); 
-	RETURN(E_SUCCESS);
+	RETURN(ESUCCESS);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
@@ -111,19 +111,19 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 	int row, col;
    
    if(v_copy_in_int(&row, arg_addr) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
 	if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
 	/* TODO What constitutes an invalid cursor position? */
    if( 0 > row || row >= CONSOLE_HEIGHT 
     || 0 > col || col >= CONSOLE_WIDTH)
-      RETURN(SYSCALL_INVALID_ARGS);
+      RETURN(EARGS);
 
 	set_cursor(row, col);
    debug_print("console", "Successfully set cursor position. ");
-	RETURN(E_SUCCESS);
+	RETURN(ESUCCESS);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
@@ -134,21 +134,21 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 
 	/* Copy in user space addresses. */
    if(v_copy_in_intptr(&row, arg_addr) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
    
 	if(v_copy_in_intptr(&col, arg_addr + sizeof(int*)) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 
 	get_cursor(&myrow, &mycol);
 
 	/* Copy out row and column. */
    if(v_copy_out_int(row, myrow) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EBUF);
 
    if(v_copy_out_int(col, mycol) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EBUF);
 
-	RETURN(E_SUCCESS);
+	RETURN(ESUCCESS);
 }
 /************** End Syscall wrappers . **************/
 

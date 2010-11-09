@@ -73,19 +73,19 @@ void exec_handler(volatile regstate_t reg) {
    
 	/* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
    
    if(v_copy_in_dptr(&argvec, arg_addr + sizeof(char*)) < 0)
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
    
    pcb_t* pcb = get_pcb();
 
 	/* If we pass this every other thread has exited or is exiting. */
    if(pcb->thread_count > 1)
-      RETURN(E_MULTIPLE_THREADS);
+      RETURN(EMULTHR);
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH, TRUE) < 0) 
-		RETURN(EXEC_INVALID_NAME);
+		RETURN(ENAME);
 
    debug_print("exec", "Called with program %s", execname_buf);
 
@@ -94,10 +94,10 @@ void exec_handler(volatile regstate_t reg) {
    {
       char* arg;
 		if (total_bytes == MAX_TOTAL_LENGTH) 
-			RETURN(EXEC_ARGS_TOO_LONG);
+			RETURN(EBUF);
 	   
       if(v_copy_in_ptr(&arg, (char*)argvec) < 0)
-			RETURN(EXEC_INVALID_ARG);
+			RETURN(EARGS);
       
       if(arg == NULL)
          break;
@@ -105,7 +105,7 @@ void exec_handler(volatile regstate_t reg) {
       int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes, TRUE);
       
       if (arg_len < 0) 
-			RETURN(EXEC_INVALID_ARG);
+			RETURN(EARGS);
 		
       debug_print("exec", "Arg %d is %s", argc, args_ptr);
 		total_bytes += arg_len;
@@ -161,7 +161,7 @@ void thread_fork_handler(volatile regstate_t reg)
    new_tcb = initialize_thread(pcb);
    
    if(new_tcb == NULL)
-      RETURN(E_NOMEM);
+      RETURN(ENOMEM);
    
    newtid = new_tcb->tid;
 	debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
@@ -195,7 +195,7 @@ void fork_handler(volatile regstate_t reg)
    pcb_t *current_pcb = current_tcb->pcb;
    
    if(current_pcb->thread_count > 1)
-      RETURN(E_MULTIPLE_THREADS);
+      RETURN(EMULTHR);
    
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
@@ -251,7 +251,7 @@ fork_fail_dup_regions:
    free(new_pcb->status/*, sizeof(status_t)*/);
    free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
-   RETURN(E_NOMEM);
+   RETURN(ENOMEM);
 }
 
 /** 
@@ -471,7 +471,7 @@ void wait_handler(volatile regstate_t reg)
 	debug_print("wait", "Called with status address %p", status_addr);
 	if (status_addr != NULL && 
 			!mm_validate_write(status_addr, sizeof(int))) {
-		RETURN(SYSCALL_INVALID_ARGS);
+		RETURN(EARGS);
 	}
 	
    pcb_t *pcb = get_pcb();
@@ -481,7 +481,7 @@ void wait_handler(volatile regstate_t reg)
 		/* There are threads waiting on every child process. We will not be 
 		 * able to collect a status so return immediately. */
 		mutex_unlock(&pcb->check_waiter_lock);
-		RETURN(WAIT_NO_CHILDREN);
+		RETURN(ECHILD);
 	}
 
 	/* The unclaimed_children field will be meaningless for init_process. */

@@ -35,7 +35,7 @@
 * @param access_level The (flags) to give the region. (e.g. PTENT_RW)
 * @param void(*fault)(void*, int), The page fault handler for this region.
 * 
-* @return 0 on success. E_NOVM or E_NOMEM on failure. 
+* @return 0 on success. ENOVM or ENOMEM on failure. 
 */
 int allocate_region( 
    void *start,   
@@ -47,7 +47,7 @@ int allocate_region(
 {
    region_t* region;
    if((region = (region_t*)calloc(1, sizeof(region_t))) == NULL)
-      return E_NOMEM;
+      return ENOMEM;
    
    debug_print("region", "Allocated new region_t at %p", 
       region);
@@ -71,7 +71,7 @@ int allocate_region(
    pcb->regions = region;
    mutex_unlock(&pcb->region_lock);
    
-	return E_SUCCESS;
+	return ESUCCESS;
 }
 
 /** 
@@ -87,7 +87,7 @@ int allocate_stack_region(pcb_t* pcb)
    region_t* region;
    if((region = (region_t*)calloc(1, sizeof(region_t))) == NULL)
    {
-      return E_NOMEM;
+      return ENOMEM;
    }
    
    region->fault = stack_fault;
@@ -110,7 +110,7 @@ int allocate_stack_region(pcb_t* pcb)
    debug_print("region", "Allocated stack region [%p, %p] at %p", 
       (void*)USER_STACK_START, (void*)USER_STACK_BASE), region;
    
-   return E_SUCCESS;
+   return ESUCCESS;
 }
 
 void free_region_list_helper(region_t* regions)

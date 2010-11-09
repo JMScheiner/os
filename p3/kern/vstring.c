@@ -18,8 +18,7 @@
 #include <vstring.h>
 #include <memman.h>
 #include <mutex.h>
-#include <simics.h>
-#include <eflags.h>
+#include <ecodes.h>
 #include <mm.h>
 
 static boolean_t validate_user_read(pcb_t* pcb, void* addr)
@@ -86,7 +85,7 @@ int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
    if(!validate_read(pcb, src) || !validate_write(pcb, dst))
    {
       mutex_unlock(lock);
-      return INVALID_MEMORY;
+      return EBUF;
    }
    
    for(n = 0; n < max_len; n++, src++, dst++)
@@ -108,11 +107,10 @@ int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
    mutex_unlock(lock);
    
    if (n == max_len)
-		return NOT_NULL_TERMINATED;
+		return ELEN;
    else
-      return INVALID_MEMORY;
-}
-
+      return EBUF;
+} 
 /**
  * @brief Perform a validated memcpy
  *
@@ -127,9 +125,9 @@ int v_memcpy(char *dst, char *src, int len, boolean_t user_source)
 	int i;
    
    pcb_t* pcb = get_pcb();
+   
    boolean_t (*validate_write)(pcb_t*,void*);
    boolean_t (*validate_read)(pcb_t*,void*);
-   
    if(user_source)
    {
       validate_read = validate_user_read;
@@ -142,13 +140,12 @@ int v_memcpy(char *dst, char *src, int len, boolean_t user_source)
    }
 
    mutex_t* lock = new_pages_lock();
-   
    mutex_lock(lock);
    
    if(!validate_read(pcb, src) || !validate_write(pcb, dst))
    {
       mutex_unlock(lock);
-      return INVALID_MEMORY;
+      return EBUF;
    }
    
    for(i = 0; i < len; i++, src++, dst++)
