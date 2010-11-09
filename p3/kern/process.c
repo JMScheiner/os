@@ -15,6 +15,7 @@
 #include <kvm.h>
 #include <ecodes.h>
 #include <simics.h>
+#include <malloc_wrappers.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -48,7 +49,6 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
 	cond_destroy(&pcb->wait_signal);
-	memset(pcb, 0, sizeof(pcb_t));	
    sfree(pcb, sizeof(pcb_t));
 }
 
@@ -73,10 +73,8 @@ pcb_t* initialize_process(boolean_t first_process)
 {
    pcb_t* pcb;
 	
-   if((pcb = (pcb_t*) smalloc(sizeof(pcb_t))) < 0) 
+   if((pcb = (pcb_t*) scalloc(1, sizeof(pcb_t))) < 0) 
       goto fail_pcb;
-   
-   memset(pcb, 0, sizeof(pcb_t));
 
    LIST_INIT_EMPTY(pcb->children);
 	LIST_INIT_NODE(pcb, global_node);
@@ -96,11 +94,9 @@ pcb_t* initialize_process(boolean_t first_process)
 	pcb->thread_count = 0;
 	pcb->regions = NULL;
 	
-   if((pcb->status = (status_t *)smalloc(sizeof(status_t))) < 0) 
+   if((pcb->status = (status_t *)scalloc(1, sizeof(status_t))) < 0) 
       goto fail_status;
    
-   memset(pcb->status, 0, sizeof(status_t));
-	
    pcb->status->status = 0;
    pcb->status->next = NULL;
 	

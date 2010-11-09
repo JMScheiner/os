@@ -68,7 +68,7 @@ int mm_init()
    unsigned long addr;
    
    page_tablent_t* table;
-   page_dirent_t* global_dir;
+   page_dirent_t* global_dir, *virtual_dir;
    n_phys_frames = machine_phys_frames();
    free_block_t* iter;
    
@@ -90,8 +90,10 @@ int mm_init()
    
    /* Initialize global page directory. V = P */
    global_pcb()->dir_v = global_pcb()->dir_p = (void*)mm_new_kp_page();
+   global_pcb()->virtual_dir = (void*)mm_new_kp_page();
    global_tcb()->dir_p = global_pcb()->dir_p;
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
+   virtual_dir = (page_dirent_t*)global_pcb()->virtual_dir;
    
    /* Iterate over directory entries in direct mapped kernel region. */
    for(i = 0, addr = 0; i < DIR_OFFSET(USER_MEM_START); i++)
@@ -100,7 +102,8 @@ int mm_init()
       table = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
       
       global_dir[i] = (page_dirent_t)(
-         (unsigned long)global_dir[i] | (PDENT_RW | PDENT_PRESENT) );
+         (unsigned long)table | (PDENT_RW | PDENT_PRESENT) );
+      virtual_dir[i] = table;
 
       /* Iterate over table entries. */
       for(j = 0; j < (TABLE_SIZE); j++, addr += PAGE_SIZE)
@@ -342,7 +345,6 @@ void* mm_new_table(pcb_t* pcb, void* addr)
    
    table_p = kvm_vtop(table_v); 
 
-   memset(table_v, 0, PAGE_SIZE);
    dir_v[ DIR_OFFSET(addr) ] = (page_dirent_t)((unsigned long)table_p 
       | PDENT_USER | PDENT_PRESENT | PDENT_RW);
       

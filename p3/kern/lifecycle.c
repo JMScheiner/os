@@ -112,12 +112,8 @@ void exec_handler(volatile regstate_t reg) {
 	}
 	
 	int err;
-	if ((err = elf_check_header(execname_buf)) != ELF_SUCCESS) {
-		RETURN(err);
-	}
-
 	simple_elf_t elf_hdr;
-	if ((err = elf_load_helper(&elf_hdr, execname_buf)) != ELF_SUCCESS) {
+	if ((err = get_elf(execname_buf, &elf_hdr)) != ELF_SUCCESS) {
 		RETURN(err);
 	}
 	
@@ -136,10 +132,9 @@ void exec_handler(volatile regstate_t reg) {
    }
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
-	unsigned int user_eflags = get_user_eflags();
-	debug_print("exec", "Running %s", execname_buf);
-	sim_reg_process((void*)pcb->dir_p, execname_buf);
-	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
+	switch_to_user(get_tcb(), execname_buf, stack, 
+			(void *)elf_hdr.e_entry);
+	
 	// Never get here
 	assert(0);
 }
@@ -205,21 +200,18 @@ void fork_handler(volatile regstate_t reg)
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for new PCB. ");
       goto fork_fail_pcb;
    }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
    if(new_pcb->regions == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for duplicate region list. ");
       goto fork_fail_dup_regions;
    }
 
    new_tcb = initialize_thread(new_pcb);
    if(new_tcb == NULL)
    {
-      //lprintf("Fork: Failed to allocate resources for new TCB. ");
       goto fork_fail_tcb;
    }
 
@@ -383,8 +375,6 @@ void vanish_handler()
 		
 		pcb_t *child;
 
-      if(pcb->child_lock.initialized == FALSE)
-         MAGIC_BREAK;
 		mutex_lock(&pcb->child_lock);
 		LIST_FORALL(pcb->children, child, child_node) {
 			child->parent = init_process;
@@ -396,16 +386,19 @@ void vanish_handler()
 		if (parent != init_process)
 			LIST_REMOVE(parent->children, pcb, child_node);
 		debug_print("vanish", "Last thread, signalling %p", parent);
-
+   
+      /* Add our status to our parents status list. */
 		status_t *status = pcb->status;
 		mutex_lock(&parent->status_lock);
 		status->next = parent->zombie_statuses;
 		parent->zombie_statuses = status;
 		mutex_unlock(&parent->status_lock);
-
-		cond_signal(&parent->wait_signal);
-		mutex_unlock(&wait_vanish_lock);
       
+      /* Signal the parent if he is waiting on a status. */
+		cond_signal(&parent->wait_signal);
+		
+      mutex_unlock(&wait_vanish_lock);
+      assert(pcb->thread_count == 0);
       free_process_resources(pcb, TRUE);
 	}
 
@@ -464,6 +457,8 @@ void wait_handler(volatile regstate_t reg)
 
 	debug_print("wait", "zombie child status = %p after cond_wait", 
 			pcb->zombie_statuses);
+
+   /* Remove the first childs status. */
 	mutex_lock(&pcb->status_lock);
 	status_t *status = pcb->zombie_statuses;
 	assert(status != NULL);
