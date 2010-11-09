@@ -178,6 +178,7 @@ void* kvm_new_page()
       page_tablent_t* table = 
          (page_tablent_t*)PAGE_OF(global_dir[ DIR_OFFSET(new_page) ]);
       
+      assert(FLAGS_OF(table) == 0);
       table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
          | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
       invalidate_page(new_page);
@@ -245,6 +246,7 @@ void kvm_free_page(void* page)
    assert((void*)kernel_free_list > (void*)USER_MEM_END);
    
    /* Unmap the page to make illegal accesses show up in debugging. */
+   assert(FLAGS_OF(table) == 0);
    table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
    invalidate_page(page);
    
@@ -289,8 +291,8 @@ void* kvm_new_table(void* addr)
       debug_print("kvm", "UPDATING GLOBAL TABLE, pid = %x", iter->pid);
       dir_v = iter->dir_v;
       virtual_dir = iter->virtual_dir;
-      if(virtual_dir == NULL) 
-         MAGIC_BREAK;
+
+      assert(FLAGS_OF(table) == 0);
       dir_v[ DIR_OFFSET(addr) ] = 
          (page_tablent_t*)((int)table | PDENT_GLOBAL | PDENT_PRESENT | PDENT_RW);
       virtual_dir[ DIR_OFFSET(addr) ] = table;

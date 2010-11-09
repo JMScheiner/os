@@ -4,7 +4,6 @@
 * 	and generally for the keyboard interface.
 *
 * @author Justin Scheiner
-* @bug Definitely not thread safe!!!
 *
 */
 

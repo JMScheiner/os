@@ -94,7 +94,6 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 	lifecycle_init();
    memman_init();
    thread_init();
-	threadman_init();
    
    handler_install();
    clear_console();

@@ -147,11 +147,9 @@ void mm_free_user_space(pcb_t* pcb)
    unsigned long t_index;
    unsigned long frame, page;
    
-   pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
    page_tablent_t *table_v, *table_p;
    
-   global = global_pcb();
    dir_v = pcb->dir_v;
    virtual_dir = pcb->virtual_dir;
    
@@ -187,7 +185,7 @@ void mm_free_user_space(pcb_t* pcb)
 * 
 * @param pcb The process that points to the relevant address space. 
 */
-void mm_free_address_space(pcb_t* pcb, boolean_t vanishing)
+void mm_free_address_space(pcb_t* pcb)
 {
    pcb_t* global;
    page_dirent_t* dir_v, *virtual_dir;
@@ -205,14 +203,6 @@ void mm_free_address_space(pcb_t* pcb, boolean_t vanishing)
    pcb->dir_v = global->dir_v;
    pcb->dir_p = global->dir_p;
    pcb->virtual_dir = global->virtual_dir;
-   
-   if(vanishing)
-   {
-      /* This should only run in vanish. */
-      tcb_t* tcb = get_tcb();
-      tcb->dir_p = global->dir_p;
-      set_cr3((int)global->dir_p);
-   }
    
    kvm_free_page(dir_v);
    kvm_free_page(virtual_dir);
@@ -292,6 +282,7 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
        *    directory and virtual directory. */
       new_table_v = 
          mm_new_table(new_pcb, (void*)(PAGE_FROM_INDEX(d_index, 0)));
+      assert(FLAGS_OF(new_table_v) == 0);
 
       /* This always passes, since we've already requested the frames. */
       assert(new_table_v);
@@ -318,6 +309,7 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
    }
 
    /* Unmap the page we used for copying for good measure. */
+   assert(FLAGS_OF(copy_table_v) == 0);
    copy_table_v[ TABLE_OFFSET(COPY_PAGE) ] = 0;
    invalidate_page((void*)COPY_PAGE);
    mutex_unlock(&copy_lock);
@@ -681,6 +673,7 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    
    mutex_lock(&user_free_lock);
    
+   assert(FLAGS_OF(free_table_v) == 0);
    free_table_v[ TABLE_OFFSET(FREE_PAGE) ] = frame | PTENT_PRESENT | PTENT_RW; 
    invalidate_page((void*)FREE_PAGE);
    

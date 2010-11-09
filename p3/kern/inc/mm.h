@@ -75,7 +75,7 @@ int mm_request_frames(int n);
 /** Release resources **/
 void mm_remove_pages(pcb_t* pcb, void* start, void* end);
 void mm_free_user_space(pcb_t* pcb);
-void mm_free_address_space(pcb_t* pcb, boolean_t last_thread);
+void mm_free_address_space(pcb_t* pcb);
 
 /** Requests information **/
 int mm_getflags(pcb_t* pcb, void* addr);

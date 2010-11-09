@@ -40,11 +40,12 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
    assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
    
    free_region_list(pcb);
-   mm_free_address_space(pcb, vanishing);
+   mm_free_address_space(pcb);
 	
    mutex_destroy(&pcb->directory_lock);
 	mutex_destroy(&pcb->region_lock);
 	mutex_destroy(&pcb->status_lock);
+	mutex_destroy(&pcb->vanish_lock);
 	mutex_destroy(&pcb->waiter_lock);
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
@@ -107,6 +108,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	mutex_init(&pcb->directory_lock);
 	mutex_init(&pcb->region_lock);
 	mutex_init(&pcb->status_lock);
+	mutex_init(&pcb->vanish_lock);
 	mutex_init(&pcb->waiter_lock);
 	mutex_init(&pcb->check_waiter_lock);
 	mutex_init(&pcb->child_lock);
@@ -116,7 +118,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	return pcb;
 
 fail_status: 
-   mm_free_address_space(pcb, FALSE);
+   mm_free_address_space(pcb);
 fail_new_directory:
    sfree(pcb, sizeof(pcb_t));
 fail_pcb: 

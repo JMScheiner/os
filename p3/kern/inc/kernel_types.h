@@ -130,7 +130,7 @@ struct PROCESS_CONTROL_BLOCK
 	void *virtual_dir;
 	
 	/** @brief Mutual exclusion locks for pcb. */
-	mutex_t region_lock, directory_lock, status_lock, 
+	mutex_t region_lock, directory_lock, status_lock, vanish_lock, 
 					waiter_lock, check_waiter_lock, child_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 
@@ -178,6 +178,10 @@ struct THREAD_CONTROL_BLOCK{
 
 	/** @brief True iff we are currently descheduled. */
 	boolean_t descheduled;
+
+	/** @brief Mutual exclusion lock to prevent us from interleaving
+	 * deschedules with make_runnables. */
+	mutex_t deschedule_lock;
 
 	/** @brief If non-zero, we are sleeping and this is the time we should
 	 * be woken up at. */

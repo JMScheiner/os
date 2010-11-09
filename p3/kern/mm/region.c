@@ -120,6 +120,7 @@ void free_region_list_helper(region_t* regions)
    {
       debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
       next = iter->next;
+      lprintf("Freeing region %p", iter);
       sfree(iter, sizeof(region_t));
    }
 }
@@ -150,7 +151,8 @@ region_t* duplicate_region_list(pcb_t* pcb)
       mutex_unlock(&pcb->region_lock);
       return NULL;
    }
-   iter0 = head0; iter1 = head1;
+   iter0 = head0; 
+   iter1 = head1;
 
    for(;;)
    {
