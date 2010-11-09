@@ -62,14 +62,12 @@ void print_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int len;
 	char* buf;
+   
+   if(v_copy_in_int(&len, arg_addr) < 0)
+		RETURN(SYSCALL_INVALID_ARGS);
 
-	if(v_memcpy((char*)&len, arg_addr, sizeof(int)) < sizeof(int)) {
+   if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
-	}
-	if(v_memcpy((char*)&buf, arg_addr + sizeof(int), sizeof(char*)) < 
-			sizeof(char*)) {
-		RETURN(SYSCALL_INVALID_ARGS);
-	}
 
 	if (len < 0 || len > PRINT_BUF_SIZE) {
 		RETURN(SYSCALL_INVALID_ARGS);
@@ -79,7 +77,7 @@ void print_handler(volatile regstate_t reg)
 
 	/* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
-	if (v_memcpy(printbuf, buf, len) != len) {
+	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
 		RETURN(SYSCALL_INVALID_ARGS);
 	}
 
@@ -111,19 +109,12 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int row, col;
-
-	if(v_memcpy((char*)&row, arg_addr, sizeof(int)) < sizeof(int))
-   {
-      debug_print("console", "set_cursor_position: failed to copy args. ");
+   
+   if(v_copy_in_int(&row, arg_addr) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
-   }
 
-	if(v_memcpy((char*)&col, arg_addr + sizeof(int), sizeof(int)) < 
-			sizeof(int))
-   {
-      debug_print("console", "set_cursor_position: failed to copy args. ");
+	if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
-   } 
 
 	/* TODO What constitutes an invalid cursor position? */
    if( 0 > row || row >= CONSOLE_HEIGHT 
@@ -142,20 +133,19 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 	int myrow, mycol;
 
 	/* Copy in user space addresses. */
-	if(v_memcpy((char*)&row, arg_addr, sizeof(int*)) < sizeof(int*))
+   if(v_copy_in_intptr(&row, arg_addr) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
    
-	if(v_memcpy((char*)&col, arg_addr + sizeof(int*), sizeof(int*)) < 
-			sizeof(int*))
+	if(v_copy_in_intptr(&col, arg_addr + sizeof(int*)) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
 
 	get_cursor(&myrow, &mycol);
 
 	/* Copy out row and column. */
-	if(v_memcpy((char*)row, (char*)&myrow, sizeof(int)) < sizeof(int))
+   if(v_copy_out_int(row, myrow) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
 
-	if(v_memcpy((char*)col, (char*)&mycol, sizeof(int)) < sizeof(int))
+   if(v_copy_out_int(col, mycol) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
 
 	RETURN(E_SUCCESS);

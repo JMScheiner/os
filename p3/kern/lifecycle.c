@@ -38,6 +38,7 @@
 #include <console.h>
 #include <thread.h>
 #include <hashtable.h>
+#include <common_kern.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -71,11 +72,10 @@ void exec_handler(volatile regstate_t reg) {
 	int argc;
    
 	/* Verify that the arguments lie in valid memory. */
-   if(v_memcpy((char*)&execname, arg_addr, sizeof(char*)) < sizeof(char*))
+   if(v_copy_in_ptr(&execname, arg_addr) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
    
-   if(v_memcpy((char*)&argvec, 
-      arg_addr + sizeof(char*), sizeof(char**)) < sizeof(char**))
+   if(v_copy_in_dptr(&argvec, arg_addr + sizeof(char*)) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
    
    pcb_t* pcb = get_pcb();
@@ -83,7 +83,7 @@ void exec_handler(volatile regstate_t reg) {
    if(pcb->thread_count > 1)
       RETURN(E_MULTIPLE_THREADS);
    
-   if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH) < 0) 
+   if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH, TRUE) < 0) 
 		RETURN(EXEC_INVALID_NAME);
 
    debug_print("exec", "Called with program %s", execname_buf);
@@ -95,13 +95,14 @@ void exec_handler(volatile regstate_t reg) {
 		if (total_bytes == MAX_TOTAL_LENGTH) 
 			RETURN(EXEC_ARGS_TOO_LONG);
 	   
-      if(v_memcpy((char*)&arg, (char*)argvec, sizeof(char*)) < 0)
+      if(v_copy_in_ptr(&arg, (char*)argvec) < 0)
 			RETURN(EXEC_INVALID_ARG);
-
+      
       if(arg == NULL)
          break;
-		
-		int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes);
+	   
+      int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes, TRUE);
+      
       if (arg_len < 0) 
 			RETURN(EXEC_INVALID_ARG);
 		
@@ -123,12 +124,10 @@ void exec_handler(volatile regstate_t reg) {
 
 	if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
-      /* This is a tough one - we can't return to user space, since
-       *  it's gone.... The "right-thing-to-do" is to reserve the 
-       *  frames before we make the call into initialize_memory, which
-       *  requires us to have some awareness of how much memory initialize
-       *  memory will allocate....FIXME
-       */
+      /* Since user memory is gone - the only thing to do is die. 
+       * TODO  Ideally we would recognize that we can't satisfy 
+       *  the request before freeing the old userspace...
+       * */
       assert(0); 
    }
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
@@ -250,7 +249,7 @@ fork_fail_dup:
 fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
-   free_process_resources(new_pcb);
+   free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
    RETURN(E_NOMEM);
 }
@@ -375,6 +374,9 @@ void vanish_handler()
 	if (remaining_threads == 1) {
 		
 		pcb_t *child;
+
+      if(pcb->child_lock.initialized == FALSE)
+         MAGIC_BREAK;
 		mutex_lock(&pcb->child_lock);
 		LIST_FORALL(pcb->children, child, child_node) {
 			child->parent = init_process;
@@ -396,7 +398,7 @@ void vanish_handler()
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&wait_vanish_lock);
       
-      free_process_resources(pcb);
+      free_process_resources(pcb, TRUE);
 	}
 
 	mutex_lock(&tcb_table.lock);
@@ -425,8 +427,8 @@ void wait_handler(volatile regstate_t reg)
 			!mm_validate_write(status_addr, sizeof(int))) {
 		RETURN(SYSCALL_INVALID_ARGS);
 	}
-
-	pcb_t *pcb = get_pcb();
+	
+   pcb_t *pcb = get_pcb();
 	debug_print("wait", "pcb = %p", pcb);
 	mutex_lock(&pcb->check_waiter_lock);
 	if (pcb != init_process && pcb->unclaimed_children == 0) {
@@ -464,7 +466,7 @@ void wait_handler(volatile regstate_t reg)
 
 	if (status_addr) {
 		// There's nothing we can do if the copy fails, but don't crash. */
-		v_memcpy((char *)status_addr, (char *)&status->status, sizeof(int));
+      v_copy_out_int(status_addr, status->status);
 	}
 	int tid = status->tid;
 	sfree(status, sizeof(status_t));

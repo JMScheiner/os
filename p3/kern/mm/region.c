@@ -136,6 +136,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
    
    head0 = pcb->regions;
    head1 = smalloc(sizeof(region_t));
+   memset(head1, 0, sizeof(region_t));
    assert(head1);
    
    iter0 = head0; iter1 = head1;
@@ -148,6 +149,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
       if(iter0->next) 
       {
          iter1->next = smalloc(sizeof(region_t));
+         memset(iter1->next, 0, sizeof(region_t));
          assert(iter1->next);
          iter0 = iter0->next; 
          iter1 = iter1->next;
@@ -176,7 +178,6 @@ void free_region_list(pcb_t* pcb)
    mutex_lock(&pcb->region_lock);
    for(iter = pcb->regions; iter != NULL; iter = next)
    {
-      assert((void*)iter < (void*)USER_MEM_START);
       debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
       next = iter->next;
       sfree(iter, sizeof(region_t));

@@ -21,6 +21,7 @@
 #include <simics.h>
 #include <debug.h>
 #include <string.h>
+#include <common_kern.h>
 
 /* safe versions of malloc functions */
 
@@ -28,12 +29,16 @@ static mutex_t heap_lock;
 static long allocated;
 static long long nallocs;
 static long long nfrees;
+void* heap_sanity_start;
 
 void alloc_init()
 {
    allocated = 0;
    nallocs = 0;
    nfrees = 0;
+   heap_sanity_start = _smalloc(1);
+   _sfree(heap_sanity_start, 1);
+
 	mutex_init(&heap_lock);
 }
 
@@ -144,6 +149,8 @@ void *smemalign(size_t alignment, size_t size)
 void sfree(void *buf, size_t size)
 {
    mutex_lock(&heap_lock);
+  
+   assert(heap_sanity_start <= buf && buf < (void*)USER_MEM_START);
    _sfree(buf, size);
    
    nfrees++;

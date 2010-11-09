@@ -31,8 +31,9 @@
 #define DIR_OFFSET(addr) ((((int)addr) >> DIR_SHIFT) & OFFSET_MASK)
 #define TABLE_OFFSET(addr) ((((int)addr) >> TABLE_SHIFT) & OFFSET_MASK)
 
-#define TABLE_PRESENT(table) ((unsigned long)(table) & PDENT_PRESENT)
-#define PAGE_PRESENT(page) ((unsigned long)(page) & PTENT_PRESENT)
+#define TABLE_PRESENT(table) ((unsigned long)(FLAGS_OF(table) & PDENT_PRESENT))
+#define PAGE_PRESENT(page) ((unsigned long)(FLAGS_OF(page) & PTENT_PRESENT))
+#define PAGE_FROM_INDEX(d, t) (((d) << DIR_SHIFT) + ((t) << TABLE_SHIFT))
 
 /** 
 * @brief A single node in a very simple free list. 

@@ -124,6 +124,7 @@ unsigned int get_user_eflags()
 void *copy_to_stack(int argc, char *argv, int arg_len) {
 	char *ptr = (char *)USER_STACK_BASE;
 	char *args = ptr - arg_len;
+   assert(args > (char*)(USER_STACK_BASE - PAGE_SIZE));
 
 	/* Copy the value of the arguments onto the stack. */
 	memcpy(args, argv, arg_len);
@@ -191,7 +192,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    set_cr3((int)pcb->dir_p);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
       sfree(pcb->status, sizeof(status_t));
-      free_process_resources(pcb);
+      free_process_resources(pcb, FALSE);
 		return err;
 	}
 	
@@ -200,7 +201,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    {
       /* Free all resources associated with the PCB. */
       sfree(pcb->status, sizeof(status_t));
-      free_process_resources(pcb);
+      free_process_resources(pcb, FALSE);
       return E_NOMEM;
    }
 

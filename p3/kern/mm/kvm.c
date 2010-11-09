@@ -122,14 +122,14 @@ void* kvm_alloc_page(void* page)
    table = dir[ DIR_OFFSET(page) ];
    
    /* Deal with new global table allocation if necessary. */
-   if(!(FLAGS_OF(table) & PTENT_PRESENT))
+   if(!TABLE_PRESENT(table))
    {
       mutex_lock(&new_table_lock);
 
       /* If, after locking the table still isn't allocated, 
        *  we are free to allocate it ourselves. */
       table = dir[ DIR_OFFSET(page) ];
-      if(!(FLAGS_OF(table) & PTENT_PRESENT))
+      if(!TABLE_PRESENT(table))
       {
          if((table = kvm_new_table(page)) == NULL)
             return NULL;
@@ -141,9 +141,11 @@ void* kvm_alloc_page(void* page)
       
       mutex_unlock(&new_table_lock);
    }
-   else table = (page_tablent_t*)PAGE_OF(table);
+   else 
+      table = (page_tablent_t*)PAGE_OF(table);
    
-   assert(!FLAGS_OF(table[ TABLE_OFFSET(page) ]) & PTENT_PRESENT);
+   assert(FLAGS_OF(table) == 0);
+   assert(!PAGE_PRESENT(table[ TABLE_OFFSET(page) ]));
    
    debug_print("kvm", "Mapping %p in table %p", page, table);
    frame = mm_new_frame((unsigned long*)table, (unsigned long)page);
@@ -170,6 +172,16 @@ void* kvm_new_page()
    {
       assert((void*)kernel_free_list > (void*)USER_MEM_END);
       new_page = kernel_free_list;
+      
+      /* Remap the page. */
+      page_dirent_t* global_dir = global_pcb()->dir_v;
+      page_tablent_t* table = 
+         (page_tablent_t*)PAGE_OF(global_dir[ DIR_OFFSET(new_page) ]);
+      
+      table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
+         | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
+      invalidate_page(new_page);
+      
       kernel_free_list = kernel_free_list->next;
       debug_print("kvm", " Allocated new page at %p, kernel_free_list = %p", 
          new_page, kernel_free_list);
@@ -179,15 +191,7 @@ void* kvm_new_page()
 
       mutex_unlock(&kernel_free_lock);
       
-      /* FIXME FIXME FIXME WHY DON'T I WORK. Remap the page. */
-      page_dirent_t* global_dir = global_pcb()->dir_v;
-      page_tablent_t* table = 
-         (page_tablent_t*)PAGE_OF(global_dir[ DIR_OFFSET(new_page) ]);
       
-      table[ TABLE_OFFSET(new_page) ] = PAGE_OF(table[ TABLE_OFFSET(new_page) ])
-         | PTENT_GLOBAL | PTENT_RW | PTENT_PRESENT;
-      
-      invalidate_page(new_page);
    }
    else
    {
@@ -222,27 +226,34 @@ void kvm_free_page(void* page)
    memset(page, 0, sizeof(free_block_t));
    
    /* Will there be race conditions on freed kernel pages? (TODO No) */
-   //page_dirent_t* global_dir = global_pcb()->dir_v;
-   //page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
+   page_dirent_t* global_dir = global_pcb()->dir_v;
+   page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
+   table = (page_tablent_t*)PAGE_OF(table);
    
+   mutex_lock(&kernel_request_lock);
    mutex_lock(&kernel_free_lock);
    
    debug_print("kvm", "Adding page %p to kernel_free_list=%p", page, kernel_free_list);
    next = kernel_free_list;
    kernel_free_list = page;
    kernel_free_list->next = next;
-   mutex_unlock(&kernel_free_lock);
    
-   mutex_lock(&kernel_request_lock);
    n_kernel_frames++;
+   
+   /* Is this all that needs to be done? */
+   if((void*)kernel_free_list < (void*)USER_MEM_END)
+      MAGIC_BREAK;
+   assert((void*)kernel_free_list > (void*)USER_MEM_END);
+   
+   /* Unmap the page to make illegal accesses show up in debugging. */
+   table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
+   invalidate_page(page);
+   
+   mutex_unlock(&kernel_free_lock);
    mutex_unlock(&kernel_request_lock);
    
    /* Wipe all flags, unmap the page. */
-   //table[ TABLE_OFFSET(page) ] = PAGE_OF(table[ TABLE_OFFSET(page) ]);
-   //invalidate_page(page);
    
-   /* Is this all that needs to be done? */
-   assert((void*)kernel_free_list > (void*)USER_MEM_END);
 }
 
 /** 
@@ -261,7 +272,7 @@ void* kvm_new_table(void* addr)
    
    global = global_pcb();
    dir_v = global->dir_v;
-   assert(!(FLAGS_OF(dir_v[ DIR_OFFSET(addr) ]) & PTENT_PRESENT));
+   assert(!TABLE_PRESENT(dir_v[ DIR_OFFSET(addr) ]));
 
    /* kvm tables are direct mapped. */
    if((table = mm_new_kp_page()) == NULL)
@@ -304,14 +315,13 @@ void* kvm_vtop(void* vaddr)
    assert(vaddr > (void*)USER_MEM_END);
    
    page_dirent_t* dir = (page_dirent_t*)global_pcb()->dir_v;
-   //debug_print("kvm", "kvm_vtop: dir = %p", dir);
    page_tablent_t* table = dir[ DIR_OFFSET(vaddr) ];
-   assert(FLAGS_OF(table) & PDENT_PRESENT);
+   assert(TABLE_PRESENT(table));
    
    table = (page_tablent_t*)PAGE_OF(table);
    paddr = (void*)table[ TABLE_OFFSET(vaddr) ];
    
-   assert(FLAGS_OF(paddr) & PTENT_PRESENT);
+   assert(PAGE_PRESENT(paddr));
    
    return (void*)(PAGE_OF(paddr) + PAGE_OFFSET(vaddr));
 }
@@ -357,7 +367,7 @@ int kvm_new_directory(pcb_t* pcb)
    memset(dir_v, 0, PAGE_SIZE);
    memset(virtual_dir_v, 0, PAGE_SIZE);
    
-   for(i = 0; i < (USER_MEM_START >> DIR_SHIFT); i++)
+   for(i = 0; i < DIR_OFFSET(USER_MEM_START); i++)
       virtual_dir_v[i] = (page_dirent_t)PAGE_OF(global_dir[i]);
    
    memcpy(dir_v, global_dir, 
