@@ -236,6 +236,8 @@ void fork_handler(volatile regstate_t reg)
    }
    
    /* Arrange the new processes context for it's first context switch. */
+   if(new_tcb->kstack == NULL)
+      MAGIC_BREAK;
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
@@ -251,6 +253,7 @@ void fork_handler(volatile regstate_t reg)
 
 fork_fail_dup: 
    free_thread_resources(new_tcb);
+   new_pcb->thread_count = 0;
 fork_fail_tcb:
 fork_fail_dup_regions: 
    sfree(new_pcb->status, sizeof(status_t));
