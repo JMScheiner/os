@@ -111,12 +111,8 @@ void exec_handler(volatile regstate_t reg) {
 	}
 	
 	int err;
-	if ((err = elf_check_header(execname_buf)) != ELF_SUCCESS) {
-		RETURN(err);
-	}
-
 	simple_elf_t elf_hdr;
-	if ((err = elf_load_helper(&elf_hdr, execname_buf)) != ELF_SUCCESS) {
+	if ((err = get_elf(execname_buf, &elf_hdr)) != ELF_SUCCESS) {
 		RETURN(err);
 	}
 	
@@ -137,10 +133,9 @@ void exec_handler(volatile regstate_t reg) {
    }
 	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
-	unsigned int user_eflags = get_user_eflags();
-	debug_print("exec", "Running %s", execname_buf);
-	sim_reg_process((void*)pcb->dir_p, execname_buf);
-	mode_switch(get_tcb()->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
+	switch_to_user(get_tcb(), execname_buf, stack, 
+			(void *)elf_hdr.e_entry);
+	
 	// Never get here
 	assert(0);
 }

@@ -152,6 +152,22 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
 	return user_stack;
 }
 
+int get_elf(char *exec, simple_elf_t *elf_hdr) {
+	int err;
+	if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
+		return err;
+	}
+
+	return elf_load_helper(elf_hdr, exec);
+}
+
+void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip) {
+	unsigned int user_eflags = get_user_eflags();
+	debug_print("loader", "Running %s", exec);
+	sim_reg_process(tcb->dir_p, exec);
+	mode_switch(tcb->esp, stack, user_eflags, eip);
+}
+
 /** @brief Load a new task from a file
  *
  * @param argc The number of arguments to the program
@@ -163,18 +179,11 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
  * @return < 0 on error. Never returns on success.
  */
 int load_new_task(char *exec, int argc, char *argv, int arg_len) {
-	int err;
-	if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
-		return err;
-	}
-
-	// TODO checking and loading the elf header should happen separately so exec
-	// can do it before freeing the current process.
+   int err;
 	simple_elf_t elf_hdr;
-	if ((err = elf_load_helper(&elf_hdr, exec)) != ELF_SUCCESS) {
+	if ((err = get_elf(exec, &elf_hdr)) != ELF_SUCCESS)
 		return err;
-	}
-   
+	
 	pcb_t* pcb = initialize_process(TRUE);
    if(pcb == NULL) 
       return E_NOMEM;
@@ -198,11 +207,9 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
 	void *stack = copy_to_stack(argc, argv, arg_len);
 
 	quick_fake_unlock();
-	unsigned int user_eflags = get_user_eflags();
 	scheduler_register(tcb);
-	debug_print("loader", "Running %s", exec);
-	sim_reg_process(pcb->dir_p, exec);
-	mode_switch(tcb->esp, stack, user_eflags, (void *)elf_hdr.e_entry);
+	
+	switch_to_user(tcb, exec, stack, (void *)elf_hdr.e_entry);
 
 	// Never get here
 	assert(FALSE);
