@@ -119,3 +119,36 @@ tcb_t *get_tcb()
 	return ret;
 }
 
+void check_invariants(boolean_t check_thread_count) {
+	tcb_t *tcb = get_tcb();
+	assert(tcb);
+	pcb_t *pcb = tcb->pcb;
+	assert(pcb);
+	assert(pcb->parent || pcb == global_pcb());
+	if (check_thread_count)
+		assert(pcb->thread_count > 0);
+	assert(pcb->unclaimed_children >= 0);
+	assert(pcb->regions || pcb == global_pcb());
+	assert(pcb->status || pcb == global_pcb());
+	assert(pcb->dir_p);
+	assert(pcb->dir_v);
+	assert(pcb->virtual_dir);
+	assert(pcb->region_lock.initialized == TRUE);
+	assert(pcb->directory_lock.initialized == TRUE);
+	assert(pcb->status_lock.initialized == TRUE);
+	assert(pcb->vanish_lock.initialized == TRUE);
+	assert(pcb->waiter_lock.initialized == TRUE);
+	assert(pcb->check_waiter_lock.initialized == TRUE);
+	assert(pcb->child_lock.initialized == TRUE);
+	assert(pcb->wait_signal.initialized == TRUE);
+	assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
+
+	assert(tcb->dir_p == pcb->dir_p);
+	assert(((unsigned int)tcb->kstack & PAGE_MASK) == 0);
+	assert(tcb->blocked == FALSE);
+	assert(tcb->descheduled == FALSE);
+	assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
+	assert(tcb->wakeup == 0);
+	assert(tcb->sleep_index == 0);
+	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);
+}

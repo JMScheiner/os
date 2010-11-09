@@ -118,6 +118,8 @@
 #define NAME vanish_handler
 #include "handlers/handler.def"
 
+#define IGNORE_THREAD_COUNT
+
 #define NAME timer_handler
 #include "handlers/handler.def"
 

@@ -86,7 +86,7 @@ pcb_t* initialize_process(boolean_t first_process)
    
    pcb->pid = atomic_add(&next_pid, 1);
 	if (first_process) {
-		pcb->parent = NULL;
+		pcb->parent = global_pcb();
 		init_process = pcb;
 	}
 	else {
