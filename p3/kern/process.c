@@ -50,7 +50,7 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
 	mutex_destroy(&pcb->check_waiter_lock);
 	mutex_destroy(&pcb->child_lock);
 	cond_destroy(&pcb->wait_signal);
-   sfree(pcb, sizeof(pcb_t));
+   free(pcb/*, sizeof(pcb_t)*/);
 }
 
 /**
@@ -74,7 +74,7 @@ pcb_t* initialize_process(boolean_t first_process)
 {
    pcb_t* pcb;
 	
-   if((pcb = (pcb_t*) scalloc(1, sizeof(pcb_t))) < 0) 
+   if((pcb = (pcb_t*) calloc(1, sizeof(pcb_t))) < 0) 
       goto fail_pcb;
 
    LIST_INIT_EMPTY(pcb->children);
@@ -95,7 +95,7 @@ pcb_t* initialize_process(boolean_t first_process)
 	pcb->thread_count = 0;
 	pcb->regions = NULL;
 	
-   if((pcb->status = (status_t *)scalloc(1, sizeof(status_t))) < 0) 
+   if((pcb->status = (status_t *)calloc(1, sizeof(status_t))) < 0) 
       goto fail_status;
    
    pcb->status->status = 0;
@@ -120,7 +120,8 @@ pcb_t* initialize_process(boolean_t first_process)
 fail_status: 
    mm_free_address_space(pcb);
 fail_new_directory:
-   sfree(pcb, sizeof(pcb_t));
+   lprintf("HEEEEEELLLLLLOOOOO");
+   free(pcb/*, sizeof(pcb_t)*/);
 fail_pcb: 
    return NULL;
 }

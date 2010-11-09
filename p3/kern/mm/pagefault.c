@@ -48,6 +48,7 @@ void page_fault_handler(volatile regstate_error_t reg)
          mutex_unlock(&pcb->region_lock);
          handler(addr, ecode);
       }
+      if(region->next == (region_t*)(0xcafebabe)) MAGIC_BREAK;
    }
 
    if(!region_found)

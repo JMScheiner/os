@@ -29,7 +29,7 @@
 */
 void heap_init(sleep_heap_t* heap)
 {
-	heap->data = (tcb_t**)smalloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
+	heap->data = (tcb_t**)malloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
 	assert(heap->data != NULL);
 	heap->data[0] = NULL;
 	heap->index = 1;

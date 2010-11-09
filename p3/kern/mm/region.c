@@ -46,7 +46,7 @@ int allocate_region(
 ) 
 {
    region_t* region;
-   if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
+   if((region = (region_t*)calloc(1, sizeof(region_t))) == NULL)
       return E_NOMEM;
    
    debug_print("region", "Allocated new region_t at %p", 
@@ -60,7 +60,7 @@ int allocate_region(
    if((ret = mm_alloc(pcb, (void*)start, end - start, access_level)) < 0)
    {
       debug_print("region", "Failed to allocate region [%p, %p]", start, end); 
-      sfree(region, sizeof(region_t));
+      free(region/*, sizeof(region_t)*/);
       return ret;
    }
    
@@ -85,7 +85,7 @@ int allocate_region(
 int allocate_stack_region(pcb_t* pcb)
 {
    region_t* region;
-   if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
+   if((region = (region_t*)calloc(1, sizeof(region_t))) == NULL)
    {
       return E_NOMEM;
    }
@@ -98,7 +98,7 @@ int allocate_stack_region(pcb_t* pcb)
    if((ret = mm_alloc(pcb, (void *)(USER_STACK_BASE - PAGE_SIZE), 
       PAGE_SIZE, PTENT_RW | PTENT_USER)) < 0)
    {
-      sfree(region, sizeof(region_t));
+      free(region/*, sizeof(region_t)*/);
       return ret;
    }
 
@@ -120,8 +120,7 @@ void free_region_list_helper(region_t* regions)
    {
       debug_print("region", "Freeing region [%p, %p]", iter->start, iter->end);
       next = iter->next;
-      lprintf("Freeing region %p", iter);
-      sfree(iter, sizeof(region_t));
+      free(iter/*, sizeof(region_t)*/);
    }
 }
 
@@ -145,7 +144,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
    mutex_lock(&pcb->region_lock);
    
    head0 = pcb->regions;
-   head1 = scalloc(1, sizeof(region_t));
+   head1 = calloc(1, sizeof(region_t));
    if(head1 == NULL)
    {
       mutex_unlock(&pcb->region_lock);
@@ -162,7 +161,7 @@ region_t* duplicate_region_list(pcb_t* pcb)
       
       if(iter0->next) 
       {
-         iter1->next = scalloc(1, sizeof(region_t));
+         iter1->next = calloc(1, sizeof(region_t));
          if(iter1->next == NULL)
          {
             mutex_unlock(&pcb->region_lock);
@@ -253,7 +252,7 @@ int free_region(pcb_t* pcb, void* start)
             last_region->next = region->next;
          
          end = region->end;
-         sfree(region, sizeof(region_t));
+         free(region/*, sizeof(region_t)*/);
          mutex_unlock(&pcb->region_lock);
 
          /* Free the memory associated with the region. 

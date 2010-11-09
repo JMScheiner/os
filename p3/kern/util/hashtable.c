@@ -58,14 +58,14 @@ void hashtable_init(hashtable_t *hashtable, unsigned int (*hash)(int))
 	hashtable->hash = hash;
 	mutex_init(&hashtable->lock);
 	hashtable->table = (hashtable_link_t **)
-		scalloc(prime_hashtable_sizes[hashtable->table_index], 
+		calloc(prime_hashtable_sizes[hashtable->table_index], 
 							 sizeof(hashtable_link_t *));
 }
 
 static void hashtable_resize(hashtable_t *hashtable)
 {
 	hashtable_link_t **table = (hashtable_link_t **)
-		scalloc(prime_hashtable_sizes[hashtable->table_index + 1], 
+		calloc(prime_hashtable_sizes[hashtable->table_index + 1], 
 				sizeof(hashtable_link_t *));
 	size_t i;
 	unsigned int hash;
@@ -82,8 +82,8 @@ static void hashtable_resize(hashtable_t *hashtable)
 		}
 	}
 	/* Free the old table. */
-	sfree(hashtable->table, prime_hashtable_sizes[hashtable->table_index] * 
-						 sizeof(hashtable_link_t *));
+	free(hashtable->table/*, prime_hashtable_sizes[hashtable->table_index] * 
+						 sizeof(hashtable_link_t *)*/);
 	hashtable->table = table;
 	hashtable->table_index++;
 }
@@ -98,7 +98,7 @@ void hashtable_put(hashtable_t *hashtable, int tid, tcb_t *tcb)
 		hashtable_resize(hashtable);
 	hash = hashtable->hash(tid) % 
 		prime_hashtable_sizes[hashtable->table_index];
-	link = (hashtable_link_t *)smalloc(sizeof(hashtable_link_t));
+	link = (hashtable_link_t *)malloc(sizeof(hashtable_link_t));
 	link->tid = tid;
 	link->tcb = tcb;
 	link->next = hashtable->table[hash];
@@ -134,7 +134,7 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
 	if (link != NULL && link->tid == tid) {
 		tcb = link->tcb;
 		hashtable->table[hash] = hashtable->table[hash]->next;
-		sfree(link, sizeof(hashtable_link_t));
+		free(link/*, sizeof(hashtable_link_t)*/);
 	}
 	else {
 		/* Otherwise search the bucket for the key and remove it. */
@@ -143,7 +143,7 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
 				free_link = link->next;
 				tcb = free_link->tcb;
 				link->next = free_link->next;
-				sfree(free_link, sizeof(hashtable_link_t));
+				free(free_link/*, sizeof(hashtable_link_t)*/);
 				break;
 			}
 		}

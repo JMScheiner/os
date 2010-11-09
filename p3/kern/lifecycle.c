@@ -249,7 +249,7 @@ fork_fail_dup:
    new_pcb->thread_count = 0;
 fork_fail_tcb:
 fork_fail_dup_regions: 
-   sfree(new_pcb->status, sizeof(status_t));
+   free(new_pcb->status/*, sizeof(status_t)*/);
    free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
    RETURN(E_NOMEM);
@@ -420,7 +420,7 @@ void vanish_handler()
 		while (status != NULL) {
 			free_status = status;
 			status = status->next;
-			sfree(free_status, sizeof(status_t));
+			free(free_status/*, sizeof(status_t)*/);
 		}
 		mutex_unlock(&pcb->status_lock);
 
@@ -520,7 +520,7 @@ void wait_handler(volatile regstate_t reg)
       v_copy_out_int(status_addr, status->status);
 	}
 	int tid = status->tid;
-	sfree(status, sizeof(status_t));
+	free(status/*, sizeof(status_t)*/);
 	RETURN(tid);
 }
 
