@@ -4,6 +4,7 @@
 #include <page.h>
 #include <lifecycle.h>
 #include <mutex.h>
+#include <cond.h>
 #include <mm.h>
 
 static pcb_t _global_pcb;
@@ -21,8 +22,11 @@ void global_thread_init()
 	mutex_init(&_global_pcb.directory_lock);
 	mutex_init(&_global_pcb.region_lock);
 	mutex_init(&_global_pcb.status_lock);
+	mutex_init(&_global_pcb.vanish_lock);
 	mutex_init(&_global_pcb.waiter_lock);
 	mutex_init(&_global_pcb.check_waiter_lock);
+	mutex_init(&_global_pcb.child_lock);
+	cond_init(&_global_pcb.wait_signal);
    _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
    LIST_INIT_NONEMPTY(&_global_pcb, global_node);
@@ -34,6 +38,8 @@ void global_thread_init()
    _global_tcb->esp = _global_tcb->kstack;
    _global_tcb->pcb = &_global_pcb;
    _global_tcb->tid = -1;
+   _global_tcb->wakeup = 0;
+   _global_tcb->sleep_index = 0;
    _global_tcb->sanity_constant = TCB_SANITY_CONSTANT;
    _global_tcb->dir_p = _global_pcb.dir_p;
 

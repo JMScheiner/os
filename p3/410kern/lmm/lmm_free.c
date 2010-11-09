@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <lmm/lmm.h>
 #include <lmm/lmm_types.h>
-#include <simics.h>
 
 void lmm_free(lmm_t *lmm, void *block, vm_size_t size)
 {
@@ -64,8 +63,6 @@ void lmm_free(lmm_t *lmm, void *block, vm_size_t size)
 	if ((prevnode) &&
 	    ((vm_offset_t)prevnode + prevnode->size >= (vm_offset_t)node))
 	{
-		if((vm_offset_t)prevnode + prevnode->size
-		       != (vm_offset_t)node) MAGIC_BREAK;
 		assert((vm_offset_t)prevnode + prevnode->size
 		       == (vm_offset_t)node);
 

@@ -16,6 +16,13 @@
  */
 ASM_NAME:
 	pusha       /* Save user registers */
+#ifdef IGNORE_THREAD_COUNT
+	pushl $0
+#else
+	pushl $1
+#endif
+	call check_invariants
+	popl %eax
 	call NAME   /* Call handler function */
 	popa        /* Restore user registers */
 	iret        /* Return from interrupt */
