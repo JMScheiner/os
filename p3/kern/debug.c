@@ -32,7 +32,7 @@ char *debug_print_strings[] = {
    //"region", 
    //"malloc", 
    //"console", 
-   "memman", 
+   //"memman", 
    NULL};
 char *debug_break_strings[] = {NULL};
 

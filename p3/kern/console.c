@@ -17,7 +17,7 @@
 			2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 
 /** @brief Index of the last valid color. */
-#define MAX_VALID_COLOR 0x8f
+#define MAX_VALID_COLOR (0x8F)
 
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
 char printbuf[PRINT_BUF_SIZE];
@@ -98,7 +98,7 @@ void print_handler(volatile regstate_t reg)
 void set_term_color_handler(volatile regstate_t reg)
 {
 	int color = (int)SYSCALL_ARG(reg);
-	if(0 < color || color > MAX_VALID_COLOR)
+	if((color < 0) || color > MAX_VALID_COLOR)
 		RETURN(EARGS);
 
 	set_term_color(color); 

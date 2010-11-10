@@ -60,7 +60,7 @@ void lifecycle_init() {
  * @param reg The register state of the user upon calling exec.
  */
 void exec_handler(volatile regstate_t reg) {
-	quick_assert_unlocked();
+   quick_assert_unlocked();
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
    char** argvec;
@@ -227,8 +227,8 @@ void fork_handler(volatile regstate_t reg)
    }
    
    /* Arrange the new processes context for it's first context switch. */
-   if(new_tcb->kstack == NULL)
-      MAGIC_BREAK;
+   assert(new_tcb->kstack != NULL);
+
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
    
@@ -407,7 +407,6 @@ void vanish_handler()
 		mutex_lock(&parent->child_lock);
 		if (parent != init_process)
 			LIST_REMOVE(parent->children, pcb, child_node);
-		debug_print("vanish", "Last thread, signalling %p", parent);
 		mutex_unlock(&parent->child_lock);
 		
 		/* Free the statuses left to us by children that have exited since
@@ -430,6 +429,7 @@ void vanish_handler()
 		mutex_unlock(&parent->status_lock);
 
 		/* Signal our parent of our demise and release the vanish locks. */
+		debug_print("vanish", "Last thread, signalling %p", parent);
 		cond_signal(&parent->wait_signal);
 		mutex_unlock(&parent->vanish_lock);
 		mutex_unlock(&pcb->vanish_lock);
@@ -530,7 +530,6 @@ void wait_handler(volatile regstate_t reg)
 */
 void task_vanish_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring task_vanish");
 	MAGIC_BREAK;
    //TODO
 }
