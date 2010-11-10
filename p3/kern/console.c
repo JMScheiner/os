@@ -11,6 +11,7 @@
 #include <vstring.h>
 #include <mutex.h>
 #include <ecodes.h>
+#include <asm_helper.h>
 
 /** @brief Index of the first byte after console memory. */
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
@@ -62,6 +63,7 @@ void print_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int len;
 	char* buf;
+	lprintf("In print_handler early , esp is %p", get_esp());
    
    if(v_copy_in_int(&len, arg_addr) < 0)
 		RETURN(EARGS);

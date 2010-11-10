@@ -5,10 +5,21 @@
 
 int main(int argc, char **argv)
 {
-	printf("I received %d arguments, they are", argc);
+	lprintf("exec_test2 executing");
+	lprintf("I received %d arguments, they are", argc);
 	int i;
 	for (i = 0; i < argc; i++) {
 		lprintf("%s", argv[i]);
 	}
-   return 8;
+	lprintf("exec_test2 executing");
+	lprintf("My tid before exec is 0x%x", gettid());
+	char *args[5];
+	args[0] = "arg1";
+	args[1] = "arg2";
+	args[2] = "arg3";
+	args[3] = "arg4";
+	args[4] = NULL;
+	int err = exec("exec_test2", args);
+	lprintf("FAIL - exec returned with error %d", err);
+	return 2;
 }

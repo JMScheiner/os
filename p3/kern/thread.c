@@ -16,6 +16,8 @@
 #include <mutex.h>
 #include <debug.h>
 #include <global_thread.h>
+#include <simics.h>
+#include <x86/cr.h>
 
 //static mutex_t tcb_table_lock;
 
@@ -119,16 +121,31 @@ tcb_t *get_tcb()
 	return ret;
 }
 
-void check_invariants(boolean_t check_thread_count) {
-	/*tcb_t *tcb = get_tcb();
+void set_esp0_helper() {
+	tcb_t *tcb = get_tcb();
+	assert(tcb != NULL);
+	assert(tcb->kstack == ((char *)tcb) + PAGE_SIZE);
+	assert(((unsigned int)tcb & PAGE_MASK) == 0);
+	set_esp0((unsigned int)tcb->kstack);
+}
+void check_esp(void *esp) {
+	//lprintf("esp = %p in check_esp", esp);
+}
+
+tcb_t *checking = NULL;
+
+void check_invariants(boolean_t synchronous) {
+	tcb_t *tcb = get_tcb();
+	checking = tcb;
 	assert(tcb);
 	pcb_t *pcb = tcb->pcb;
 	assert(pcb);
 	assert(pcb->parent || pcb == global_pcb());
-	if (check_thread_count)
+	if (synchronous)
 		assert(pcb->thread_count > 0);
-	assert(pcb->unclaimed_children >= 0);
-	assert(pcb->regions || pcb == global_pcb());
+	assert(pcb->unclaimed_children >= 0 || pcb == init_process);
+	if (synchronous)
+		assert(pcb->regions || pcb == global_pcb());
 	assert(pcb->status || pcb == global_pcb());
 	assert(pcb->dir_p);
 	assert(pcb->dir_v);
@@ -143,12 +160,16 @@ void check_invariants(boolean_t check_thread_count) {
 	assert(pcb->wait_signal.initialized == TRUE);
 	assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
 
-	assert(tcb->dir_p == pcb->dir_p);
+	if (synchronous) {
+		assert(tcb->dir_p == pcb->dir_p);
+		if (((unsigned int)get_esp() & PAGE_MASK) < 0xf00)
+			MAGIC_BREAK;
+	}
 	assert(((unsigned int)tcb->kstack & PAGE_MASK) == 0);
 	assert(tcb->blocked == FALSE);
 	assert(tcb->descheduled == FALSE);
 	assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
 	assert(tcb->wakeup == 0);
 	assert(tcb->sleep_index == 0);
-	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);*/
+	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);
 }

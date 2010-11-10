@@ -166,7 +166,7 @@ void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip) {
 	unsigned int user_eflags = get_user_eflags();
 	debug_print("loader", "Running %s", exec);
 	sim_reg_process(tcb->dir_p, exec);
-	mode_switch(tcb->esp, stack, user_eflags, eip);
+	mode_switch(tcb->kstack, stack, user_eflags, eip);
 }
 
 /** @brief Load a new task from a file
@@ -191,7 +191,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    
    set_cr3((int)pcb->dir_p);
 	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
-      free(pcb->status/*, sizeof(status_t)*/);
+      sfree(pcb->status, sizeof(status_t));
       free_process_resources(pcb, FALSE);
 		return err;
 	}
@@ -200,7 +200,7 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    if(tcb == NULL)
    {
       /* Free all resources associated with the PCB. */
-      free(pcb->status/*, sizeof(status_t)*/);
+      sfree(pcb->status, sizeof(status_t));
       free_process_resources(pcb, FALSE);
       return ENOMEM;
    }

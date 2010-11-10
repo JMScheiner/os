@@ -29,7 +29,7 @@
 */
 void heap_init(sleep_heap_t* heap)
 {
-	heap->data = (tcb_t**)malloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
+	heap->data = (tcb_t**)smalloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
 	assert(heap->data != NULL);
 	heap->data[0] = NULL;
 	heap->index = 1;
@@ -128,6 +128,7 @@ tcb_t* heap_pop(sleep_heap_t* heap)
 	tcb_t *tcb = heap->data[1];
 	heap->data[1] = heap->data[--(heap->index)];
 	bubble_down(heap, 1);
+	tcb->sleep_index = 0;
 	return tcb;
 }
 
@@ -154,6 +155,7 @@ void heap_remove(sleep_heap_t* heap, tcb_t* key)
 {
 	int index = key->sleep_index;
 	int wakeup = key->wakeup;
+	key->sleep_index = 0;
 	heap->data[index] = heap->data[--(heap->index)];
 	if (heap->data[index]->wakeup < wakeup)
 		bubble_up(heap, index);

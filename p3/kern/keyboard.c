@@ -187,6 +187,10 @@ void keyboard_handler(void)
 					atomic_add(&readers, -1);
 					newlines++;
 					keybuf_divider = keybuf_tail;
+					/* Interrupts are disabled, so set the lock depth to 1 
+					 * to indicate this, otherwise cond_signal will enable all
+					 * interrupts. */
+					quick_lock();
 					cond_signal(&keyboard_signal);
 				}
 			}
