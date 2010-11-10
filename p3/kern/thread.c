@@ -138,29 +138,28 @@ void check_invariants(boolean_t synchronous) {
 	tcb_t *tcb = get_tcb();
 	checking = tcb;
 	assert(tcb);
-	pcb_t *pcb = tcb->pcb;
-	assert(pcb);
-	assert(pcb->parent || pcb == global_pcb());
-	if (synchronous)
-		assert(pcb->thread_count > 0);
-	assert(pcb->unclaimed_children >= 0 || pcb == init_process);
-	if (synchronous)
-		assert(pcb->regions || pcb == global_pcb());
-	assert(pcb->status || pcb == global_pcb());
-	assert(pcb->dir_p);
-	assert(pcb->dir_v);
-	assert(pcb->virtual_dir);
-	assert(pcb->region_lock.initialized == TRUE);
-	assert(pcb->directory_lock.initialized == TRUE);
-	assert(pcb->status_lock.initialized == TRUE);
-	assert(pcb->vanish_lock.initialized == TRUE);
-	assert(pcb->waiter_lock.initialized == TRUE);
-	assert(pcb->check_waiter_lock.initialized == TRUE);
-	assert(pcb->child_lock.initialized == TRUE);
-	assert(pcb->wait_signal.initialized == TRUE);
-	assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
-
 	if (synchronous) {
+		pcb_t *pcb = tcb->pcb;
+		assert(pcb);
+		assert(pcb->parent || pcb == global_pcb());
+		assert(pcb->unclaimed_children >= 0 || pcb == init_process);
+		assert(pcb->thread_count > 0);
+		assert(pcb->vanishing_children >= 0);
+		assert(pcb->vanishing == FALSE);
+		assert(pcb->regions || pcb == global_pcb());
+		assert(pcb->status || pcb == global_pcb());
+		assert(pcb->dir_p);
+		assert(pcb->dir_v);
+		assert(pcb->virtual_dir);
+		assert(pcb->region_lock.initialized == TRUE);
+		assert(pcb->directory_lock.initialized == TRUE);
+		assert(pcb->status_lock.initialized == TRUE);
+		assert(pcb->waiter_lock.initialized == TRUE);
+		assert(pcb->check_waiter_lock.initialized == TRUE);
+		assert(pcb->child_lock.initialized == TRUE);
+		assert(pcb->wait_signal.initialized == TRUE);
+		assert(pcb->vanish_signal.initialized == TRUE);
+		assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
 		assert(tcb->dir_p == pcb->dir_p);
 		if (((unsigned int)get_esp() & PAGE_MASK) < 0xf00)
 			MAGIC_BREAK;

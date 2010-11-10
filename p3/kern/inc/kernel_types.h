@@ -112,6 +112,13 @@ struct PROCESS_CONTROL_BLOCK
 	 * the number of waiting parent threads. */
 	int unclaimed_children;
 
+	/** @brief Number of children currently vanishing. We can only vanish
+	 * when this is 0. */
+	int vanishing_children;
+
+	/** @brief True iff we are in the process of vanishing. */
+	boolean_t vanishing;
+
 	/** @brief A list of regions with different page fault and freeing 
 	 * procedures. */
 	region_t *regions;
@@ -130,7 +137,7 @@ struct PROCESS_CONTROL_BLOCK
 	void *virtual_dir;
 	
 	/** @brief Mutual exclusion locks for pcb. */
-	mutex_t region_lock, directory_lock, status_lock, vanish_lock, 
+	mutex_t region_lock, directory_lock, status_lock, 
 					waiter_lock, check_waiter_lock, child_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 
@@ -145,6 +152,9 @@ struct PROCESS_CONTROL_BLOCK
 
 	/** @brief Signal to indicate a child process has vanished. */
 	cond_t wait_signal;
+
+	/** @brief Signal to indicate that we are free to vanish. */
+	cond_t vanish_signal;
 
 	/** @brief A magic constant that should not be changed. If it changes,
 	 * memory has been corrupted. */
