@@ -50,19 +50,21 @@ void yield_handler(volatile regstate_t reg)
 	else {
 		mutex_lock(&tcb_table.lock);
 		tcb_t *next = hashtable_get(&tcb_table, tid);
+		debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
 		if (next == NULL) {
 			mutex_unlock(&tcb_table.lock);
-			debug_print("yield", "%d failed to find desired yield", get_tcb()->tid);
+			debug_print("yield", "%d failed to find desired yield", 
+					get_tcb()->tid);
 			RETURN(YIELD_NONEXISTENT);
 		}
-		else if (next->descheduled || next->blocked) {
-			mutex_unlock(&tcb_table.lock);
-			debug_print("yield", "%d desired yield is descheduled or blocked", get_tcb()->tid);
+		else if (scheduler_run(next, &tcb_table.lock)) {
+			RETURN(E_SUCCESS);
+		}
+		else {
+			debug_print("yield", "%d desired yield is descheduled or blocked", 
+					get_tcb()->tid);
 			RETURN(YIELD_BLOCKED);
 		}
-		debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
-		scheduler_run(next, &tcb_table.lock);
-		RETURN(E_SUCCESS);
 	}
 }
 

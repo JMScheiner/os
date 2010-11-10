@@ -64,13 +64,13 @@ void exec_handler(volatile regstate_t reg) {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
    char** argvec;
-	
+	lprintf("Before stack alloc");	
    char execname_buf[MAX_NAME_LENGTH];
 	char execargs_buf[MAX_TOTAL_LENGTH];
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
 	int argc;
-   
+	lprintf("After stack alloc");	
 	/* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
 		RETURN(SYSCALL_INVALID_ARGS);
@@ -122,7 +122,6 @@ void exec_handler(volatile regstate_t reg) {
    assert(pcb->regions);
    free_region_list(pcb);
    mm_free_user_space(pcb);
-
 	if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
       /* Since user memory is gone - the only thing to do is die. 
@@ -194,24 +193,29 @@ void fork_handler(volatile regstate_t reg)
    tcb_t *current_tcb = get_tcb();
    pcb_t *current_pcb = current_tcb->pcb;
    
-   if(current_pcb->thread_count > 1)
+   if(current_pcb->thread_count > 1) {
+		debug_print("fork", "Failed due to multiple threads");
       RETURN(E_MULTIPLE_THREADS);
+	}
    
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
    {
+		debug_print("fork", "Failed to intialize pcb");
       goto fork_fail_pcb;
    }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
    if(new_pcb->regions == NULL)
    {
+		debug_print("fork", "Failed to deuplicate regions");
       goto fork_fail_dup_regions;
    }
 
    new_tcb = initialize_thread(new_pcb);
    if(new_tcb == NULL)
    {
+		debug_print("fork", "Failed to intialize thread");
       goto fork_fail_tcb;
    }
 
@@ -223,7 +227,7 @@ void fork_handler(volatile regstate_t reg)
    /* Duplicate the current address space in the new process. */
    if(mm_duplicate_address_space(new_pcb) < 0)
    {
-      lprintf("Fork: Failed to duplicate address space. ");
+      debug_print("fork", "Failed to duplicate address space. ");
       goto fork_fail_dup;
    }
    
@@ -232,8 +236,12 @@ void fork_handler(volatile regstate_t reg)
       MAGIC_BREAK;
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
-   
-   atomic_add(&current_pcb->unclaimed_children, 1);
+  
+	debug_print("children", "%p has %d children before incrementing",
+			current_pcb, current_pcb->unclaimed_children);
+	atomic_add(&current_pcb->unclaimed_children, 1);
+	debug_print("children", "%p has %d children after incrementing",
+			current_pcb, current_pcb->unclaimed_children);
 	mutex_lock(&current_pcb->child_lock);
 	LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
 	mutex_unlock(&current_pcb->child_lock);
@@ -248,7 +256,7 @@ fork_fail_dup:
    new_pcb->thread_count = 0;
 fork_fail_tcb:
 fork_fail_dup_regions: 
-   free(new_pcb->status/*, sizeof(status_t)*/);
+   sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
    RETURN(E_NOMEM);
@@ -419,7 +427,7 @@ void vanish_handler()
 		while (status != NULL) {
 			free_status = status;
 			status = status->next;
-			free(free_status/*, sizeof(status_t)*/);
+			sfree(free_status, sizeof(status_t));
 		}
 		mutex_unlock(&pcb->status_lock);
 
@@ -484,8 +492,12 @@ void wait_handler(volatile regstate_t reg)
 		RETURN(WAIT_NO_CHILDREN);
 	}
 
-	/* The unclaimed_children field will be meaningless for init_process. */
+	debug_print("children", "%p has %d children before decrementing",
+			pcb, pcb->unclaimed_children);
 	atomic_add(&pcb->unclaimed_children, -1);
+	debug_print("children", "%p has %d children after decrementing",
+			pcb, pcb->unclaimed_children);
+	/* The unclaimed_children field will be meaningless for init_process. */
 	assert(pcb == init_process || pcb->unclaimed_children >= 0);
 	mutex_unlock(&pcb->check_waiter_lock);
 
@@ -519,7 +531,7 @@ void wait_handler(volatile regstate_t reg)
       v_copy_out_int(status_addr, status->status);
 	}
 	int tid = status->tid;
-	free(status/*, sizeof(status_t)*/);
+	sfree(status, sizeof(status_t));
 	RETURN(tid);
 }
 
