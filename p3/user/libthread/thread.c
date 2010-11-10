@@ -124,6 +124,11 @@ int thr_init(unsigned int size) {
 
 	/* Initialize the main_thread block. */
 	main_thread = (tcb_t *)calloc(1, sizeof(tcb_t));
+   if(main_thread == NULL)
+   {
+      lprintf("NULL NULL NULL");
+      return -1;
+   }
 	main_thread->tid = gettid();
 
 	mutex_debug_print("Initializing main thread lock...");

@@ -45,12 +45,14 @@ UPDATE_METHOD = afs
 #
 STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test tfork_test
 STUDENTTESTS += autostack sleep ls_test fault_and_die malloc_test
+STUDENTTESTS += agility_drill cvar_test cyclone join_specific_test
+STUDENTTESTS += juggle mandelbrot startle thr_exit_join racer
 
 ###########################################################################
 # Object files for your thread library
 ###########################################################################
-THREAD_OBJS = #mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o cond.o
-#THREAD_OBJS += mutex_unlock_and_vanish.o sem.o rwlock.o
+THREAD_OBJS = mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o cond.o
+THREAD_OBJS += mutex_unlock_and_vanish.o sem.o rwlock.o
 
 # Thread Group Library Support.
 #
@@ -58,7 +60,7 @@ THREAD_OBJS = #mutex.o malloc.o atomic.o thread.o thread_helper.o thread_fork.o 
 # P3" we give you can't build libthrgrp.a.  Once you install your thread
 # library and fix THREAD_OBJS above, uncomment this line to enable building
 # libthrgrp.a:
-#410USER_LIBS_EARLY += libthrgrp.a
+410USER_LIBS_EARLY += libthrgrp.a
 
 ###########################################################################
 # Object files for your syscall wrappers

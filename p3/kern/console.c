@@ -19,9 +19,9 @@
 /** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR 0x8f
 
-/* This may seem rather large, but it is manageable, and actually the 
- * largest amount of data that can be on the screen. */
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
+char printbuf[PRINT_BUF_SIZE];
+
 
 /***************** Console State:  ****************/
 
@@ -73,16 +73,16 @@ void print_handler(volatile regstate_t reg)
 		RETURN(EARGS);
 	}
 
-	char printbuf[PRINT_BUF_SIZE];
-
-	/* Copy buf to prevent the memory it lies in from being freed during the
+	/* Ensure sequential access to the console screen and print buffer. */
+	mutex_lock(&print_lock);
+	
+   /* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
 	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
+      mutex_unlock(&print_lock);
 		RETURN(EBUF);
 	}
 
-	/* Ensure sequential access to the console screen. */
-	mutex_lock(&print_lock);
 	putbytes(printbuf, len);
 	mutex_unlock(&print_lock);
 	RETURN(ESUCCESS);

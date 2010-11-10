@@ -15,17 +15,17 @@ int main(int argc, const char *argv[])
    sgenrand(get_ticks());
    for (i = 0; i < SIZE; i++) random_sizes[i] = genrand() % 0x10000;
 
-   for(i = 0; i < 100; i++)
+   for(i = 0; i < 20; i++)
    {
       for(j = 0; j < SIZE; j++)
       {
-         //lprintf("malloc'ing %d", random_sizes[j]);
+         lprintf("malloc'ing %d", random_sizes[j]);
          bases[j] = _malloc(random_sizes[j]);
       }
       
       for(j = 0; j < SIZE; j++)
       {
-         //lprintf("freeing %p", bases[j]);
+         lprintf("freeing %p", bases[j]);
          _free(bases[j]);
       }
    }
