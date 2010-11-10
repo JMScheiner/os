@@ -6,6 +6,7 @@
 #include <mutex.h>
 #include <cond.h>
 #include <mm.h>
+#include <types.h>
 
 static pcb_t _global_pcb;
 static tcb_t* _global_tcb;
@@ -18,15 +19,18 @@ void global_thread_init()
    _global_pcb.pid = -1;
    _global_pcb.parent = NULL;
    _global_pcb.thread_count = 1;
+   _global_pcb.unclaimed_children = 0;
+   _global_pcb.vanishing_children = 0;
+   _global_pcb.vanishing = FALSE;
    _global_pcb.regions = NULL;
 	mutex_init(&_global_pcb.directory_lock);
 	mutex_init(&_global_pcb.region_lock);
 	mutex_init(&_global_pcb.status_lock);
-	mutex_init(&_global_pcb.vanish_lock);
 	mutex_init(&_global_pcb.waiter_lock);
 	mutex_init(&_global_pcb.check_waiter_lock);
 	mutex_init(&_global_pcb.child_lock);
 	cond_init(&_global_pcb.wait_signal);
+	cond_init(&_global_pcb.vanish_signal);
    _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
    LIST_INIT_NONEMPTY(&_global_pcb, global_node);

@@ -45,8 +45,10 @@ void cond_destroy(cond_t *cv) {
  * if (we_need_to_wait) {
  *   cond_wait(&signal);
  * }
- * quick_unlock();
- *
+ * else {
+ * 	quick_unlock();
+ * }
+ * 
  * @param cv The condition variable to wait on.
  */
 void cond_wait(cond_t *cv) {
