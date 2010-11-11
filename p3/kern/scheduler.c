@@ -52,7 +52,6 @@ static int blocked_count = 0;
 */
 void scheduler_init()
 {
-   mutex_init(&sleep_lock);
    heap_init(&sleepers);
 	mutex_init(&sleep_double_lock);
    LIST_INIT_EMPTY(runnable);   

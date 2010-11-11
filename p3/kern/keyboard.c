@@ -63,10 +63,7 @@ static cond_t keyboard_signal;
 */
 void getchar_handler(volatile regstate_t reg)
 {
-<<<<<<< HEAD:p3/kern/keyboard.c
    //TODO
-=======
->>>>>>> 1ecf0a4a69d0c658099194d46cc523e225960017:p3/kern/keyboard.c
 	lprintf("Ignoring getchar");
 }
 
