@@ -247,7 +247,7 @@ void fork_handler(volatile regstate_t reg)
    /* Register the first thread in the new TCB. */
    sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);
    scheduler_register(new_tcb);
-   RETURN(newpid);
+   RETURN(new_tcb->tid);
 
 fork_fail_dup: 
    free_thread_resources(new_tcb);
@@ -434,7 +434,7 @@ void vanish_handler()
 			sfree(status, sizeof(status_t));
 		}
 		else {
-			/* Our parent is guaranteed to see this they cannot free their
+			/* Our parent is guaranteed to see this. They cannot free their
 			 * statuses while we are holding their status lock. */
 			status->next = parent->zombie_statuses;
 			parent->zombie_statuses = status;

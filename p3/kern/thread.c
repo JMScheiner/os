@@ -161,13 +161,13 @@ void check_invariants(boolean_t synchronous) {
 		assert(pcb->vanish_signal.initialized == TRUE);
 		assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
 		assert(tcb->dir_p == pcb->dir_p);
+	   assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
 		if (((unsigned int)get_esp() & PAGE_MASK) < 0xf00)
 			MAGIC_BREAK;
 	}
 	assert(((unsigned int)tcb->kstack & PAGE_MASK) == 0);
 	assert(tcb->blocked == FALSE);
 	assert(tcb->descheduled == FALSE);
-	assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
 	assert(tcb->wakeup == 0);
 	assert(tcb->sleep_index == 0);
 	assert(tcb->sanity_constant == TCB_SANITY_CONSTANT);
