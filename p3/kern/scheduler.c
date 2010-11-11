@@ -87,7 +87,7 @@ boolean_t scheduler_run(tcb_t* tcb, mutex_t *lock)
 	if (tcb->descheduled || tcb->blocked)
 		return FALSE;
 	LIST_REMOVE(runnable, tcb, scheduler_node);
-	LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	scheduler_next();
 	return TRUE;
 }
