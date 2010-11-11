@@ -20,7 +20,7 @@
 #include <simics.h>
 #include <string.h>
 
-#define DEFAULT_HEAP_SIZE 4
+#define DEFAULT_HEAP_SIZE 2048
 #define PARENT(index) ((index) / 2)
 #define LCHILD(index) (2*(index))
 #define RCHILD(index) ((2*(index)) + 1)
