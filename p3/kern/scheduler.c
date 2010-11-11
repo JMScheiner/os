@@ -44,9 +44,8 @@ static tcb_t *descheduled = NULL;
 * @brief A min-heap keying on the time the sleeper will run next.
 */
 static sleep_heap_t sleepers;
+static mutex_t sleep_double_lock;
 static int blocked_count = 0;
-
-mutex_t sleep_lock;
 
 /** 
 * @brief Initialize the scheduler.
@@ -55,6 +54,7 @@ void scheduler_init()
 {
    mutex_init(&sleep_lock);
    heap_init(&sleepers);
+	mutex_init(&sleep_double_lock);
    LIST_INIT_EMPTY(runnable);   
 }
 
@@ -268,28 +268,30 @@ void scheduler_next()
  *    scheduler_next calls heap_peek / heap_pop. heap_remove will
  *    need to be called by dying processes with interrupts disabled. 
  *
- * @param ticks The number of timer ticks to sleep for. 
- * @return EFAIL on failure. 
- *         ESUCCESS on success. 
+ * @param ticks The number of timer ticks to sleep for.
+ *
+ * @return ESUCCESS on successful sleep
+ *         EFAIL if the thread could not be successfully put to sleep
  */
 int scheduler_sleep(unsigned long ticks)
 {
    tcb_t* tcb = get_tcb();
    debug_print("sleep", "%p going to sleep for %d ticks", tcb, ticks);
-   tcb->wakeup = time() + ticks;
-   
-   mutex_lock(&sleep_lock);
-   if(heap_insert(&sleepers, tcb) < 0)
-   {
-      mutex_unlock(&sleep_lock);
-      return ENOMEM;
-   }
-   
-   quick_lock();
-   mutex_unlock(&sleep_lock);
-   LIST_REMOVE(runnable, tcb, scheduler_node);
-   scheduler_next();
-   return ESUCCESS;
+	mutex_lock(&sleep_double_lock);
+	if (heap_check_size(&sleepers) == ESUCCESS) {
+	   quick_lock();
+		mutex_unlock(&sleep_double_lock);
+   	tcb->wakeup = time() + ticks;
+   	heap_insert(&sleepers, tcb);
+   	LIST_REMOVE(runnable, tcb, scheduler_node);
+   	scheduler_next();
+		return ESUCCESS;
+	}
+	else {
+		MAGIC_BREAK;
+		mutex_unlock(&sleep_double_lock);
+		return EFAIL;
+	}
 }
 
 

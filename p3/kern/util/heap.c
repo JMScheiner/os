@@ -14,11 +14,11 @@
 
 #include <kernel_types.h>
 #include <malloc.h>
-#include <malloc_wrappers.h> /* srealloc */
 #include <limits.h>
 #include <ecodes.h>
 #include <mutex.h>
 #include <simics.h>
+#include <string.h>
 
 #define DEFAULT_HEAP_SIZE 4
 #define PARENT(index) ((index) / 2)
@@ -99,6 +99,36 @@ void bubble_down(sleep_heap_t *heap, int index) {
 	tcb->sleep_index = index;
 }
 
+/**
+ * @brief Check the size of the heap and allocate more memory if the heap
+ * is full. This must be called before heap_insert.
+ *
+ * @param heap The heap to check and possible double.
+ *
+ * @return E_SUCCESS on success
+ *         ENOMEM if the heap could not be successfully doubled.
+ */
+int heap_check_size(sleep_heap_t *heap) {
+   /* Double the heap size if there are a lot of sleepers. */
+	int current_size = heap->index;
+	if(current_size == (heap->size - 1))
+	{
+		tcb_t **new_heap = smalloc(2 * heap->size * sizeof(tcb_t*));
+		if (new_heap == NULL)
+			return ENOMEM;
+		tcb_t **old_heap = heap->data;
+		quick_lock();
+		memcpy(new_heap, heap->data, current_size * sizeof(tcb_t *));
+		quick_unlock();
+		
+		heap->data = new_heap;
+		sfree(old_heap, heap->size *sizeof(tcb_t *));
+		heap->size = 2 * heap->size;
+		assert(heap->data != NULL);
+	}
+	return ESUCCESS;
+}
+
 /** 
 * @brief Insert a TCB into the sleepers heap. 
 * 
@@ -110,26 +140,6 @@ void bubble_down(sleep_heap_t *heap, int index) {
 */
 int heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
-   int size;
-   
-   /* Double the heap size if there are a lot of sleepers. */
-	if(heap->index >= (heap->size - 1))
-	{
-      lprintf(" ******************* ");
-      lprintf(" DOUBLING SLEEP HEAP ");
-      lprintf(" ******************* ");
-      size = heap->size;
-      lprintf("heap->data = %p before doubling", heap->data);
-      if(double_sleep_heap(&heap->data, size) < 0)
-      {
-         lprintf( "NO MEM?????" );
-         return ENOMEM;
-      }
-      heap->size = 2 * size;
-      lprintf("heap->data = %p after doubling", heap->data);
-	}
-
-   quick_lock();
 	heap->data[heap->index] = key;
 	bubble_up(heap, heap->index++);
    quick_unlock();

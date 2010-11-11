@@ -36,11 +36,23 @@ static int console_col = 0;
 static boolean_t cursor_hidden = FALSE;
 
 /** @brief Mutex to prevent interleaving of console output. */
-mutex_t print_lock;
+static mutex_t print_lock;
 
+/**
+ * @brief Initialize the console.
+ */
 void console_init()
 {
    mutex_init(&print_lock);
+}
+
+/**
+ * @brief Getter for the print lock needed to print to the screen
+ *
+ * @return The print lock.
+ */
+mutex_t *get_print_lock() {
+	return &print_lock;
 }
 
 /** 
@@ -59,10 +71,10 @@ void console_init()
 */
 void print_handler(volatile regstate_t reg)
 {
-   char printbuf[PRINT_BUF_SIZE];
 	int len;
 	char* buf;
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
+	char printbuf[PRINT_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
 		RETURN(EARGS);
@@ -73,11 +85,11 @@ void print_handler(volatile regstate_t reg)
 	if (len < 0 || len > PRINT_BUF_SIZE) {
 		RETURN(EARGS);
 	}
-
+   
    /* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
 	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-      mutex_unlock(&print_lock);
+		MAGIC_BREAK;
 		RETURN(EBUF);
 	}
 

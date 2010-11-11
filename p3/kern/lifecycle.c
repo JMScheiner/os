@@ -347,8 +347,11 @@ void set_status_handler(volatile regstate_t reg)
 
 void thread_kill(char* error_message)
 {
+	mutex_t *lock = get_print_lock();
+	mutex_lock(lock);
    putbytes(error_message, strlen(error_message));
    putbytes("\n", 1);
+	mutex_unlock(lock);
    
    pcb_t* pcb = get_pcb();
 

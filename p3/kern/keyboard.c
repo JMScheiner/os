@@ -63,7 +63,10 @@ static cond_t keyboard_signal;
 */
 void getchar_handler(volatile regstate_t reg)
 {
+<<<<<<< HEAD:p3/kern/keyboard.c
    //TODO
+=======
+>>>>>>> 1ecf0a4a69d0c658099194d46cc523e225960017:p3/kern/keyboard.c
 	lprintf("Ignoring getchar");
 }
 
@@ -104,6 +107,7 @@ void readline_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    int len;
    char* buf;
+	char readbuf[KEY_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
       RETURN(EARGS);
@@ -116,18 +120,18 @@ void readline_handler(volatile regstate_t reg)
 		RETURN(ELEN);
 	}
    
-   /* FIXME We copy a string here - and so should use v_strcpy to avoid
-    *  a race condition with remove_pages
-    * */
-	if (!mm_validate_write(buf, len)) {
-      debug_print("readline", "buf unwritable.");
-		RETURN(EBUF);
-	}
-
 	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
 			get_tcb()->tid, len, buf);
-
-	int read = readline(buf, len);
+	
+	mutex_lock(&keyboard_lock);
+	int read = readline(readbuf, len);
+	mutex_unlock(&keyboard_lock);
+	int copied;
+	if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
+      debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
+		MAGIC_BREAK;
+		RETURN(EBUF);
+	}
 	RETURN(read);
 }
 
@@ -212,7 +216,6 @@ int readline(char *buf, int len) {
 	/* Prevent other readers from interfering. They can't accomplish 
 	 * anything until we're done anyway. */
 	atomic_add(&readers, 1);
-	mutex_lock(&keyboard_lock);
 	
 	quick_lock();
 	if (newlines == 0) {
@@ -235,7 +238,6 @@ int readline(char *buf, int len) {
 		}
 	}
 	debug_print("readline", "Read complete!");
-	mutex_unlock(&keyboard_lock);
 	return read;
 }
 
