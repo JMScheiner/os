@@ -20,7 +20,7 @@
 #include <mutex.h>
 #include <simics.h>
 
-#define DEFAULT_HEAP_SIZE 16
+#define DEFAULT_HEAP_SIZE 4
 #define PARENT(index) ((index) / 2)
 #define LCHILD(index) (2*(index))
 #define RCHILD(index) ((2*(index)) + 1)
