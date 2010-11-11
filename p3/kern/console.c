@@ -63,7 +63,6 @@ void print_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int len;
 	char* buf;
-	lprintf("In print_handler early , esp is %p", get_esp());
    
    if(v_copy_in_int(&len, arg_addr) < 0)
 		RETURN(EARGS);
