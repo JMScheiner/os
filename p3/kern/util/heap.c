@@ -142,7 +142,6 @@ int heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
 	heap->data[heap->index] = key;
 	bubble_up(heap, heap->index++);
-   quick_unlock();
    return ESUCCESS;
 }
 
