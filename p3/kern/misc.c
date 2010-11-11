@@ -55,8 +55,6 @@ void ls_handler(volatile regstate_t reg)
    for(i = 0; i < exec2obj_userapp_count; i++)
    {
       filename = (char*)exec2obj_userapp_TOC[i].execname;
-      lprintf(" Copying %s ", filename);
-      
       copied = v_strcpy(buf, filename, len, FALSE);
       
       /* If we couldn't copy the whole filename, return with failure. */

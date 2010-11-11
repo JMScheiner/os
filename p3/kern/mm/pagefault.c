@@ -8,6 +8,7 @@
 #include <lifecycle.h>
 #include <stdio.h> /* sprintf */
 #include <ecodes.h>
+#include <asm.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
@@ -15,48 +16,53 @@
 #define PF_ECODE_RESERVED 0x8
 #define ERRBUF_SIZE 0x100
 
-void generic_fault(int ecode, void* addr);
+void generic_fault(void* addr, int ecode);
 
+/** 
+* @brief Page fault handler. 
+*
+*  Determines what region of user memory caused the fault, 
+*   and dispatches the appropriate handler. 
+*  
+*  On entry, interrupts are disabled, so %cr2 doesn't change
+*     (as a result of another page fault.)
+* 
+* @param reg The register state on entry to the handler.
+*/
 void page_fault_handler(volatile regstate_error_t reg)
 {
    int ecode; 
    void* addr;
    pcb_t* pcb;
    region_t* region;
-   boolean_t region_found;
+   
+   /* The address that causes a page fault resides in cr2.*/
+   addr = (void*)get_cr2();
+   enable_interrupts();
 
    pcb = get_pcb();
    ecode = reg.ecode;
-
-   /* The address that causes a page fault resides in cr2.*/
-   addr = (void*)get_cr2();
    
+   /* Our kernel does not page fault. */
    assert(ecode & PF_ECODE_USER);
    assert(!(ecode & PF_ECODE_RESERVED));
    
-   /* Walk the region list, searching for handlers. */
-   region_found = FALSE;
-
    void (*handler)(void*, int);
 
    mutex_lock(&pcb->region_lock);
    for(region = pcb->regions; region; region = region->next)
    {
-      if(region->start < addr && addr < region->end)
+      if(region->start <= addr && addr < region->end)
       {
-         region_found = TRUE;
          handler = region->fault;
          mutex_unlock(&pcb->region_lock);
          handler(addr, ecode);
+         return;
       }
-      if(region->next == (region_t*)(0xcafebabe)) MAGIC_BREAK;
    }
+   mutex_unlock(&pcb->region_lock);
 
-   if(!region_found)
-   {
-      mutex_unlock(&pcb->region_lock);
-      generic_fault(ecode, addr);
-   }
+   generic_fault(addr, ecode);
 }
 
 void txt_fault(void* addr, int ecode)
@@ -87,9 +93,15 @@ void bss_fault(void* addr, int ecode)
    thread_kill(errbuf);
 }
 
-void user_fault(void* addr, int access_mode)
+void user_fault(void* addr, int ecode)
 {
-   /* In our implementation this shouldn't happen. */
+   /* In our implementation this shouldn't happen. 
+    *
+    *  It is the fault handler for memory that has been new_pages'd. 
+    *   Since new_pages'd regions don't overlap with existing regions, 
+    *   and are allocated user r/w, they do not fault. 
+    *    (unless things are going wrong.)
+    **/
    assert(0);
 }
 
@@ -104,7 +116,7 @@ void stack_fault(void* addr, int ecode)
    }
 }
 
-void generic_fault(int ecode, void* addr)
+void generic_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
    if(!(ecode & PF_ECODE_NOT_PRESENT))

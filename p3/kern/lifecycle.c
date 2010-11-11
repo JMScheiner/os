@@ -62,13 +62,11 @@ void exec_handler(volatile regstate_t reg) {
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
    char** argvec;
-	lprintf("Before stack alloc");	
    char execname_buf[MAX_NAME_LENGTH];
 	char execargs_buf[MAX_TOTAL_LENGTH];
 	char *args_ptr = execargs_buf;
 	int total_bytes = 0;
 	int argc;
-	lprintf("After stack alloc");	
 	/* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
 		RETURN(EARGS);

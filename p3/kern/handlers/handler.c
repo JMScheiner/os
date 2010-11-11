@@ -52,6 +52,7 @@ int handler_install()
 
 	tg = (trap_gate_t)(base + TRAP_GATE_SIZE * IDT_PF);
 	INSTALL_HANDLER(tg, asm_page_fault_handler);
+	IDT_MAKE_INTERRUPT(tg);
 
 	tg = (trap_gate_t)(base + TRAP_GATE_SIZE * IDT_AC);
 	INSTALL_HANDLER(tg, asm_alignment_check_handler);

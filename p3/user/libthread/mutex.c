@@ -84,7 +84,9 @@ int mutex_lock( mutex_t *mp )
 	int ticket = atomic_add(&mp->ticket, 1);
 
 	while(ticket != mp->now_serving)
+   {
 		thr_yield(mp->active_tid);
+   }
 	
 	mp->active_tid = tid;
 	return 0;
