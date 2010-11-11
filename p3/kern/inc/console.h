@@ -13,10 +13,12 @@
 
 #include <video_defines.h>
 #include <reg.h>
+#include <kernel_types.h>
 
 
 /* Wrappers for the system calls associated with the functions below. */
 void console_init();
+mutex_t *get_print_lock();
 void print_handler(volatile regstate_t reg);
 void set_term_color_handler(volatile regstate_t reg);
 void set_cursor_pos_handler(volatile regstate_t reg);

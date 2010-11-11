@@ -181,8 +181,7 @@ void sleep_handler(volatile regstate_t reg)
    if(ticks < 0) RETURN(EARGS); 
    if(ticks == 0) RETURN(ESUCCESS);
 
-   scheduler_sleep(ticks);
-   RETURN(ESUCCESS);
+   RETURN(scheduler_sleep(ticks));
 }
 
 

@@ -21,7 +21,6 @@
 #define MAX_VALID_COLOR (0x8F)
 
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
-static char printbuf[PRINT_BUF_SIZE];
 
 
 /***************** Console State:  ****************/
@@ -37,11 +36,23 @@ static int console_col = 0;
 static boolean_t cursor_hidden = FALSE;
 
 /** @brief Mutex to prevent interleaving of console output. */
-mutex_t print_lock;
+static mutex_t print_lock;
 
+/**
+ * @brief Initialize the console.
+ */
 void console_init()
 {
    mutex_init(&print_lock);
+}
+
+/**
+ * @brief Getter for the print lock needed to print to the screen
+ *
+ * @return The print lock.
+ */
+mutex_t *get_print_lock() {
+	return &print_lock;
 }
 
 /** 
@@ -63,6 +74,7 @@ void print_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
 	int len;
 	char* buf;
+	char printbuf[PRINT_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
 		RETURN(EARGS);
@@ -73,17 +85,16 @@ void print_handler(volatile regstate_t reg)
 	if (len < 0 || len > PRINT_BUF_SIZE) {
 		RETURN(EARGS);
 	}
-
-	/* Ensure sequential access to the console screen and print buffer. */
-	mutex_lock(&print_lock);
 	
    /* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
 	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-      mutex_unlock(&print_lock);
+		MAGIC_BREAK;
 		RETURN(EBUF);
 	}
 
+	/* Ensure sequential access to the console screen and print buffer. */
+	mutex_lock(&print_lock);
 	putbytes(printbuf, len);
 	mutex_unlock(&print_lock);
 	RETURN(ESUCCESS);

@@ -33,7 +33,6 @@
  * Simple ring buffer: 
  */
 static char keybuf[KEY_BUF_SIZE];
-static char readbuf[KEY_BUF_SIZE];
 static unsigned int keybuf_head = 0;
 static unsigned int keybuf_divider = 0;
 static unsigned int keybuf_tail = 0;
@@ -55,8 +54,6 @@ static cond_t keyboard_signal;
 void getchar_handler(volatile regstate_t reg)
 {
 	lprintf("Ignoring getchar");
-	MAGIC_BREAK;
-   //TODO
 }
 
 /** @brief Reads the next line from the console and copies it into the
@@ -96,6 +93,7 @@ void readline_handler(volatile regstate_t reg)
 	char *arg_addr = (char *)SYSCALL_ARG(reg);
    int len;
    char* buf;
+	char readbuf[KEY_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
       RETURN(EARGS);
@@ -113,13 +111,13 @@ void readline_handler(volatile regstate_t reg)
 	
 	mutex_lock(&keyboard_lock);
 	int read = readline(readbuf, len);
+	mutex_unlock(&keyboard_lock);
 	int copied;
 	if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
       debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
-		mutex_unlock(&keyboard_lock);
+		MAGIC_BREAK;
 		RETURN(EBUF);
 	}
-	mutex_unlock(&keyboard_lock);
 	RETURN(read);
 }
 

@@ -14,10 +14,12 @@
 
 #include <kernel_types.h>
 #include <malloc.h>
-#include <malloc_wrappers.h> /* srealloc */
 #include <limits.h>
+#include <ecodes.h>
+#include <mutex.h>
+#include <string.h>
 
-#define DEFAULT_HEAP_SIZE 128
+#define DEFAULT_HEAP_SIZE 4
 #define PARENT(index) ((index) / 2)
 #define LCHILD(index) (2*(index))
 #define RCHILD(index) ((2*(index)) + 1)
@@ -96,6 +98,36 @@ void bubble_down(sleep_heap_t *heap, int index) {
 	tcb->sleep_index = index;
 }
 
+/**
+ * @brief Check the size of the heap and allocate more memory if the heap
+ * is full. This must be called before heap_insert.
+ *
+ * @param heap The heap to check and possible double.
+ *
+ * @return E_SUCCESS on success
+ *         ENOMEM if the heap could not be successfully doubled.
+ */
+int heap_check_size(sleep_heap_t *heap) {
+   /* Double the heap size if there are a lot of sleepers. */
+	int current_size = heap->index;
+	if(current_size == (heap->size - 1))
+	{
+		tcb_t **new_heap = smalloc(2 * heap->size * sizeof(tcb_t*));
+		if (new_heap == NULL)
+			return ENOMEM;
+		tcb_t **old_heap = heap->data;
+		quick_lock();
+		memcpy(new_heap, heap->data, current_size * sizeof(tcb_t *));
+		quick_unlock();
+		
+		heap->data = new_heap;
+		sfree(old_heap, heap->size *sizeof(tcb_t *));
+		heap->size = 2 * heap->size;
+		assert(heap->data != NULL);
+	}
+	return ESUCCESS;
+}
+
 /** 
 * @brief Insert a TCB into the sleepers heap. 
 * 
@@ -104,14 +136,6 @@ void bubble_down(sleep_heap_t *heap, int index) {
 */
 void heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
-   /* Double the heap size if there are a lot of sleepers. */
-	if(heap->index == (heap->size - 1))
-	{
-		heap->data = srealloc(heap->data,   
-         heap->size * sizeof(tcb_t*), 2 * heap->size * sizeof(tcb_t*));
-		heap->size = 2 * heap->size;
-		assert(heap->data != NULL);
-	}
 	heap->data[heap->index] = key;
 	bubble_up(heap, heap->index++);
 }

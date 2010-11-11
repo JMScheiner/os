@@ -17,7 +17,7 @@ MAKE = gmake
 # names which work the same way to be on your PATH.  Note
 # that different versions of gcc generally do NOT work the
 # same way.
-CC = 410-gcc
+CC = gcc
 LD = 410-ld
 AR = 410-ar
 OBJCOPY = 410-objcopy
