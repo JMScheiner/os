@@ -14,7 +14,17 @@
  */
 ASM_NAME:
 	pusha                /* Save user registers */
+#ifdef IGNORE_THREAD_COUNT
+	pushl $0
+#else
+	pushl $1
+#endif
+	call check_invariants
+	popl %eax
 	call NAME            /* Call handler function */
+	cli
+	call quick_fake_unlock
+	call set_esp0_helper
 	popa                 /* Restore user registers */
 	addl $4, %esp        /* Pop the error code off the stack. */
 	iret                 /* Return from interrupt */
