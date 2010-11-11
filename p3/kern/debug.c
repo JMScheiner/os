@@ -27,7 +27,7 @@ char *debug_print_strings[] = {
    //"thread_fork",
    //"mm", 
    //"kvm", 
-   //"page", 
+   "page", 
    //"readline", 
    //"lifecycle", 
    //"region", 

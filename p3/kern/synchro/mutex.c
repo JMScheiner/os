@@ -95,13 +95,15 @@ void mutex_lock(mutex_t *mp)
 void mutex_unlock(mutex_t *mp) {
 	assert(mp);
 	assert(mp->initialized);
-	if (!locks_enabled) return;
+	if (!locks_enabled) 
+      return;
 
 	debug_print("mutex", "Releasing mutex %p", mp);
 	
 	mp->locked = FALSE;
 	quick_lock();
-	if(mp->head) scheduler_unblock(mp->head->tcb);
+	if(mp->head) 
+      scheduler_unblock(mp->head->tcb);
 	quick_unlock();
 }
 
@@ -110,7 +112,8 @@ void mutex_unlock(mutex_t *mp) {
  * should only be used for fast operations that absolutely should not block.
  */
 void quick_lock() {
-	disable_interrupts();
+   if(lock_depth == 0)
+	   disable_interrupts();
 	lock_depth++;
 }
 

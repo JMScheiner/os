@@ -22,6 +22,7 @@
 #include <mutex.h>
 #include <lifecycle.h>
 #include <malloc.h>
+#include <ecodes.h>
 
 #define INIT_PROGRAM "init"
 
@@ -43,14 +44,16 @@ static tcb_t *descheduled = NULL;
 * @brief A min-heap keying on the time the sleeper will run next.
 */
 static sleep_heap_t sleepers;
-
 static int blocked_count = 0;
+
+mutex_t sleep_lock;
 
 /** 
 * @brief Initialize the scheduler.
 */
 void scheduler_init()
 {
+   mutex_init(&sleep_lock);
    heap_init(&sleepers);
    LIST_INIT_EMPTY(runnable);   
 }
@@ -123,7 +126,7 @@ void scheduler_unblock(tcb_t* tcb)
 	blocked_count--;
 	tcb->blocked = FALSE;
 	if (!tcb->descheduled && tcb->wakeup == 0) {
-		LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+		LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	}
 	quick_unlock();
 }
@@ -266,17 +269,27 @@ void scheduler_next()
  *    need to be called by dying processes with interrupts disabled. 
  *
  * @param ticks The number of timer ticks to sleep for. 
+ * @return EFAIL on failure. 
+ *         ESUCCESS on success. 
  */
-void scheduler_sleep(unsigned long ticks)
+int scheduler_sleep(unsigned long ticks)
 {
    tcb_t* tcb = get_tcb();
    debug_print("sleep", "%p going to sleep for %d ticks", tcb, ticks);
    tcb->wakeup = time() + ticks;
    
+   mutex_lock(&sleep_lock);
+   if(heap_insert(&sleepers, tcb) < 0)
+   {
+      mutex_unlock(&sleep_lock);
+      return ENOMEM;
+   }
+   
    quick_lock();
-   heap_insert(&sleepers, tcb);
+   mutex_unlock(&sleep_lock);
    LIST_REMOVE(runnable, tcb, scheduler_node);
    scheduler_next();
+   return ESUCCESS;
 }
 
 

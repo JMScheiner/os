@@ -171,6 +171,9 @@ void get_ticks_handler(volatile regstate_t reg)
 *
 *  Returns an integer error code less than zero in %eax if ticks is 
 *  negative. Returns zero in %eax otherwise.
+*
+*  In a _very_ exceptional case, we can fail to reallocate the sleep 
+*   heap, and we are required to say no to sleep requests.
 * 
 * @param reg The register state on entry and exit of the handler.
 */
@@ -181,7 +184,9 @@ void sleep_handler(volatile regstate_t reg)
    if(ticks < 0) RETURN(EARGS); 
    if(ticks == 0) RETURN(ESUCCESS);
 
-   scheduler_sleep(ticks);
+   if(scheduler_sleep(ticks) < 0)
+      RETURN(ENOMEM);
+
    RETURN(ESUCCESS);
 }
 

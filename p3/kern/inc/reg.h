@@ -64,6 +64,8 @@ typedef struct REGSTATE
  * @brief Return with the given value. Useful for trap handlers to set the eax
  * return value.
  *
+ *  Requires the argument to the handler be declared "reg" 
+ *
  * @param ret The value to return.
  */
 #define RETURN(ret) \

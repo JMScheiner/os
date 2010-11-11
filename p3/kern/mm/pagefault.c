@@ -65,34 +65,68 @@ void page_fault_handler(volatile regstate_error_t reg)
    generic_fault(addr, ecode);
 }
 
+/** 
+* @brief The fault handler invoked by a page fault on the .txt region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void txt_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
+   debug_print("page", ".txt fault at %p!!!", addr);
    sprintf(errbuf, "Page Fault: Illegal access to .txt region at %p.", addr);
    thread_kill(errbuf);
 }
 
+/** 
+* @brief The fault handler invoked by a page fault on the .rodat region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void rodata_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
+   debug_print("page", ".rodat fault at %p!!!", addr);
    sprintf(errbuf, "Page Fault: Illegal access to .rodata region at %p.", addr);
    thread_kill(errbuf);
 }
 
+/** 
+* @brief The fault handler invoked by a page fault on the .dat region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void dat_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
+   debug_print("page", ".dat fault at %p!!!", addr);
    sprintf(errbuf, "Page Fault: Illegal access to .data region at %p.", addr);
    thread_kill(errbuf);
 }
 
+/** 
+* @brief The fault handler invoked by a page fault on the .bss region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void bss_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
+   debug_print("page", "bss fault at %p!!!", addr);
    sprintf(errbuf, "Page Fault: Illegal access to .bss region at %p.", addr);
    thread_kill(errbuf);
 }
 
+/** 
+* @brief The fault handler invoked by a new_pages'd region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void user_fault(void* addr, int ecode)
 {
    /* In our implementation this shouldn't happen. 
@@ -105,6 +139,14 @@ void user_fault(void* addr, int ecode)
    assert(0);
 }
 
+/** 
+* @brief The fault handler invoked by a page fault in the stack region. 
+*
+*  Grows the stack if it can, kills the thread otherwise. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void stack_fault(void* addr, int ecode)
 {
    debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
@@ -116,9 +158,17 @@ void stack_fault(void* addr, int ecode)
    }
 }
 
+/** 
+* @brief A generic fault handler for addresses that don't lie in
+*  a named region. 
+* 
+* @param addr The address that caused the fault. 
+* @param ecode The error code of the fault. 
+*/
 void generic_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
+   debug_print("page", "Generic fault at %p!!!", addr);
    if(!(ecode & PF_ECODE_NOT_PRESENT))
    {
       sprintf(errbuf, "Page Fault: %p not present in memory.", addr);

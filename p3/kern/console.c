@@ -21,7 +21,6 @@
 #define MAX_VALID_COLOR (0x8F)
 
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
-char printbuf[PRINT_BUF_SIZE];
 
 
 /***************** Console State:  ****************/
@@ -60,9 +59,10 @@ void console_init()
 */
 void print_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   char printbuf[PRINT_BUF_SIZE];
 	int len;
 	char* buf;
+	char *arg_addr = (char *)SYSCALL_ARG(reg);
    
    if(v_copy_in_int(&len, arg_addr) < 0)
 		RETURN(EARGS);
@@ -74,9 +74,6 @@ void print_handler(volatile regstate_t reg)
 		RETURN(EARGS);
 	}
 
-	/* Ensure sequential access to the console screen and print buffer. */
-	mutex_lock(&print_lock);
-	
    /* Copy buf to prevent the memory it lies in from being freed during the
 	 * call to putbytes. */
 	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
@@ -84,8 +81,11 @@ void print_handler(volatile regstate_t reg)
 		RETURN(EBUF);
 	}
 
+	/* Ensure sequential access to the console screen. */
+	mutex_lock(&print_lock);
 	putbytes(printbuf, len);
 	mutex_unlock(&print_lock);
+
 	RETURN(ESUCCESS);
 }
 
@@ -117,7 +117,6 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 	if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
 		RETURN(EARGS);
 
-	/* TODO What constitutes an invalid cursor position? */
    if( 0 > row || row >= CONSOLE_HEIGHT 
     || 0 > col || col >= CONSOLE_WIDTH)
       RETURN(EARGS);
@@ -151,6 +150,7 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 
 	RETURN(ESUCCESS);
 }
+
 /************** End Syscall wrappers . **************/
 
 /**
@@ -212,7 +212,6 @@ void scroll_console(void)
 int putbyte(char ch)
 {
 
-	//TODO If any function here should be cleaned up, it's this one.
 	switch(ch)
 	{
 		case '\n': 
@@ -291,7 +290,6 @@ void putbytes(const char* s, int len)
  */
 void draw_char(int row, int col, int ch, int color)
 {
-	//TODO Should we validate 'ch' somehow?
 	if(row < CONSOLE_HEIGHT && 
 		col < CONSOLE_WIDTH && 
 		color <= MAX_VALID_COLOR)
@@ -313,7 +311,6 @@ char get_char(int row, int col)
 		return *(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col)); 
 	}
 
-	//FIXME Behavior for bad input is unspecified. 
 	return 0;
 }
 

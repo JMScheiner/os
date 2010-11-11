@@ -5,7 +5,7 @@
 *  Since our kernel is meant to be air-tight, we should
 *   only invoke smalloc, smemalign,  and sfree. 
 *
-*   TODO Outstanding ssues with memory management:
+*   TODO Outstanding issues with memory management:
 *     - Need to cover memalign calls. 
 *     - Root out where we malloc, but don't initialize
 *        (I've found a few)
@@ -22,6 +22,8 @@
 #include <debug.h>
 #include <string.h>
 #include <common_kern.h>
+#include <ecodes.h>
+#include <eflags.h>
 
 /* safe versions of malloc functions */
 
@@ -110,6 +112,50 @@ void *scalloc(size_t nmemb, size_t size)
 	if (ret != NULL) 
 		memset(ret, 0, nmemb * size);
 	return ret;
+}
+
+/** 
+* @brief A utility function exclusively for doubling the size 
+*  of our sleep heap, to prevent race conditions between other 
+*  allocators and this "special" operation that needs to disable
+*  interrupts to prevent race conditions with the scheduler.
+*
+*  Interrupts must be enabled on entry so we can lock the heap lock. 
+* 
+* @param heapdata a pointer to the heapdata pointer in the sleep heap.
+* @param size The current number of TCBs the heap can accomodate.
+* 
+* @return ENOMEM on failure. ESUCCESS on success. 
+*/
+int double_sleep_heap(tcb_t*** heapdata, int ntcbs)
+{
+   size_t size = ntcbs * sizeof(tcb_t*); 
+   tcb_t** oldbuf = *heapdata;
+   tcb_t** newbuf;
+
+   /* Exclude other allocators. */
+   quick_assert_unlocked();
+   mutex_lock(&heap_lock);
+   
+   /* Block (the scheduler) */
+   quick_lock();
+   mutex_unlock(&heap_lock);
+   
+   newbuf = (tcb_t**)_smalloc(2 * size);
+   
+   if(newbuf == NULL)
+   {
+      quick_unlock();
+      return ENOMEM;
+   }
+   
+   MAGIC_BREAK;
+   memcpy((void*)newbuf, (void*)oldbuf, size);
+   _sfree((void*)oldbuf, size);
+   
+   *heapdata = newbuf;
+   quick_unlock();
+   return ESUCCESS;
 }
 
 void *srealloc(void* buf, size_t current_size, size_t new_size)

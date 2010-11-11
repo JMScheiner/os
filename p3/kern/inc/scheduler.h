@@ -15,7 +15,7 @@ void scheduler_deschedule(mutex_t *lock);
 boolean_t scheduler_reschedule(tcb_t *tcb);
 void scheduler_die(mutex_t *lock);
 void scheduler_next();
-void scheduler_sleep(unsigned long ticks);
+int scheduler_sleep(unsigned long ticks);
 
 // heap_t* scheduler_sleep_heap = NULL;
 

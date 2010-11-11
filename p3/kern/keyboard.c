@@ -51,11 +51,20 @@ static cond_t keyboard_signal;
 #define PREV(index) \
 	(((index) - 1) & (KEY_BUF_SIZE - 1))
 
+
+/** 
+* @brief Returns a single character from the character input stream. 
+* If the input stream is empty the thread is descheduled until 
+*  a character is available. If some other thread is descheduled 
+*  on a readline() or getchar(), then the calling thread must block
+*  and wait its turn to access the input stream. Characters processe
+* 
+* @param reg The register state on entry to the handler.
+*/
 void getchar_handler(volatile regstate_t reg)
 {
-	lprintf("Ignoring getchar");
-	MAGIC_BREAK;
    //TODO
+	lprintf("Ignoring getchar");
 }
 
 /** @brief Reads the next line from the console and copies it into the

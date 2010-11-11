@@ -16,8 +16,11 @@
 #include <malloc.h>
 #include <malloc_wrappers.h> /* srealloc */
 #include <limits.h>
+#include <ecodes.h>
+#include <mutex.h>
+#include <simics.h>
 
-#define DEFAULT_HEAP_SIZE 128
+#define DEFAULT_HEAP_SIZE 16
 #define PARENT(index) ((index) / 2)
 #define LCHILD(index) (2*(index))
 #define RCHILD(index) ((2*(index)) + 1)
@@ -101,19 +104,36 @@ void bubble_down(sleep_heap_t *heap, int index) {
 * 
 * @param heap The sleepers heap. 
 * @param key The TCB to insert. 
+*
+* @return ESUCCESS on success, 
+*         EFAILURE if we cannot allocate the necessary storage.
 */
-void heap_insert(sleep_heap_t* heap, tcb_t* key)
+int heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
+   int size;
+   
    /* Double the heap size if there are a lot of sleepers. */
-	if(heap->index == (heap->size - 1))
+	if(heap->index >= (heap->size - 1))
 	{
-		heap->data = srealloc(heap->data,   
-         heap->size * sizeof(tcb_t*), 2 * heap->size * sizeof(tcb_t*));
-		heap->size = 2 * heap->size;
-		assert(heap->data != NULL);
+      lprintf(" ******************* ");
+      lprintf(" DOUBLING SLEEP HEAP ");
+      lprintf(" ******************* ");
+      size = heap->size;
+      lprintf("heap->data = %p before doubling", heap->data);
+      if(double_sleep_heap(&heap->data, size) < 0)
+      {
+         lprintf( "NO MEM?????" );
+         return ENOMEM;
+      }
+      heap->size = 2 * size;
+      lprintf("heap->data = %p after doubling", heap->data);
 	}
+
+   quick_lock();
 	heap->data[heap->index] = key;
 	bubble_up(heap, heap->index++);
+   quick_unlock();
+   return ESUCCESS;
 }
 
 /** 
