@@ -87,7 +87,10 @@ boolean_t scheduler_run(tcb_t* tcb, mutex_t *lock)
 	quick_lock();
 	mutex_unlock(lock);
 	if (tcb->descheduled || tcb->blocked)
+   {
+      quick_unlock();
 		return FALSE;
+   }
 	LIST_REMOVE(runnable, tcb, scheduler_node);
 	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
 	scheduler_next();
@@ -229,7 +232,7 @@ void scheduler_next()
       {
 			tcb_t *next	= global_tcb();
 			//debug_print("scheduler", "Now running global thread %p", next);
-   		//set_esp0((int)next->kstack);
+   		set_esp0((int)next->kstack);
 
          assert(next->dir_p);
 			quick_fake_unlock();
@@ -253,7 +256,7 @@ void scheduler_next()
 	
 	runnable = LIST_NEXT(runnable, scheduler_node);
 	debug_print("scheduler", "now running %p", runnable);
-   //set_esp0((int)runnable->kstack);
+   set_esp0((int)runnable->kstack);
    assert(runnable->dir_p);
 	quick_fake_unlock();
    context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);

@@ -22,9 +22,7 @@ ASM_NAME:
 	call check_invariants
 	popl %eax
 	call NAME            /* Call handler function */
-	cli
-	call quick_fake_unlock
-	call set_esp0_helper
+   call quick_assert_unlocked
 	popa                 /* Restore user registers */
 	addl $4, %esp        /* Pop the error code off the stack. */
 	iret                 /* Return from interrupt */

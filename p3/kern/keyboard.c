@@ -202,11 +202,13 @@ void keyboard_handler(void)
 					 * interrupts. */
 					quick_lock();
 					cond_signal(&keyboard_signal);
+               quick_unlock();
 				}
 			}
 		}
 	}
 	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+   enable_interrupts();
 }
 
 int readline(char *buf, int len) {
