@@ -1,10 +1,11 @@
-/* @file process.c
- *
+/**
+ * @file process.c
  * @brief Functions related to process intialization and destruction.
  *
  * @author Tim Wilson
  * @author Justin Scheiner
  */
+
 #include <process.h>
 #include <mm.h>
 #include <assert.h>

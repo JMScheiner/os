@@ -1,3 +1,10 @@
+/** 
+* @file console.c
+* @brief Console driver code. 
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #include <console.h>
 #include <video_defines.h>
