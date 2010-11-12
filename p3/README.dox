@@ -9,7 +9,7 @@ Decisions we made (in no particular order)
   whenerver no one else can usefully run. This is the equivalent of the
   idle program.
 
-- Debug statements are all encapsulated in debug_print statements that
+- Debug statements are all encapsulated in <code>debug_print</code> statements that
   work like lprintf statements, but take an additional string. The debug
   statement only prints if the additional argument is in a list of strings
   currently being debugged. This is useful for debugging a specific
@@ -48,27 +48,37 @@ Memory is arranged into three major segments:
    -# Kernel Stacks
 
 Page tables for kernel memory are global and shared by all threads - they 
- exist in the kernel heap and are allocated with smemalign. This was a design 
+ exist in the kernel heap and are allocated with <code>smemalign</code>. 
+ This was a design 
  decision to simplify the interaction of different processes, and cause fewer 
  complications during context switching and vanishing. 
 
-Free frames are managed in a simple linked list structure, and zero'd on allocation. 
-The link structure is contained in the frames themselves, and is protected by the <code>user_free_lock</code>.
-There is a globally mapped <code>FREE_PAGE</code> whose access is also protected by the <code>user_free_lock</code>, 
+Free frames are managed in a simple linked list structure, and zero'd on 
+allocation. 
+The link structure is contained in the frames themselves, and is protected 
+by the <code>user_free_lock</code>.
+There is a globally mapped <code>FREE_PAGE</code> whose access is also 
+protected by the <code>user_free_lock</code>, 
 which allows us to write the link structure into the page. 
 Zeroing occurs on allocation 
-since we always map the page in our own address space on allocation, whereas this isn't 
-necessarily true on freeing.  This dance occurs in mm_new_frame and mm_free_frame. 
+since we always map the page in our own address space on allocation, whereas 
+this isn't 
+necessarily true on freeing.  This dance occurs in <code>mm_new_frame</code> 
+and <code>mm_free_frame</code>. 
 
-<b>Kernel Virtual Memory (KVM):</b> manages addressable space with a variable <code>kvm_bottom</code> which descends as 
-   demands for kernel pages arise. Freed kernel pages enter a <code>kernel_free_list</code> which is separate
-   from the <code>user_free_list</code>. On KVM allocation, we first attempt to allocate
-   free kernel pages, and then dip into the user free frame pool if necessary (e.g. every page 
-   between <code>kvm_bottom</code> and <code>KERNEL_MEM_END</code> is in use). Every 4M of kernel 
-   memory we allocate a new KVM table. This is an expensive operation that blocks subsequent 
-   KVM allocations, since we need to take time to map the new table in every existing
-   processes directory. Fortunately, it doesn't happen often, and generally happens less over time,
-   as frames dedicated to the user shift to the kernel as necessary.
+<b>Kernel Virtual Memory (KVM):</b> manages addressable space with a variable 
+   <code>kvm_bottom</code> which descends as demands for kernel pages arise. 
+   Freed kernel pages enter a <code>kernel_free_list</code> which is separate
+   from the <code>user_free_list</code>. On KVM allocation, we first attempt 
+   to allocate free kernel pages, and then dip into the user free frame pool 
+   if necessary (e.g. every page  between <code>kvm_bottom</code> and 
+   <code>KERNEL_MEM_END</code> is in use). Every 4M of kernel memory we 
+   allocate a new KVM table. This is an expensive operation that blocks 
+   subsequent KVM allocations, since we need to take time to map the new 
+   table in every existing processes directory. Fortunately, it doesn't happen 
+   often, and generally happens less over time, as frames dedicated to the user 
+   shift to the kernel as necessary.
+   
 
 <b> Request/Allocate </b> To simplify error handling (e.g. out of frames) allocation is separated into requests and 
  allocations. Requests are only granted if there will be enough frames to meet the demand, after the request is 

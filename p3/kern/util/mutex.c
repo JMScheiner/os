@@ -1,3 +1,10 @@
+/** 
+* @file mutex.c
+* @brief Implements kernel mutexes and quick locks.
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #include <mutex.h>
 #include <x86/asm.h>

@@ -1,3 +1,10 @@
+/** 
+* @file debug.c
+* @brief Debugging Utilities
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #include <debug.h>
 #include <simics.h>

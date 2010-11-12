@@ -1,3 +1,10 @@
+/** 
+* @file handler.c
+* @brief Boilerplate handler installation code. 
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #include "handler.h"
 
 #include <timer_defines.h>

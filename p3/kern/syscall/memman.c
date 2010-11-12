@@ -1,3 +1,10 @@
+/** 
+* @file memman.c
+* @brief Implements new_pages and remove_pages
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #include <memman.h>
 #include <reg.h>
