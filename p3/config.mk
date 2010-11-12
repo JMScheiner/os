@@ -82,13 +82,26 @@ SYSCALL_OBJS += halt.o misbehave.o
 #
 # Kernel object files you provide in from kern/
 #
-KERNEL_OBJS = console.o kernel.o loader.o malloc_wrappers.o mm/mm.o mm/kvm.o mm/mm_asm.o mm/region.o
-KERNEL_OBJS += handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
-KERNEL_OBJS += context_switch.o mode_switch.o process.o thread.o atomic.o
-KERNEL_OBJS += synchro/mutex.o synchro/cond.o vstring.o
-KERNEL_OBJS +=  asm_helper.o mm/pagefault.o keyboard.o timer.o
-KERNEL_OBJS += scheduler.o stub.o lifecycle.o threadman.o util/hashtable.o
-KERNEL_OBJS += memman.o misc.o util/heap.o global.o debug.o
+
+KCORE_OBJS = core/kernel.o core/loader.o 
+KCORE_OBJS += core/context_switch.o core/mode_switch.o core/process.o
+KCORE_OBJS += core/thread.o core/scheduler.o core/stub.o core/global.o
+
+KDRIVER_OBJS = driver/console.o driver/keyboard.o driver/timer.o
+
+KUTIL_OBJS = util/mutex.o util/cond.o util/vstring.o util/asm_helper.o
+KUTIL_OBJS += util/hashtable.o util/heap.o util/debug.o util/atomic.o
+KUTIL_OBJS += util/malloc_wrappers.o
+
+KSYSCALL_OBJS = syscall/memman.o syscall/misc.o syscall/lifecycle.o 
+KSYSCALL_OBJS += syscall/threadman.o 
+
+KHANDLER_OBJS = handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
+
+KMM_OBJS = mm/mm.o mm/kvm.o mm/mm_asm.o mm/region.o mm/pagefault.o 
+
+KERNEL_OBJS = $(KCORE_OBJS) $(KDRIVER_OBJS) $(KUTIL_OBJS) 
+KERNEL_OBJS += $(KSYSCALL_OBJS) $(KMM_OBJS) $(KHANDLER_OBJS)
 
 ###########################################################################
 # WARNING: Do not put **test** programs into the REQPROGS variables.  Your
