@@ -34,13 +34,13 @@
  * @param pd The page directory of the kernel thread we are jumping to.
  */
 context_switch:
-	pusha                  // Save general purpose registers
-	movl   36(%esp), %eax  // Save stack pointer so someone else 
-	movl   %esp, (%eax)    //   can context switch back to us
-	movl   40(%esp), %eax  // Switch to someone else
-	movl   44(%esp), %ebx  // Grab the page directory
-	movl   %ebx,     %cr3  // Switch page directories. 
-	movl   (%eax),   %esp  // Jump stacks.
-	popa                   // Restore general purpose registers
-	ret
+   pusha                  // Save general purpose registers
+   movl   36(%esp), %eax  // Save stack pointer so someone else 
+   movl   %esp, (%eax)    //   can context switch back to us
+   movl   40(%esp), %eax  // Switch to someone else
+   movl   44(%esp), %ebx  // Grab the page directory
+   movl   %ebx,     %cr3  // Switch page directories. 
+   movl   (%eax),   %esp  // Jump stacks.
+   popa                   // Restore general purpose registers
+   ret
 

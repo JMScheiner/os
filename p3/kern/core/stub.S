@@ -8,10 +8,10 @@
  * process from fork.
  */
 pop_stub: 
-	cli                   /* Disable interrupts */
-	call set_esp0_helper  /* Set esp0 so we return to the right kernel stack. */
-	popa                  /* Restore user registers */
-	iret                  /* Return from interrupt */
+   cli                   /* Disable interrupts */
+   call set_esp0_helper  /* Set esp0 so we return to the right kernel stack. */
+   popa                  /* Restore user registers */
+   iret                  /* Return from interrupt */
 
 /** @def void loop_forever()
  *

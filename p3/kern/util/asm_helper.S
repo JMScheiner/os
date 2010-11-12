@@ -9,8 +9,8 @@
  * @return The current stack pointer
  */
 get_esp:
-	movl  %esp, %eax
-	ret
+   movl  %esp, %eax
+   ret
 
 /** @def void halt(void)
  *

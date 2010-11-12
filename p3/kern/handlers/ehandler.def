@@ -13,19 +13,19 @@
  * TODO: What segment registers do we need to save? 
  */
 ASM_NAME:
-	pusha                /* Save user registers */
+   pusha                /* Save user registers */
 #ifdef IGNORE_THREAD_COUNT
-	pushl $0
+   pushl $0
 #else
-	pushl $1
+   pushl $1
 #endif
-	call check_invariants
-	popl %eax
-	call NAME            /* Call handler function */
+   call check_invariants
+   popl %eax
+   call NAME            /* Call handler function */
    call quick_assert_unlocked
-	popa                 /* Restore user registers */
-	addl $4, %esp        /* Pop the error code off the stack. */
-	iret                 /* Return from interrupt */
+   popa                 /* Restore user registers */
+   addl $4, %esp        /* Pop the error code off the stack. */
+   iret                 /* Return from interrupt */
 
 #undef ASM_NAME
 #undef NAME

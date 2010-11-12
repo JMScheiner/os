@@ -29,11 +29,11 @@ boolean_t locks_enabled = FALSE;
  * @param mp The mutex to initialize.
  */
 void mutex_init(mutex_t *mp) {
-	assert(mp);
+   assert(mp);
 
-	mp->head = mp->tail = NULL;
-	mp->initialized = TRUE;
-	mp->locked = FALSE;
+   mp->head = mp->tail = NULL;
+   mp->initialized = TRUE;
+   mp->locked = FALSE;
 }
 
 /**
@@ -43,10 +43,10 @@ void mutex_init(mutex_t *mp) {
  * @param mp The mutex to destroy.
  */
 void mutex_destroy(mutex_t *mp) {
-	assert(mp);
-	assert(mp->initialized);
-	assert(mp->locked == FALSE);
-	mp->initialized = FALSE;
+   assert(mp);
+   assert(mp->initialized);
+   assert(mp->locked == FALSE);
+   mp->initialized = FALSE;
 }
 
 /**
@@ -59,32 +59,32 @@ void mutex_destroy(mutex_t *mp) {
  */
 void mutex_lock(mutex_t *mp) 
 {
-	assert(mp);
-	assert(mp->initialized);
-	if (!locks_enabled) return;
+   assert(mp);
+   assert(mp->initialized);
+   if (!locks_enabled) return;
 
-	mutex_node_t node;
-	node.tcb = get_tcb();
-	node.next = NULL;
-	debug_print("mutex", "Thread %p is entering mutex %p", node.tcb, mp);
-	if (node.tcb != global_tcb())
-		quick_assert_unlocked();
-	quick_lock();
-	if (mp->head == NULL) {
-		mp->head = mp->tail = &node;
-	}
-	else {
-		mp->tail->next = &node;
-		mp->tail = &node;
-	}
-	while (mp->locked || mp->head != &node) {
-		scheduler_block();
-		quick_lock();
-	}
-	mp->locked = TRUE;
-	mp->head = mp->head->next;
-	quick_unlock();
-	debug_print("mutex", "Thread %p has acquired mutex %p", node.tcb, mp);
+   mutex_node_t node;
+   node.tcb = get_tcb();
+   node.next = NULL;
+   debug_print("mutex", "Thread %p is entering mutex %p", node.tcb, mp);
+   if (node.tcb != global_tcb())
+      quick_assert_unlocked();
+   quick_lock();
+   if (mp->head == NULL) {
+      mp->head = mp->tail = &node;
+   }
+   else {
+      mp->tail->next = &node;
+      mp->tail = &node;
+   }
+   while (mp->locked || mp->head != &node) {
+      scheduler_block();
+      quick_lock();
+   }
+   mp->locked = TRUE;
+   mp->head = mp->head->next;
+   quick_unlock();
+   debug_print("mutex", "Thread %p has acquired mutex %p", node.tcb, mp);
 }
 
 /**
@@ -93,18 +93,18 @@ void mutex_lock(mutex_t *mp)
  * @param mp The mutex to unlock.
  */
 void mutex_unlock(mutex_t *mp) {
-	assert(mp);
-	assert(mp->initialized);
-	if (!locks_enabled) 
+   assert(mp);
+   assert(mp->initialized);
+   if (!locks_enabled) 
       return;
 
-	debug_print("mutex", "Releasing mutex %p", mp);
-	
-	mp->locked = FALSE;
-	quick_lock();
-	if(mp->head) 
+   debug_print("mutex", "Releasing mutex %p", mp);
+   
+   mp->locked = FALSE;
+   quick_lock();
+   if(mp->head) 
       scheduler_unblock(mp->head->tcb);
-	quick_unlock();
+   quick_unlock();
 }
 
 /**
@@ -113,8 +113,8 @@ void mutex_unlock(mutex_t *mp) {
  */
 void quick_lock() {
    if(lock_depth == 0)
-	   disable_interrupts();
-	lock_depth++;
+      disable_interrupts();
+   lock_depth++;
 }
 
 /**
@@ -123,9 +123,9 @@ void quick_lock() {
  * applied.
  */
 void quick_unlock() {
-	quick_assert_locked();
-	if (--lock_depth == 0)
-		enable_interrupts();
+   quick_assert_locked();
+   if (--lock_depth == 0)
+      enable_interrupts();
 }
 
 /** @brief Pretend to drop all quick locks, but don't enable interrupts.
@@ -135,7 +135,7 @@ void quick_unlock() {
  * but have interrupts enabled and no quick_locks applied when we jump
  * back later to kernel mode. */
 void quick_fake_unlock() {
-	lock_depth = 0;
+   lock_depth = 0;
 }
 
 /**
@@ -143,18 +143,18 @@ void quick_fake_unlock() {
  * times it has been locked to 0.
  */
 void quick_unlock_all() {
-	assert((get_eflags() & EFL_IF) == 0);
-	lock_depth = 0;
-	enable_interrupts();
+   assert((get_eflags() & EFL_IF) == 0);
+   lock_depth = 0;
+   enable_interrupts();
 }
 
 void quick_assert_unlocked() {
-	assert((get_eflags() & EFL_IF) != 0);
-	assert(lock_depth == 0);
+   assert((get_eflags() & EFL_IF) != 0);
+   assert(lock_depth == 0);
 }
 
 void quick_assert_locked() {
-	assert((get_eflags() & EFL_IF) == 0);
-	assert(lock_depth > 0);
+   assert((get_eflags() & EFL_IF) == 0);
+   assert(lock_depth > 0);
 }
 

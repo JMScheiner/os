@@ -63,7 +63,7 @@ static int blocked_count = 0;
 void scheduler_init()
 {
    heap_init(&sleepers);
-	mutex_init(&sleep_double_lock);
+   mutex_init(&sleep_double_lock);
    LIST_INIT_EMPTY(runnable);   
 }
 
@@ -76,7 +76,7 @@ void scheduler_init()
 void scheduler_register(tcb_t* tcb)
 {
    debug_print("scheduler", "Adding %p to the scheduler with tid 0x%x", 
-			tcb, tcb->tid);
+         tcb, tcb->tid);
    
    quick_lock();
    LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
@@ -95,17 +95,17 @@ void scheduler_register(tcb_t* tcb)
  */
 boolean_t scheduler_run(tcb_t* tcb, mutex_t *lock)
 {
-	quick_lock();
-	mutex_unlock(lock);
-	if (tcb->descheduled || tcb->blocked)
+   quick_lock();
+   mutex_unlock(lock);
+   if (tcb->descheduled || tcb->blocked)
    {
       quick_unlock();
-		return FALSE;
+      return FALSE;
    }
-	LIST_REMOVE(runnable, tcb, scheduler_node);
-	LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
-	scheduler_next();
-	return TRUE;
+   LIST_REMOVE(runnable, tcb, scheduler_node);
+   LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+   scheduler_next();
+   return TRUE;
 }
 
 /**
@@ -116,13 +116,13 @@ boolean_t scheduler_run(tcb_t* tcb, mutex_t *lock)
  */
 void scheduler_block()
 {
-	quick_assert_locked();
-	tcb_t *tcb = get_tcb();
-	debug_print("scheduler", "Blocking myself, thread %p", tcb);
-	blocked_count++;
-	tcb->blocked = TRUE;
-	LIST_REMOVE(runnable, tcb, scheduler_node);
-	scheduler_next();
+   quick_assert_locked();
+   tcb_t *tcb = get_tcb();
+   debug_print("scheduler", "Blocking myself, thread %p", tcb);
+   blocked_count++;
+   tcb->blocked = TRUE;
+   LIST_REMOVE(runnable, tcb, scheduler_node);
+   scheduler_next();
 }
 
 /**
@@ -133,15 +133,15 @@ void scheduler_block()
  */
 void scheduler_unblock(tcb_t* tcb)
 {
-	debug_print("scheduler", "Unblocking thread %p", tcb);
-	assert(tcb->blocked);
-	quick_lock();
-	blocked_count--;
-	tcb->blocked = FALSE;
-	if (!tcb->descheduled && tcb->wakeup == 0) {
-		LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
-	}
-	quick_unlock();
+   debug_print("scheduler", "Unblocking thread %p", tcb);
+   assert(tcb->blocked);
+   quick_lock();
+   blocked_count--;
+   tcb->blocked = FALSE;
+   if (!tcb->descheduled && tcb->wakeup == 0) {
+      LIST_INSERT_AFTER(runnable, tcb, scheduler_node);
+   }
+   quick_unlock();
 }
 
 /**
@@ -153,14 +153,14 @@ void scheduler_unblock(tcb_t* tcb)
  */
 void scheduler_deschedule(mutex_t *lock)
 {
-	tcb_t *tcb = get_tcb();
-	debug_print("scheduler", "Descheduling thread %p", tcb);
-	quick_lock();
-	mutex_unlock(lock);
-	assert(!tcb->descheduled);
-	tcb->descheduled = TRUE;
-	LIST_REMOVE(runnable, tcb, scheduler_node);
-	scheduler_next();
+   tcb_t *tcb = get_tcb();
+   debug_print("scheduler", "Descheduling thread %p", tcb);
+   quick_lock();
+   mutex_unlock(lock);
+   assert(!tcb->descheduled);
+   tcb->descheduled = TRUE;
+   LIST_REMOVE(runnable, tcb, scheduler_node);
+   scheduler_next();
 }
 
 /**
@@ -173,20 +173,20 @@ void scheduler_deschedule(mutex_t *lock)
  */
 boolean_t scheduler_reschedule(tcb_t *tcb)
 {
-	debug_print("make_runnable", "Rescheduling thread %p", tcb);
-	quick_lock();
-	if (tcb->descheduled) {
-		tcb->descheduled = FALSE;
-		debug_print("make_runnable", "Marking %p not descheduled", tcb);
-		if (!tcb->blocked && tcb->wakeup == 0) {
-			LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
-			debug_print("make_runnable", "Adding %p to scheduler", tcb);
-		}
-		quick_unlock();
-		return TRUE;
-	}
-	quick_unlock();
-	return FALSE;
+   debug_print("make_runnable", "Rescheduling thread %p", tcb);
+   quick_lock();
+   if (tcb->descheduled) {
+      tcb->descheduled = FALSE;
+      debug_print("make_runnable", "Marking %p not descheduled", tcb);
+      if (!tcb->blocked && tcb->wakeup == 0) {
+         LIST_INSERT_BEFORE(runnable, tcb, scheduler_node);
+         debug_print("make_runnable", "Adding %p to scheduler", tcb);
+      }
+      quick_unlock();
+      return TRUE;
+   }
+   quick_unlock();
+   return FALSE;
 }
 
 /**
@@ -198,13 +198,13 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
  */
 void scheduler_die(mutex_t *lock)
 {
-	tcb_t *tcb = get_tcb();
-	debug_print("scheduler", "Dying %p", tcb);
-	quick_lock();
-	mutex_unlock(lock);
-	LIST_REMOVE(runnable, tcb, scheduler_node);
-	scheduler_next();
-	assert(FALSE);
+   tcb_t *tcb = get_tcb();
+   debug_print("scheduler", "Dying %p", tcb);
+   quick_lock();
+   mutex_unlock(lock);
+   LIST_REMOVE(runnable, tcb, scheduler_node);
+   scheduler_next();
+   assert(FALSE);
 }
 
 /**
@@ -213,8 +213,8 @@ void scheduler_die(mutex_t *lock)
  */
 void scheduler_next()
 {
-	quick_assert_locked();
-	tcb_t *tcb = get_tcb();
+   quick_assert_locked();
+   tcb_t *tcb = get_tcb();
    tcb_t *sleeper;
    unsigned long now;
    //debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
@@ -224,9 +224,9 @@ void scheduler_next()
    /* If it is time to wake up a thread, put him last in the run queue. */
    if(sleeper && sleeper->wakeup < now)
    {
-		debug_print("sleep", "Waking tcb %p from %p", sleeper, tcb);
+      debug_print("sleep", "Waking tcb %p from %p", sleeper, tcb);
       heap_pop(&sleepers);
-		sleeper->wakeup = 0;
+      sleeper->wakeup = 0;
       LIST_INSERT_BEFORE(runnable, sleeper, scheduler_node);
       runnable = sleeper;
    }
@@ -234,42 +234,42 @@ void scheduler_next()
    if(!runnable)
    {
       /* There is a sleeping or blocked thread, and no one to run - 
-		 * twiddle our thumbs.*/
+       * twiddle our thumbs.*/
       if(sleeper || blocked_count > 0)
       {
-			tcb_t *next	= global_tcb();
-			//debug_print("scheduler", "Now running global thread %p", next);
-   		set_esp0((int)next->kstack);
+         tcb_t *next = global_tcb();
+         //debug_print("scheduler", "Now running global thread %p", next);
+         set_esp0((int)next->kstack);
 
          assert(next->dir_p);
-			quick_fake_unlock();
-   		context_switch(&tcb->esp, &next->esp, next->dir_p);
-			quick_unlock_all();
-			return;
+         quick_fake_unlock();
+         context_switch(&tcb->esp, &next->esp, next->dir_p);
+         quick_unlock_all();
+         return;
       }
-		else {
-	      /* If there is no one in the run queue, we are responsible 
-   	    * for launching the first task (again if necessary). Presumably
-			 * this will never happen since init should always be runnable or
-			 * blocked.
-      	 */
-			debug_print("scheduler", "reloading init");
-			tcb_t *killed;
-			LIST_FORALL(descheduled, killed, scheduler_node) {
-				thread_kill("No possibility of rescheduling");
-			}
-   	   load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
-			assert(FALSE);
-   	}
-	}
-	
-	runnable = LIST_NEXT(runnable, scheduler_node);
-	debug_print("scheduler", "now running %p", runnable);
+      else {
+         /* If there is no one in the run queue, we are responsible 
+          * for launching the first task (again if necessary). Presumably
+          * this will never happen since init should always be runnable or
+          * blocked.
+          */
+         debug_print("scheduler", "reloading init");
+         tcb_t *killed;
+         LIST_FORALL(descheduled, killed, scheduler_node) {
+            thread_kill("No possibility of rescheduling");
+         }
+         load_new_task(INIT_PROGRAM, 1, INIT_PROGRAM, strlen(INIT_PROGRAM) + 1);
+         assert(FALSE);
+      }
+   }
+   
+   runnable = LIST_NEXT(runnable, scheduler_node);
+   debug_print("scheduler", "now running %p", runnable);
    set_esp0((int)runnable->kstack);
    assert(runnable->dir_p);
-	quick_fake_unlock();
+   quick_fake_unlock();
    context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);
-	quick_unlock_all();
+   quick_unlock_all();
 }
 
 /**
@@ -288,25 +288,25 @@ int scheduler_sleep(unsigned long ticks)
 {
    tcb_t* tcb = get_tcb();
    debug_print("sleep", "%p going to sleep for %d ticks", tcb, ticks);
-	mutex_lock(&sleep_double_lock);
+   mutex_lock(&sleep_double_lock);
 
-	/* Double the sleep heap if necessary. */
-	if (heap_check_size(&sleepers) == ESUCCESS) {
-		/* Atomically insert into the sleep heap after possibly doubling
-		 * the heap. */
-	   quick_lock();
-		mutex_unlock(&sleep_double_lock);
-   	tcb->wakeup = time() + ticks;
-   	heap_insert(&sleepers, tcb);
-   	LIST_REMOVE(runnable, tcb, scheduler_node);
-   	scheduler_next();
-		return ESUCCESS;
-	}
-	else {
-		/* We needed to double the sleep heap but ran out of memory. */
-		mutex_unlock(&sleep_double_lock);
-		return EFAIL;
-	}
+   /* Double the sleep heap if necessary. */
+   if (heap_check_size(&sleepers) == ESUCCESS) {
+      /* Atomically insert into the sleep heap after possibly doubling
+       * the heap. */
+      quick_lock();
+      mutex_unlock(&sleep_double_lock);
+      tcb->wakeup = time() + ticks;
+      heap_insert(&sleepers, tcb);
+      LIST_REMOVE(runnable, tcb, scheduler_node);
+      scheduler_next();
+      return ESUCCESS;
+   }
+   else {
+      /* We needed to double the sleep heap but ran out of memory. */
+      mutex_unlock(&sleep_double_lock);
+      return EFAIL;
+   }
 }
 
 
