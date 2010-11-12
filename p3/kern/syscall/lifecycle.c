@@ -120,11 +120,10 @@ void exec_handler(volatile regstate_t reg) {
    mm_free_user_space(pcb);
    if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
-      /* Since user memory is gone - the only thing to do is die. 
-       * TODO  Ideally we would recognize that we can't satisfy 
-       *  the request before freeing the old userspace...
-       * */
-      assert(0); 
+      /* Since user memory is gone - the only thing to do is die.
+       * This is unfortunate, and should probably be changed, but oh well
+       */
+      thread_kill("No memory to execute exec"); 
    }
    void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 

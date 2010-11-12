@@ -188,7 +188,6 @@ region_t* duplicate_region_list(pcb_t* pcb)
 */
 void free_region_list(pcb_t* pcb)
 {
-   assert(pcb->regions);
    mutex_lock(&pcb->region_lock);
    free_region_list_helper(pcb->regions);
    pcb->regions = NULL;

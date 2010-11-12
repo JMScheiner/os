@@ -4,6 +4,26 @@
 @author Tim Wilson (tjwilson) 
 @author Justin Scheiner (jscheine)
 
+Data Structures
+- Hash table: There is a single hash table used to map tids to tcbs used
+  to implement yield and make_rannable
+
+- Binary heap: Sleeping threads are stored in a heap ordered by wakeup
+  time so the next thread to wake up can be found quickly.
+
+- Linked lists: Several doubly linked circular lists are used. There is a
+  runnable list containing threads that can be run by the scheduler. There
+  is a descheduled list of threads that cannot be run by the scheduler
+  until a call is made to make_runnable. There is a global list of all
+  pcbs used to update processes when a new kernel table page is allocated.
+  Each process keeps a list of its children, so children can be notified
+  when their parent vanishes.
+
+  Each mutex keeps a simpler singly linked list that acts as a waiting
+  queue. User memory regions are stored in a singly linked list.
+  Uncollected child statuses are stored in singly linked lists. The
+  hashtable uses chaining of singly linked lists.
+
 Decisions we made (in no particular order)
 - We have a global pcb/tcb that we initialize on startup and jump to
   whenerver no one else can usefully run. This is the equivalent of the
@@ -47,53 +67,63 @@ Memory is arranged into three major segments:
    -# Virtual Page Directories
    -# Kernel Stacks
 
-Page tables for kernel memory are global and shared by all threads - they 
- exist in the kernel heap and are allocated with smemalign. This was a design 
- decision to simplify the interaction of different processes, and cause fewer 
- complications during context switching and vanishing. 
+Page tables for kernel memory are global and shared by all threads - they
+exist in the kernel heap and are allocated with smemalign. This was a
+design decision to simplify the interaction of different processes, and
+cause fewer complications during context switching and vanishing. 
 
-Free frames are managed in a simple linked list structure, and zero'd on allocation. 
-The link structure is contained in the frames themselves, and is protected by the <code>user_free_lock</code>.
-There is a globally mapped <code>FREE_PAGE</code> whose access is also protected by the <code>user_free_lock</code>, 
-which allows us to write the link structure into the page. 
-Zeroing occurs on allocation 
-since we always map the page in our own address space on allocation, whereas this isn't 
-necessarily true on freeing.  This dance occurs in mm_new_frame and mm_free_frame. 
+Free frames are managed in a simple linked list structure, and zero'd on
+allocation.  The link structure is contained in the frames themselves, and
+is protected by the <code>user_free_lock</code>.  There is a globally
+mapped <code>FREE_PAGE</code> whose access is also protected by the
+<code>user_free_lock</code>, which allows us to write the link structure
+into the page.  Zeroing occurs on allocation since we always map the page
+in our own address space on allocation, whereas this isn't necessarily
+true on freeing.  This dance occurs in mm_new_frame and mm_free_frame. 
 
-<b>Kernel Virtual Memory (KVM):</b> manages addressable space with a variable <code>kvm_bottom</code> which descends as 
-   demands for kernel pages arise. Freed kernel pages enter a <code>kernel_free_list</code> which is separate
-   from the <code>user_free_list</code>. On KVM allocation, we first attempt to allocate
-   free kernel pages, and then dip into the user free frame pool if necessary (e.g. every page 
-   between <code>kvm_bottom</code> and <code>KERNEL_MEM_END</code> is in use). Every 4M of kernel 
-   memory we allocate a new KVM table. This is an expensive operation that blocks subsequent 
-   KVM allocations, since we need to take time to map the new table in every existing
-   processes directory. Fortunately, it doesn't happen often, and generally happens less over time,
-   as frames dedicated to the user shift to the kernel as necessary.
+<b>Kernel Virtual Memory (KVM):</b> manages addressable space with a
+variable <code>kvm_bottom</code> which descends as demands for kernel
+pages arise. Freed kernel pages enter a <code>kernel_free_list</code>
+which is separate from the <code>user_free_list</code>. On KVM allocation,
+we first attempt to allocate free kernel pages, and then dip into the user
+free frame pool if necessary (e.g. every page between
+<code>kvm_bottom</code> and <code>KERNEL_MEM_END</code> is in use). Every
+4M of kernel memory we allocate a new KVM table. This is an expensive
+operation that blocks subsequent KVM allocations, since we need to take
+time to map the new table in every existing processes directory.
+Fortunately, it doesn't happen often, and generally happens less over
+time, as frames dedicated to the user shift to the kernel as necessary.
 
-<b> Request/Allocate </b> To simplify error handling (e.g. out of frames) allocation is separated into requests and 
- allocations. Requests are only granted if there will be enough frames to meet the demand, after the request is 
- granted frame allocations are unchecked, because they are guaranteed to pass. Allocations only occur in
- <code> mm_duplicate_address_space </code> and <code> mm_alloc</code>
+<b> Request/Allocate </b> To simplify error handling (e.g. out of frames)
+allocation is separated into requests and allocations. Requests are only
+granted if there will be enough frames to meet the demand, after the
+request is granted frame allocations are unchecked, because they are
+guaranteed to pass. Allocations only occur in <code>
+mm_duplicate_address_space </code> and <code> mm_alloc</code>
  
-<b> Address Space Copying </b> Address space copying seeks through the current processes user 
-memory to determine the number of kernel / user frames we will need, and to find a free addressable
-page (in a table that already exists) to perform the copy "through." If no such page exists, a 
-"scratch" table is allocated between <code>USER_MEM_END</code> and <code>KERNEL_MEM_START</code>.
-It then builds the new address space by duplicating the current one. 
+<b> Address Space Copying </b> Address space copying seeks through the
+current processes user memory to determine the number of kernel / user
+frames we will need, and to find a free addressable page (in a table that
+already exists) to perform the copy "through." If no such page exists, a
+"scratch" table is allocated between <code>USER_MEM_END</code> and
+<code>KERNEL_MEM_START</code>.  It then builds the new address space by
+duplicating the current one. 
 
-<b> Region Lists </b> User space is managed in a region list, which is responsible for slicing 
- up user memory in an intelligent way, and deploying the right page fault handler during page 
- faults. For example, we can use the region manager to determine what to do on <code>new_pages</code> / <code>remove_pages</code>
- calls. 
+<b> Region Lists </b> User space is managed in a region list, which is
+responsible for slicing up user memory in an intelligent way, and
+deploying the right page fault handler during page faults. For example, we
+can use the region manager to determine what to do on
+<code>new_pages</code> / <code>remove_pages</code> calls. 
 
-<b> Heap Occupants: </b> The heap is occupied by PCBs, statuses nodes, 
-   the tid->tcb heap, the sleep heap, global page tables, and region nodes. 
-   That is all. 
+<b> Heap Occupants: </b> The heap is occupied by PCBs, statuses nodes, the
+tid->tcb heap, the sleep heap, global page tables, and region nodes.  That
+is all. 
 
-<b> Virtual Directories: </b> Since the user page tables are not direct mapped, we are required to keep 
-   a directory of table virtual addresses along with the physical directory
-   used by the memory managmenent hardware. An offset into the virtual 
-   directory gives the page aligned (virtual) address of the user table 
-   (in the range <code>[0xf0000000, 0xffffffff]</code>)
+<b> Virtual Directories: </b> Since the user page tables are not direct
+mapped, we are required to keep a directory of table virtual addresses
+along with the physical directory used by the memory managmenent hardware.
+An offset into the virtual directory gives the page aligned (virtual)
+address of the user table (in the range <code>[0xf0000000,
+0xffffffff]</code>)
 
 */

@@ -4,7 +4,7 @@
 *  and generally for the keyboard interface.
 *
 * @author Justin Scheiner
-*
+* @author Tim Wilson
 */
 
 #include <keyboard.h>

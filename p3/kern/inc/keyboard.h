@@ -1,12 +1,18 @@
+/** 
+* @file keyboard.h
+* @brief Responsible for responding to keyboard interrupts
+*  and generally for the keyboard interface.
+*
+* @author Justin Scheiner
+* @author Tim Wilson
+*/
 
 #ifndef KEYBOARD_UM5LT9N0
 #define KEYBOARD_UM5LT9N0
 
 #include <reg.h>
 
-//NOTE: This value must be a power of 2
-// 2048 is maybe excessively large for a key buffer, but
-// it matches the size of the console.
+/* NOTE: This value should be a power of 2, since we do mod by & */
 #define KEY_BUF_SIZE 2048
 
 int readchar(void);
