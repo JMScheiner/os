@@ -2,9 +2,35 @@
 
 @mainpage 15-410 Project 3
 
-@author Name1 (id1)
-@author Name2 (id2)
+@author Tim Wilson (tjwilson)
+@author Justin Scheiner (jscheine)
 
-Same drill as last time.
+Decisions we made (in no particular order)
+- We have a global pcb/tcb that we initialize on startup and jump to
+  whenerver no one else can usefully run. This is the equivalent of the
+  idle program.
+
+- Debug statements are all encapsulated in debug_print statements that
+  work like lprintf statements, but take an additional string. The debug
+  statement only prints if the additional argument is in a list of strings
+  currently being debugged. This is useful for debugging a specific
+  complex component like readline without seeing log messages for the rest
+  of the kernel.
+
+- To vanish as the last thread in a process, the thread first sets a flag
+  to indicate that it is vanishing.  Next the thread notifies its children
+  it is dying and frees any uncollected statuses. The thread's parent is
+  then notified and told not to exit until we remove ourselves from their
+  child list and deliver our status. After this, we wait for all of our
+  children who are currently vanishing to vanish before finally vanishing
+  ourselves.
+  In all cases, a thread frees the kernel stack of the previous thread
+  that exited and removes itself from the global thread table.
+
+- To wait, a thread first acquires a check lock to ensure that there are
+  enough child threads available to wait on. If this passes, the thread
+  waits until a status has been made available to it by a child thread.
+  Finally, we collect this status (which is allocated seperately from the
+  child tcb) and free it.
 
 */
