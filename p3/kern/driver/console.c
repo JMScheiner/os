@@ -89,7 +89,6 @@ void print_handler(volatile regstate_t reg)
    /* Copy buf to prevent the memory it lies in from being freed during the
     * call to putbytes. */
    if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-      MAGIC_BREAK;
       RETURN(EBUF);
    }
 

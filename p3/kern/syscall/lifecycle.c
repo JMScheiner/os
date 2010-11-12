@@ -572,6 +572,7 @@ void wait_handler(volatile regstate_t reg)
 */
 void task_vanish_handler(volatile regstate_t reg)
 {
-   lprintf("Ignoring task vanish");
+   debug_print("vanish", "task_vanish being ignored.");
+   RETURN(EFAIL);
 }
 

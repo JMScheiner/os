@@ -63,8 +63,8 @@ static cond_t keyboard_signal;
 */
 void getchar_handler(volatile regstate_t reg)
 {
-   //TODO
-   lprintf("Ignoring getchar");
+   debug_print("keyboard", "Ignoring getchar");
+   RETURN(EFAIL);
 }
 
 /** @brief Reads the next line from the console and copies it into the
@@ -126,38 +126,10 @@ void readline_handler(volatile regstate_t reg)
    int copied;
    if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
       debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
-      MAGIC_BREAK;
       RETURN(EBUF);
    }
    RETURN(read);
 }
-
-
-/** @brief Returns the next character in the keyboard buffer
- *
- *  This function does not block if there are no characters in the keyboard
- *  buffer
- *
- *  @return The next character in the keyboard buffer, or -1 if the keyboard
- *          buffer is currently empty
- **/
-/*
-int readchar(void)
-{
-   kh_type augchar;
-   while(keybuf_head != keybuf_tail)
-   {
-      augchar = process_scancode(keybuf[keybuf_head]);
-      keybuf_head = (keybuf_head + 1) & (KEY_BUF_SIZE - 1);
-      
-      if(KH_HASDATA(augchar) && KH_ISMAKE(augchar))
-         return KH_GETCHAR(augchar);
-   }
-   return -1;
-}
-*/
-
-
 
 /** 
 * @brief Process a scancode from the keyboard port. If there is space

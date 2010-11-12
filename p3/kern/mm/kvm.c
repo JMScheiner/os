@@ -186,10 +186,6 @@ void* kvm_new_page()
       debug_print("kvm", " Allocated new page at %p, kernel_free_list = %p", 
          new_page, kernel_free_list);
       
-      if((kernel_free_list != 0) && 
-        !((void*)kernel_free_list > (void*)KVM_START))
-         MAGIC_BREAK;
-
       mutex_unlock(&kernel_free_lock);
    }
    else
@@ -240,8 +236,6 @@ void kvm_free_page(void* page)
    
    n_kernel_frames++;
    
-   if((void*)kernel_free_list < (void*)KVM_START)
-      MAGIC_BREAK;
    assert((void*)kernel_free_list > (void*)KVM_START);
    
    /* Unmap the page to make illegal accesses show up in debugging. */

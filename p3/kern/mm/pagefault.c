@@ -166,10 +166,7 @@ void user_fault(void* addr, int ecode)
 */
 void stack_fault(void* addr, int ecode)
 {
-   if(addr < (void*)0xb0000000) MAGIC_BREAK;
    debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
-   assert(0xb0000000 <= (unsigned int)addr && (unsigned int)addr < 0xc0000000);
-         
    if(mm_alloc(get_pcb(), (void*)PAGE_OF(addr), 
          PAGE_SIZE, PTENT_USER | PTENT_RW) < 0)
    {
@@ -189,8 +186,7 @@ void generic_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
    debug_print("page", "Generic fault at %p!!!", addr);
-   assert((unsigned int)addr < 0xb0000000 || (unsigned int)addr >= 0xc0000000);
-         
+   
    if(!(ecode & PF_ECODE_NOT_PRESENT))
    {
       sprintf(errbuf, "Page Fault: %p not present in memory.", addr);

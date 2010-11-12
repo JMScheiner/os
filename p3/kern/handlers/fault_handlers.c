@@ -20,13 +20,11 @@ void divide_error_handler(regstate_t reg)
 void debug_handler(regstate_t reg)
 {
    lprintf("Ignoring debug ");
-   MAGIC_BREAK;
 }
 
 void breakpoint_handler(regstate_t reg)
 {
    lprintf("Ignoring breakpoint ");
-   MAGIC_BREAK;
 }
 
 void overflow_handler(regstate_t reg)
@@ -57,49 +55,42 @@ void device_not_available_handler(regstate_t reg)
 void double_fault_handler(regstate_error_t reg)
 {
    /* This never happens.*/
-   MAGIC_BREAK;
    assert(0);
 }
 
 void invalid_tss_handler(regstate_error_t reg)
 {
    /* This never happens.*/
-   MAGIC_BREAK;
    assert(0); 
 }
 
 void segment_not_present_handler(regstate_error_t reg)
 {
    /* This never happens.*/
-   MAGIC_BREAK;
    assert(0); 
 }
 
 void stack_segment_fault_handler(regstate_error_t reg)
 {
    /* This never happens.*/
-   MAGIC_BREAK;
    assert(0); 
 }
 
 void general_protection_handler(regstate_error_t reg)
 {
    /* This never happens.*/
-   MAGIC_BREAK;
    assert(0); 
 }
 
 void alignment_check_handler(regstate_error_t reg)
 {
    /* We don't do alignment checking. */
-   MAGIC_BREAK;
    assert(0); 
 }
 
 void machine_check_handler(regstate_t reg)
 {
    /* Something disastrous happened. */
-   MAGIC_BREAK;
    halt();
 }
 
