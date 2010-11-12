@@ -348,6 +348,12 @@ void set_status_handler(volatile regstate_t reg)
 			pcb->status->status);
 }
 
+/**
+ * @brief Terminate the calling thread by printing an error message and
+ * vanishing.
+ *
+ * @param error_message The error message to print to the console.
+ */
 void thread_kill(char* error_message)
 {
 	mutex_t *lock = get_print_lock();
