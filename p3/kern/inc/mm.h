@@ -80,7 +80,7 @@ void mm_free_user_space(pcb_t* pcb);
 void mm_free_address_space(pcb_t* pcb);
 
 /** Requests information **/
-int mm_getflags(pcb_t* pcb, void* addr);
+int mm_getflags(void* addr);
 
 /* FIXME mm_validate_write should be deleted!!! */
 boolean_t mm_validate_write(void* addr, int len);

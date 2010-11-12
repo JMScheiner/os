@@ -21,27 +21,27 @@
 #include <ecodes.h>
 #include <mm.h>
 
-static boolean_t validate_user_read(pcb_t* pcb, void* addr)
+static boolean_t validate_user_read(void* addr)
 {
-   int flags = mm_getflags(pcb, addr);
+   int flags = mm_getflags(addr);
    return (flags == (flags | PTENT_USER | PTENT_PRESENT));
 }
 
-static boolean_t validate_user_write(pcb_t* pcb, void* addr)
+static boolean_t validate_user_write(void* addr)
 {
-   int flags = mm_getflags(pcb, addr);
+   int flags = mm_getflags(addr);
    return (flags == (flags | PTENT_USER | PTENT_PRESENT | PTENT_RW));
 }
 
-static boolean_t validate_kernel_read(pcb_t* pcb, void* addr)
+static boolean_t validate_kernel_read(void* addr)
 {
-   int flags = mm_getflags(pcb, addr);
+   int flags = mm_getflags(addr);
    return (flags == (flags | PTENT_PRESENT));
 }
 
-static boolean_t validate_kernel_write(pcb_t* pcb, void* addr)
+static boolean_t validate_kernel_write(void* addr)
 {
-   int flags = mm_getflags(pcb, addr);
+   int flags = mm_getflags(addr);
    return (flags == (flags | PTENT_PRESENT | PTENT_RW));
 }
 
@@ -64,9 +64,8 @@ static boolean_t validate_kernel_write(pcb_t* pcb, void* addr)
 int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
 	
    int n;
-   pcb_t* pcb = get_pcb();
-   boolean_t (*validate_write)(pcb_t*,void*);
-   boolean_t (*validate_read)(pcb_t*,void*);
+   boolean_t (*validate_write)(void*);
+   boolean_t (*validate_read)(void*);
    
    if(user_source)
    {
@@ -82,7 +81,7 @@ int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
    mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
-   if(!validate_read(pcb, src) || !validate_write(pcb, dst))
+   if(!validate_read(src) || !validate_write(dst))
    {
       mutex_unlock(lock);
       return EBUF;
@@ -91,10 +90,10 @@ int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source) {
    for(n = 0; n < max_len; n++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      if(!SAME_PAGE(src, src - 1) && (!validate_read(pcb, src)))
+      if(!SAME_PAGE(src, src - 1) && (!validate_read(src)))
          break;
          
-      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(pcb, dst))) 
+      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(dst))) 
          break;
 
       if((*dst = *src) == '\0') 
@@ -124,10 +123,8 @@ int v_memcpy(char *dst, char *src, int len, boolean_t user_source)
 {
 	int i;
    
-   pcb_t* pcb = get_pcb();
-   
-   boolean_t (*validate_write)(pcb_t*,void*);
-   boolean_t (*validate_read)(pcb_t*,void*);
+   boolean_t (*validate_write)(void*);
+   boolean_t (*validate_read)(void*);
    if(user_source)
    {
       validate_read = validate_user_read;
@@ -142,7 +139,7 @@ int v_memcpy(char *dst, char *src, int len, boolean_t user_source)
    mutex_t* lock = new_pages_lock();
    mutex_lock(lock);
    
-   if(!validate_read(pcb, src) || !validate_write(pcb, dst))
+   if(!validate_read(src) || !validate_write(dst))
    {
       mutex_unlock(lock);
       return EBUF;
@@ -151,10 +148,10 @@ int v_memcpy(char *dst, char *src, int len, boolean_t user_source)
    for(i = 0; i < len; i++, src++, dst++)
    {
       /* Ensure that we can write and read to the next addresses. */
-      if(!SAME_PAGE(src, src - 1) && (!validate_read(pcb, src)))
+      if(!SAME_PAGE(src, src - 1) && (!validate_read(src)))
          break;
          
-      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(pcb, dst))) 
+      if(!SAME_PAGE(dst, dst - 1) && (!validate_write(dst))) 
          break;
 
       *dst = *src; 

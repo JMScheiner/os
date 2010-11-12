@@ -206,6 +206,7 @@ void mm_free_address_space(pcb_t* pcb)
 */
 int mm_duplicate_address_space(pcb_t* new_pcb) 
 {
+   assert(get_pcb() != new_pcb);
    unsigned long d_index, user_frames, kernel_frames;
    unsigned long t_index;
    unsigned long flags;
@@ -516,11 +517,12 @@ void mm_remove_pages(pcb_t* pcb, void* start, void* end)
 * @return The flags (page directory and table bits 0).
 *         Or -1 if the page directory entry is not present.
 */
-int mm_getflags(pcb_t* pcb, void* addr)
+int mm_getflags(void* addr)
 {
    unsigned long page;
    long tflags;
 
+   pcb_t* pcb = get_pcb();
    page = PAGE_OF(addr);
    page_dirent_t* dir_v = (page_dirent_t*) pcb->dir_v;
    page_dirent_t* virtual_dir_v = (page_dirent_t*) pcb->virtual_dir;
@@ -556,7 +558,7 @@ boolean_t mm_validate_write(void *addr, int len)
 	unsigned int npages = NUM_PAGES(addr, len);
 	int i;
 	for (i = 0; i < npages; i++) {
-		int tflags = mm_getflags(get_pcb(), (void*)addr + i*PAGE_SIZE);
+		int tflags = mm_getflags((void*)addr + i*PAGE_SIZE);
 		if(tflags <= 0 || 
 				!TEST_SET(tflags, (PTENT_PRESENT | PTENT_RW | PTENT_USER)))
 			return FALSE;
@@ -653,9 +655,8 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 /** 
 * @brief Releases a frame into the free frame pool.
 *
-*  In the common case table_v is in our own address space, but this is not
-*   a guarantee, since a process may not exit normally. 
-* 
+* table_v is not required to be in the current address space. 
+*
 * @param table The page table the page occupies. 
 * @param page The page to free from the address space associated with table. 
 * 
