@@ -1,4 +1,11 @@
-
+/** @file thread.c
+ *
+ * @brief Functions related to thread intialization, checking invariants,
+ * thread destruction, etc.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 #include <thread.h>
 #include <assert.h>
 #include <asm.h>
@@ -19,18 +26,11 @@
 #include <simics.h>
 #include <x86/cr.h>
 
-//static mutex_t tcb_table_lock;
-
 /** @brief Number of pages per kernel stack. */
 
 static int next_tid = 1;
 
 hashtable_t tcb_table;
-
-//DEFINE_HASHTABLE(tcb_table_t, int, tcb_t *);
-
-/* @brief Maps tids to tcbs.  */
-//tcb_table_t tcb_table;
 
 /** 
 * @brief Return a unique tid. 
@@ -129,15 +129,8 @@ void set_esp0_helper() {
 	set_esp0((unsigned int)tcb->kstack);
 }
 
-void check_esp(void *esp) {
-	//lprintf("esp = %p in check_esp", esp);
-}
-
-tcb_t *checking = NULL;
-
 void check_invariants(boolean_t synchronous) {
 	tcb_t *tcb = get_tcb();
-	checking = tcb;
 	assert(tcb);
 	if (synchronous) {
 		pcb_t *pcb = tcb->pcb;

@@ -30,7 +30,9 @@
 #define TEN_MS_MSB ((unsigned char)(((TIMER_RATE / 100) & 0xff00) >> 8))
 #define TEN_MS_LSB ((unsigned char)(TIMER_RATE / 100) & 0xff)
 
-// This overflows every 12 hours - but is fine for the purposes of 15410. 
+/** @brief The number of ticks since boot.
+ * This overflows every 12 hours - but is fine for the purposes of 15410.
+ */
 static volatile unsigned int ticks;
 
 /** 
@@ -63,8 +65,7 @@ void timer_handler(regstate_t reg)
    /* Run the next thread. */
    scheduler_next();
    
-   /* If this fails then we've probably corrupted a 
-    *  kernel stack. */
+   /* If this fails then we've probably corrupted a kernel stack. */
    assert(reg.eip);
 }
 
