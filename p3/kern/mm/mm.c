@@ -725,7 +725,7 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
       n_user_frames++;
       assert(n_user_frames <= n_free_frames);
       mutex_unlock(&request_lock);
-      return;
+      return 0;
    }
 
    /* This frame should now be invisible to the process. */

@@ -89,6 +89,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    timer_init();
    console_init();
+   
    keyboard_init();
    scheduler_init();
 	lifecycle_init();
@@ -97,6 +98,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    handler_install();
    clear_console();
+   
    mm_init();
 
    locks_enabled = TRUE;

@@ -239,7 +239,10 @@ void fork_handler(volatile regstate_t reg)
 	debug_print("children", "%p has %d children after incrementing",
 			current_pcb, current_pcb->unclaimed_children);
 	mutex_lock(&current_pcb->child_lock);
-	LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
+	
+   if (current_pcb != init_process)
+	   LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
+
 	mutex_unlock(&current_pcb->child_lock);
    
    /* Register the first thread in the new TCB. */
