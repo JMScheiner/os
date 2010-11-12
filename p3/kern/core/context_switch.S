@@ -30,8 +30,8 @@
  * pd       * 44
  *
  * @param old_esp Address to store the stack pointer of the current thread
- *
  * @param new_esp Stack address to jump execution to.
+ * @param pd The page directory of the kernel thread we are jumping to.
  */
 context_switch:
 	pusha                  // Save general purpose registers

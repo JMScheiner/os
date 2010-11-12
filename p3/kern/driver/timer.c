@@ -6,7 +6,6 @@
 *
 * @author Justin Scheiner
 * @bug Timer drifts by about six seconds per day.
-* @bug Timer handler needs to be double checked for race conditions.
 */
 
 #include "timer.h"
@@ -24,9 +23,9 @@
 #include <reg.h>
 #include <mutex.h>
 
-//In reality this is 9.99931276 milliseconds.
-//	Per tick, we lose 687.24ns.
-//	That is about six seconds per day...
+/* In reality this is 9.99931276 milliseconds.
+	Per tick, we lose 687.24ns.
+	That is about six seconds per day... */
 #define TEN_MS_MSB ((unsigned char)(((TIMER_RATE / 100) & 0xff00) >> 8))
 #define TEN_MS_LSB ((unsigned char)(TIMER_RATE / 100) & 0xff)
 
@@ -51,7 +50,9 @@ void timer_init()
 }
 
 /** 
-* @brief Increments the timer counter. 
+* @brief Increments the timer counter.
+*
+* @param reg Ignored
 */
 void timer_handler(regstate_t reg)
 {

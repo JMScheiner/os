@@ -1,4 +1,11 @@
-
+/** @file mode_switch.S
+ *
+ * @brief mode_switch functionality for getting the first process to
+ * user mode.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 #include <x86/seg.h>
 
 .globl mode_switch

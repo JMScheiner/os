@@ -1,15 +1,16 @@
 /**
- * The 15-410 kernel project.
- * @name loader.c
+ * @file loader.c
  *
- * Functions for the loading
+ * @brief Functions for the loading
  * of user programs from binary 
  * files should be written in
  * this file. The function 
  * elf_load_helper() is provided
  * for your use.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
  */
-/*@{*/
 
 /* --- Includes --- */
 #include <string.h>
@@ -34,9 +35,6 @@
 #include <types.h>
 #include <debug.h>
 #include <mutex.h>
-
-/* --- Local function prototypes --- */ 
-
 
 /**
  * Copies data from a file into a buffer.

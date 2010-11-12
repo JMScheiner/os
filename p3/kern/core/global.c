@@ -1,3 +1,14 @@
+/** @file global.c
+ *
+ * @brief Functions to initialize and fetch the global pcb and tcb (our
+ * version of idle) that should be switched to when there is no one else
+ * to run. Also functions to add and remove ourself from the
+ * global list of all pcbs.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
+
 #include <kernel_types.h>
 #include <global_thread.h>
 #include <malloc.h>

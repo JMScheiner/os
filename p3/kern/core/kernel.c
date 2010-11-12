@@ -1,11 +1,11 @@
 /** @file kernel.c
- *  @brief An initial kernel.c
+ *  @brief The entry point of the kernel.
  *
- *  You should initialize things in kernel_main(),
- *  and then run stuff.
+ *  Initialize data structures and wait for a timer interrupt
+ *  to start up the init process.
  *
- *  @author Harry Q. Bovik (hqbovik)
- *  @author Fred Hacker (fhacker)
+ *  @author Tim Wilson
+ *  @author Justin Scheiner
  *  @bug No known bugs.
  */
 
