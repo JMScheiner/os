@@ -9,7 +9,6 @@
 * @author Tim Wilson
 * @bug Kernel page allocation can probably do better than malloc.
 * @bug There is no real need to serialize address space copying.
-* @bug mm_alloc is a trainwreck...
 */
 
 #include <mm.h>
@@ -63,12 +62,15 @@ int mm_init()
    free_block_t* iter;
    
    /* Point the free list at the first free page. */
-   user_free_list = (free_block_t*)USER_MEM_START;
+   user_free_list = (free_block_t*)(USER_MEM_START + PAGE_SIZE);
 
    /* This makes an assumption that initially memory is contiguous. */
-   n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT);
+   n_free_frames = n_phys_frames - (USER_MEM_START >> PAGE_SHIFT) - PAGE_SIZE;
    n_user_frames = n_free_frames;
-
+   
+   /* Initialize the ZFOD frame explicitly */
+   memset(ZFOD_FRAME, 0, PAGE_SIZE);
+   
    /* Build a very simple link structure on free frames. */
    for(i = 0, iter = user_free_list; 
       i < n_free_frames - 1; 
@@ -270,8 +272,6 @@ int mm_duplicate_address_space(pcb_t* new_pcb)
     *    (this should be rare) */
    if(copy_page == 0)
    {
-      lprintf(" *** Failed to find a page to copy through. ***  ");
-      
       if(!TABLE_PRESENT(current_dir_v[ DIR_OFFSET(DEFAULT_COPY_PAGE) ]))
          copy_table_v = mm_new_table(current_pcb, (void*)DEFAULT_COPY_PAGE);
       else 
@@ -459,20 +459,57 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       if(PAGE_PRESENT((table_v[ TABLE_OFFSET(page) ]))) 
          continue;
 
-      /* Allocate the free page, but keep it in supervisor mode for now. */
-      frame = mm_new_frame((unsigned long*)table_v, page);
+      if(flags & PTENT_ZFOD)
+      {
+         debug_print("mm", "Mapping ZFOD frame!");
+         frame = (unsigned long)ZFOD_FRAME;
+      }
+      else
+      {
+         /* Allocate the free page, but keep it in supervisor mode for now. */
+         frame = mm_new_frame((unsigned long*)table_v, page);
+      }
       
       /* Reassign the page with the flags the user originally asked for. */
       debug_print("mm", "Mapping page 0x%x to frame 0x%lx with flags %x", 
          page, frame, flags);
-      table_v[ TABLE_OFFSET(page) ] = ((unsigned long) frame 
-         | PTENT_PRESENT | flags);
+      table_v[ TABLE_OFFSET(page) ] = (frame | PTENT_PRESENT | flags);
          
       invalidate_page((void*)page);
    }
    mutex_unlock(&pcb->directory_lock);
    return 0;
 } 
+
+void mm_frame_zfod_page(void* addr)
+{
+   unsigned long page, frame;
+   long tflags;
+
+   pcb_t* pcb = get_pcb();
+   page = PAGE_OF(addr);
+   
+   /* Navigate and check the current page tables. */
+   page_dirent_t* dir_v = (page_dirent_t*) pcb->dir_v;
+   page_dirent_t* virtual_dir_v = (page_dirent_t*) pcb->virtual_dir;
+   page_tablent_t* table_p = dir_v[ DIR_OFFSET(page) ];
+   page_tablent_t* table_v = virtual_dir_v[ DIR_OFFSET(page) ];
+   
+   /* Assert that we are actually framing a ZFOD page. */
+   assert(FLAGS_OF(table_v) == 0);
+   assert(TABLE_PRESENT(table_p));
+   tflags = FLAGS_OF(table_v[ TABLE_OFFSET(page) ]);
+   assert(tflags & PTENT_ZFOD);
+   
+   /* Allocate the free page, but keep it in supervisor mode for now. */
+   frame = mm_new_frame((unsigned long*)table_v, page);
+   table_v[ TABLE_OFFSET(page) ] = 
+      ~PTENT_ZFOD & ((unsigned long) frame | PTENT_RW | tflags);
+   invalidate_page((void*)page);
+
+   /* You are hereby a real page. mazel-tov */
+}
+
 
 /** 
 * @brief Removes pages from the currently running processes address space. 

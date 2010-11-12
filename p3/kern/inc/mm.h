@@ -19,14 +19,15 @@
  *    This value must be table aligned. 
  **/
 #define USER_MEM_END 0xF0000000
+#define ZFOD_FRAME ((void*)USER_MEM_START)
 
 #define PTENT_PRESENT      0x1
 #define PTENT_RO           0x0
 #define PTENT_RW           0x2
 #define PTENT_SUPERVISOR   0x0
 #define PTENT_USER         0x4
-#define PTENT_COW          0x200
-#define PTENT_ZFOD         0x400
+#define PTENT_ZFOD         0x200
+#define PTENT_COW          0x400
 
 #define PAGE_MASK (PAGE_SIZE - 1)
 #define PAGE_OF(addr) (((int)(addr)) & (~PAGE_MASK))
@@ -73,6 +74,7 @@ void *mm_new_kp_page(void);
 int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags);
 int mm_duplicate_address_space(pcb_t* pcb);
 int mm_request_frames(int n);
+void mm_frame_zfod_page(void* addr);
 
 /** Release resources **/
 void mm_remove_pages(pcb_t* pcb, void* start, void* end);

@@ -58,7 +58,9 @@ void page_fault_handler(volatile regstate_error_t reg)
    {
       if(region->start <= addr && addr < region->end)
       {
-			debug_print("page", "fault at %p being handled by region %p with start %p and end %p", addr, region, region->start, region->end);
+			debug_print("page",
+            "fault at %p being handled by region %p with start %p and end %p",
+            addr, region, region->start, region->end);
          handler = region->fault;
          mutex_unlock(&pcb->region_lock);
          handler(addr, ecode);
@@ -95,7 +97,8 @@ void rodata_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
    debug_print("page", ".rodat fault at %p!!!", addr);
-   sprintf(errbuf, "Page Fault: Illegal access to .rodata region at %p.", addr);
+   sprintf(errbuf, 
+      "Page Fault: Illegal access to .rodata region at %p.", addr);
    thread_kill(errbuf);
 }
 
@@ -123,6 +126,14 @@ void bss_fault(void* addr, int ecode)
 {
    char errbuf[ERRBUF_SIZE];
    debug_print("page", "bss fault at %p!!!", addr);
+   
+   if(ecode & PF_ECODE_WRITE)
+   {
+      debug_print("page", "Framing ZFOD page!", addr);
+      mm_frame_zfod_page(addr);
+      return;
+   }
+
    sprintf(errbuf, "Page Fault: Illegal access to .bss region at %p.", addr);
    thread_kill(errbuf);
 }
