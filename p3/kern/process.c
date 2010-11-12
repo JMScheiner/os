@@ -1,4 +1,10 @@
-
+/* @file process.c
+ *
+ * @brief Functions related to process intialization and destruction.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 #include <process.h>
 #include <mm.h>
 #include <assert.h>
@@ -70,6 +76,14 @@ pcb_t* get_pcb()
    return pcb;
 }
 
+/**
+ * @brief Initialize a process
+ *
+ * @param first_process True iff this is the init process that is being
+ * hand loaded.
+ *
+ * @return The pcb of the new process on success, NULL on failure.
+ */
 pcb_t* initialize_process(boolean_t first_process) 
 {
    pcb_t* pcb;
@@ -127,6 +141,11 @@ fail_pcb:
    return NULL;
 }
 
+/**
+ * @brief Get the pid of the current running process.
+ *
+ * @return The current process pid.
+ */
 int get_pid() {
 	tcb_t *tcb = get_tcb();
 	if (tcb == NULL) {
@@ -135,6 +154,17 @@ int get_pid() {
 	return tcb->pcb->pid;
 }
 
+/**
+ * @brief Initialize a memory region for a new user with the appropriate
+ * contents.
+ *
+ * @param file The executable file to intialize from.
+ * @param offset The offset in the file to copy from.
+ * @param len The number of bytes to copy, extra space in the region will
+ *            be zeroed.
+ * @param start The first address in memory to initialize
+ * @param end The byte after the last address to initialize.
+ */
 static void initialize_region(const char *file, unsigned long offset, 
 		unsigned long len, unsigned long start, unsigned long end) 
 {
@@ -142,6 +172,15 @@ static void initialize_region(const char *file, unsigned long offset,
 	memset((char *)start + len, 0, end - start - len);
 }
 
+/**
+ * @brief Initialize memory for a user with the appropriate contents.
+ *
+ * @param file The executable to initialize from.
+ * @param elf An elf header for the executable.
+ * @param pcb The pcb of the process.
+ *
+ * @return ESUCCESS if initialization was successful, EFAIL otherwise.
+ */
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
    // Allocate text region. FIXME Allocate text and rodata together.

@@ -3,7 +3,6 @@
 * @brief Scheduler functions for the 410 kernel. 
 * @author Justin Scheiner
 * @author Tim Wilson
-* @bug Should sleepers always be put at the front of the run queue when they wake up?
 */
 #include <scheduler.h>
 #include <context_switch.h>
@@ -28,7 +27,8 @@
 
 /**
  * @brief Circular queue of runnable threads. 
- *  Always points to the next runnable thread, if there is one. 
+ *  Always points to a runnable thread if there is one, often but not
+ *  always our current thread. 
  */
 static tcb_t *runnable = NULL;
 
@@ -36,7 +36,8 @@ static tcb_t *runnable = NULL;
  * @brief Circular queue of descheduled threads.
  *
  * If at any point there are no runnable or blocked threads, all
- * descheduled threads should be killed.
+ * descheduled threads should be killed. This should never happen though,
+ * since init will presumably always be runnable or blocked.
  */
 static tcb_t *descheduled = NULL;
 
@@ -44,7 +45,16 @@ static tcb_t *descheduled = NULL;
 * @brief A min-heap keying on the time the sleeper will run next.
 */
 static sleep_heap_t sleepers;
+
+/**
+ * @brief A mutual exclusion lock ensuring that only one thread at a time
+ * tries to double the size of the sleep heap.
+ */
 static mutex_t sleep_double_lock;
+
+/**
+ * @brief The number of blocked_threads.
+ */
 static int blocked_count = 0;
 
 /** 
@@ -58,7 +68,8 @@ void scheduler_init()
 }
 
 /**
- * @brief Register a thread as runnable.
+ * @brief Register a thread as runnable. This should only be called once
+ * per thread.
  *
  * @param tcb The tcb of the newly runnable thread.
  */
@@ -116,7 +127,7 @@ void scheduler_block()
 
 /**
  * @brief Mark the given thread as unblocked and schedule them if they are
- * not descheduled. 
+ * not descheduled as well. 
  *
  * @param tcb The thread to unblock.
  */
@@ -138,7 +149,7 @@ void scheduler_unblock(tcb_t* tcb)
  * someone reschedules us.
  *
  * @param lock The invoking thread's deschedule lock to prevent a
- * make_runnable call from preempting.
+ * make_runnable call from preempting us.
  */
 void scheduler_deschedule(mutex_t *lock)
 {
@@ -210,11 +221,7 @@ void scheduler_next()
    sleeper = heap_peek(&sleepers); 
    now = time();
    
-   /* If it is time to wake up a thread, put him first in the run queue. 
-    *
-    *  Is this a good policy? I can see people doing sleep(1) all of the 
-    *  time, and causing starvation.
-    **/
+   /* If it is time to wake up a thread, put him last in the run queue. */
    if(sleeper && sleeper->wakeup < now)
    {
 		debug_print("sleep", "Waking tcb %p from %p", sleeper, tcb);
@@ -227,7 +234,7 @@ void scheduler_next()
    if(!runnable)
    {
       /* There is a sleeping or blocked thread, and no one to run - 
-			 * twiddle our thumbs.*/
+		 * twiddle our thumbs.*/
       if(sleeper || blocked_count > 0)
       {
 			tcb_t *next	= global_tcb();
@@ -242,7 +249,9 @@ void scheduler_next()
       }
 		else {
 	      /* If there is no one in the run queue, we are responsible 
-   	    * for launching the first task (again if necessary).
+   	    * for launching the first task (again if necessary). Presumably
+			 * this will never happen since init should always be runnable or
+			 * blocked.
       	 */
 			debug_print("scheduler", "reloading init");
 			tcb_t *killed;
@@ -280,7 +289,11 @@ int scheduler_sleep(unsigned long ticks)
    tcb_t* tcb = get_tcb();
    debug_print("sleep", "%p going to sleep for %d ticks", tcb, ticks);
 	mutex_lock(&sleep_double_lock);
+
+	/* Double the sleep heap if necessary. */
 	if (heap_check_size(&sleepers) == ESUCCESS) {
+		/* Atomically insert into the sleep heap after possibly doubling
+		 * the heap. */
 	   quick_lock();
 		mutex_unlock(&sleep_double_lock);
    	tcb->wakeup = time() + ticks;
@@ -290,7 +303,7 @@ int scheduler_sleep(unsigned long ticks)
 		return ESUCCESS;
 	}
 	else {
-		MAGIC_BREAK;
+		/* We needed to double the sleep heap but ran out of memory. */
 		mutex_unlock(&sleep_double_lock);
 		return EFAIL;
 	}
