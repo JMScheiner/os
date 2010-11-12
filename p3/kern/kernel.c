@@ -104,7 +104,6 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 	quick_assert_unlocked();
 
    while(1) { } 
-   
    assert(0);
    return 0;
 }

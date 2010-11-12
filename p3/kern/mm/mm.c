@@ -702,7 +702,7 @@ unsigned long mm_new_frame(unsigned long* table_v, unsigned long page)
 unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
 {
    free_block_t* node;
-   unsigned long frame;
+   unsigned long frame, flags;
    
    assert(FLAGS_OF(table_v) == 0);
    assert(FLAGS_OF(page) == 0);
@@ -710,16 +710,25 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    page_tablent_t* free_table_v = kvm_initial_table();
 
    frame = table_v[ TABLE_OFFSET(page) ];
+   flags = FLAGS_OF(frame);
    if(!PAGE_PRESENT(frame)) 
       return -1;
    
    frame = PAGE_OF(frame);
-   
    table_v[ TABLE_OFFSET(page) ] = 0;
    invalidate_page((void*)page);
    
+   /* The frame was requested, but never written to. */
+   if(flags & PTENT_ZFOD)
+   {
+      mutex_lock(&request_lock);
+      n_user_frames++;
+      assert(n_user_frames <= n_free_frames);
+      mutex_unlock(&request_lock);
+      return;
+   }
+
    /* This frame should now be invisible to the process. */
-   
    mutex_lock(&user_free_lock);
    
    assert(FLAGS_OF(free_table_v) == 0);
@@ -729,8 +738,9 @@ unsigned long mm_free_frame(unsigned long* table_v, unsigned long page)
    node = (free_block_t*) FREE_PAGE;
    node->next = user_free_list;
    user_free_list = (free_block_t*)frame;
-   if(user_free_list == NULL)
-      MAGIC_BREAK;
+   
+   /* All allocations are proceeded by a request.*/
+   assert(user_free_list != NULL);
 
    free_table_v[ TABLE_OFFSET(FREE_PAGE) ] = 0;
    invalidate_page((void*)FREE_PAGE);
