@@ -166,9 +166,7 @@ void user_fault(void* addr, int ecode)
 */
 void stack_fault(void* addr, int ecode)
 {
-   if(addr < (void*)0xb0000000) MAGIC_BREAK;
    debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
-	assert(0xb0000000 <= (unsigned int)addr && (unsigned int)addr < 0xc0000000);
 			
    if(mm_alloc(get_pcb(), (void*)PAGE_OF(addr), 
          PAGE_SIZE, PTENT_USER | PTENT_RW) < 0)

@@ -114,50 +114,6 @@ void *scalloc(size_t nmemb, size_t size)
    return ret;
 }
 
-/** 
-* @brief A utility function exclusively for doubling the size 
-*  of our sleep heap, to prevent race conditions between other 
-*  allocators and this "special" operation that needs to disable
-*  interrupts to prevent race conditions with the scheduler.
-*
-*  Interrupts must be enabled on entry so we can lock the heap lock. 
-* 
-* @param heapdata a pointer to the heapdata pointer in the sleep heap.
-* @param size The current number of TCBs the heap can accomodate.
-* 
-* @return ENOMEM on failure. ESUCCESS on success. 
-*/
-int double_sleep_heap(tcb_t*** heapdata, int ntcbs)
-{
-   size_t size = ntcbs * sizeof(tcb_t*); 
-   tcb_t** oldbuf = *heapdata;
-   tcb_t** newbuf;
-
-   /* Exclude other allocators. */
-   quick_assert_unlocked();
-   mutex_lock(&heap_lock);
-   
-   /* Block (the scheduler) */
-   quick_lock();
-   mutex_unlock(&heap_lock);
-   
-   newbuf = (tcb_t**)_smalloc(2 * size);
-   
-   if(newbuf == NULL)
-   {
-      quick_unlock();
-      return ENOMEM;
-   }
-   
-   MAGIC_BREAK;
-   memcpy((void*)newbuf, (void*)oldbuf, size);
-   _sfree((void*)oldbuf, size);
-   
-   *heapdata = newbuf;
-   quick_unlock();
-   return ESUCCESS;
-}
-
 void *srealloc(void* buf, size_t current_size, size_t new_size)
 {
    if(new_size > current_size)

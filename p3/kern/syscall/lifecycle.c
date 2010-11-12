@@ -566,7 +566,7 @@ void wait_handler(volatile regstate_t reg)
 */
 void task_vanish_handler(volatile regstate_t reg)
 {
-	MAGIC_BREAK;
-   //TODO
+   debug_print("vanish", "task_vanish being ignored.");
+   RETURN(EFAIL);
 }
 

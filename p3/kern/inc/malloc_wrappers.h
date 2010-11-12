@@ -4,7 +4,6 @@
 void alloc_init();
 void *scalloc(size_t nmemb, size_t size);
 void *srealloc(void* buf, size_t current_size, size_t new_size);
-int double_sleep_heap(tcb_t*** data, int size);
 
 #endif
 

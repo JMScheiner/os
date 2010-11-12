@@ -155,8 +155,7 @@ void check_invariants(boolean_t synchronous) {
       assert(pcb->sanity_constant == PCB_SANITY_CONSTANT);
       assert(tcb->dir_p == pcb->dir_p);
       assert(tcb->deschedule_lock.initialized || tcb == global_tcb());
-      if (((unsigned int)get_esp() & PAGE_MASK) < 0xf00)
-         MAGIC_BREAK;
+      assert(((int)get_esp() & PAGE_MASK) > 0xf00);
       assert(tcb->wakeup == 0);
       assert(tcb->sleep_index == 0);
    }
