@@ -84,7 +84,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
     * exception handlers don't overlap in the IDT.
     */
    interrupt_setup();
-	alloc_init();
+   alloc_init();
    global_thread_init();
    
    timer_init();
@@ -92,7 +92,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
    
    keyboard_init();
    scheduler_init();
-	lifecycle_init();
+   lifecycle_init();
    memman_init();
    thread_init();
    
@@ -103,7 +103,7 @@ int kernel_main(mbinfo_t *mbinfo, int argc, char **argv, char **envp)
 
    locks_enabled = TRUE;
    quick_unlock();
-	quick_assert_unlocked();
+   quick_assert_unlocked();
 
    while(1) { } 
    assert(0);

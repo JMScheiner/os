@@ -32,11 +32,11 @@
 */
 void heap_init(sleep_heap_t* heap)
 {
-	heap->data = (tcb_t**)smalloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
-	assert(heap->data != NULL);
-	heap->data[0] = NULL;
-	heap->index = 1;
-	heap->size = DEFAULT_HEAP_SIZE;
+   heap->data = (tcb_t**)smalloc(DEFAULT_HEAP_SIZE * sizeof(tcb_t*));
+   assert(heap->data != NULL);
+   heap->data[0] = NULL;
+   heap->index = 1;
+   heap->size = DEFAULT_HEAP_SIZE;
 }
 
 /**
@@ -47,23 +47,23 @@ void heap_init(sleep_heap_t* heap)
  * @param index The element to bubble up the heap.
  */
 void bubble_up(sleep_heap_t *heap, int index) {
-	tcb_t *tcb = heap->data[index];
-	int wakeup = tcb->wakeup;
-	while (1) {
-		int p_index = PARENT(index);
-		tcb_t *parent = heap->data[p_index];
-		if (p_index > 0 && parent->wakeup > wakeup)
-		{
-			heap->data[index] = parent;
-			parent->sleep_index = index;
-		}
-		else {
-			break;
-		}
-		index = p_index;
-	}
-	heap->data[index] = tcb;
-	tcb->sleep_index = index;
+   tcb_t *tcb = heap->data[index];
+   int wakeup = tcb->wakeup;
+   while (1) {
+      int p_index = PARENT(index);
+      tcb_t *parent = heap->data[p_index];
+      if (p_index > 0 && parent->wakeup > wakeup)
+      {
+         heap->data[index] = parent;
+         parent->sleep_index = index;
+      }
+      else {
+         break;
+      }
+      index = p_index;
+   }
+   heap->data[index] = tcb;
+   tcb->sleep_index = index;
 }
 
 /**
@@ -74,29 +74,29 @@ void bubble_up(sleep_heap_t *heap, int index) {
  * @param index The element to bubble down the heap.
  */
 void bubble_down(sleep_heap_t *heap, int index) {
-	tcb_t *tcb = heap->data[index];
-	int wakeup = tcb->wakeup;
-	while (1) {
-		int wake1 = LCHILD(index) < heap->index ? 
-			heap->data[LCHILD(index)]->wakeup : INT_MAX;
-		int wake2 = RCHILD(index) < heap->index ? 
-			heap->data[RCHILD(index)]->wakeup : INT_MAX;
-		if (wake1 < wakeup && wake1 <= wake2) {
-			heap->data[index] = heap->data[LCHILD(index)];
-			heap->data[index]->sleep_index = index;
-			index = LCHILD(index);
-		}
-		else if (wake2 < wakeup && wake2 <= wake1) {
-			heap->data[index] = heap->data[RCHILD(index)];
-			heap->data[index]->sleep_index = index;
-			index = RCHILD(index);
-		}
-		else {
-			break;
-		}
-	}
-	heap->data[index] = tcb;
-	tcb->sleep_index = index;
+   tcb_t *tcb = heap->data[index];
+   int wakeup = tcb->wakeup;
+   while (1) {
+      int wake1 = LCHILD(index) < heap->index ? 
+         heap->data[LCHILD(index)]->wakeup : INT_MAX;
+      int wake2 = RCHILD(index) < heap->index ? 
+         heap->data[RCHILD(index)]->wakeup : INT_MAX;
+      if (wake1 < wakeup && wake1 <= wake2) {
+         heap->data[index] = heap->data[LCHILD(index)];
+         heap->data[index]->sleep_index = index;
+         index = LCHILD(index);
+      }
+      else if (wake2 < wakeup && wake2 <= wake1) {
+         heap->data[index] = heap->data[RCHILD(index)];
+         heap->data[index]->sleep_index = index;
+         index = RCHILD(index);
+      }
+      else {
+         break;
+      }
+   }
+   heap->data[index] = tcb;
+   tcb->sleep_index = index;
 }
 
 /**
@@ -110,23 +110,23 @@ void bubble_down(sleep_heap_t *heap, int index) {
  */
 int heap_check_size(sleep_heap_t *heap) {
    /* Double the heap size if there are a lot of sleepers. */
-	int current_size = heap->index;
-	if(current_size == (heap->size - 1))
-	{
-		tcb_t **new_heap = smalloc(2 * heap->size * sizeof(tcb_t*));
-		if (new_heap == NULL)
-			return ENOMEM;
-		tcb_t **old_heap = heap->data;
-		quick_lock();
-		memcpy(new_heap, heap->data, current_size * sizeof(tcb_t *));
-		quick_unlock();
-		
-		heap->data = new_heap;
-		sfree(old_heap, heap->size *sizeof(tcb_t *));
-		heap->size = 2 * heap->size;
-		assert(heap->data != NULL);
-	}
-	return ESUCCESS;
+   int current_size = heap->index;
+   if(current_size == (heap->size - 1))
+   {
+      tcb_t **new_heap = smalloc(2 * heap->size * sizeof(tcb_t*));
+      if (new_heap == NULL)
+         return ENOMEM;
+      tcb_t **old_heap = heap->data;
+      quick_lock();
+      memcpy(new_heap, heap->data, current_size * sizeof(tcb_t *));
+      quick_unlock();
+      
+      heap->data = new_heap;
+      sfree(old_heap, heap->size *sizeof(tcb_t *));
+      heap->size = 2 * heap->size;
+      assert(heap->data != NULL);
+   }
+   return ESUCCESS;
 }
 
 /** 
@@ -140,8 +140,8 @@ int heap_check_size(sleep_heap_t *heap) {
 */
 int heap_insert(sleep_heap_t* heap, tcb_t* key)
 {
-	heap->data[heap->index] = key;
-	bubble_up(heap, heap->index++);
+   heap->data[heap->index] = key;
+   bubble_up(heap, heap->index++);
    return ESUCCESS;
 }
 
@@ -154,11 +154,11 @@ int heap_insert(sleep_heap_t* heap, tcb_t* key)
 */
 tcb_t* heap_pop(sleep_heap_t* heap)
 {
-	tcb_t *tcb = heap->data[1];
-	heap->data[1] = heap->data[--(heap->index)];
-	bubble_down(heap, 1);
-	tcb->sleep_index = 0;
-	return tcb;
+   tcb_t *tcb = heap->data[1];
+   heap->data[1] = heap->data[--(heap->index)];
+   bubble_down(heap, 1);
+   tcb->sleep_index = 0;
+   return tcb;
 }
 
 /** 
@@ -182,14 +182,14 @@ tcb_t* heap_peek(sleep_heap_t* heap)
 */
 void heap_remove(sleep_heap_t* heap, tcb_t* key)
 {
-	int index = key->sleep_index;
-	int wakeup = key->wakeup;
-	key->sleep_index = 0;
-	heap->data[index] = heap->data[--(heap->index)];
-	if (heap->data[index]->wakeup < wakeup)
-		bubble_up(heap, index);
-	else
-		bubble_down(heap, index);
+   int index = key->sleep_index;
+   int wakeup = key->wakeup;
+   key->sleep_index = 0;
+   heap->data[index] = heap->data[--(heap->index)];
+   if (heap->data[index]->wakeup < wakeup)
+      bubble_up(heap, index);
+   else
+      bubble_down(heap, index);
 }
 
 

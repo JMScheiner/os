@@ -15,7 +15,7 @@
 
 /** @brief Index of the first byte after console memory. */
 #define CONSOLE_END ((char*)(CONSOLE_MEM_BASE + \
-			2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
+         2 * CONSOLE_WIDTH * CONSOLE_HEIGHT))
 
 /** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR (0x8F)
@@ -52,7 +52,7 @@ void console_init()
  * @return The print lock.
  */
 mutex_t *get_print_lock() {
-	return &print_lock;
+   return &print_lock;
 }
 
 /** 
@@ -71,34 +71,34 @@ mutex_t *get_print_lock() {
 */
 void print_handler(volatile regstate_t reg)
 {
-	int len;
-	char* buf;
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	char printbuf[PRINT_BUF_SIZE];
+   int len;
+   char* buf;
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
+   char printbuf[PRINT_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
 
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
 
-	if (len < 0 || len > PRINT_BUF_SIZE) {
-		RETURN(EARGS);
-	}
+   if (len < 0 || len > PRINT_BUF_SIZE) {
+      RETURN(EARGS);
+   }
    
    /* Copy buf to prevent the memory it lies in from being freed during the
-	 * call to putbytes. */
-	if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-		MAGIC_BREAK;
-		RETURN(EBUF);
-	}
+    * call to putbytes. */
+   if (v_memcpy(printbuf, buf, len, TRUE) != len) {
+      MAGIC_BREAK;
+      RETURN(EBUF);
+   }
 
-	/* Ensure sequential access to the console screen. */
-	mutex_lock(&print_lock);
-	putbytes(printbuf, len);
-	mutex_unlock(&print_lock);
+   /* Ensure sequential access to the console screen. */
+   mutex_lock(&print_lock);
+   putbytes(printbuf, len);
+   mutex_unlock(&print_lock);
 
-	RETURN(ESUCCESS);
+   RETURN(ESUCCESS);
 }
 
 /** 
@@ -110,57 +110,57 @@ void print_handler(volatile regstate_t reg)
 */
 void set_term_color_handler(volatile regstate_t reg)
 {
-	int color = (int)SYSCALL_ARG(reg);
-	if((color < 0) || color > MAX_VALID_COLOR)
-		RETURN(EARGS);
+   int color = (int)SYSCALL_ARG(reg);
+   if((color < 0) || color > MAX_VALID_COLOR)
+      RETURN(EARGS);
 
-	set_term_color(color); 
-	RETURN(ESUCCESS);
+   set_term_color(color); 
+   RETURN(ESUCCESS);
 }
 
 void set_cursor_pos_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	int row, col;
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int row, col;
    
    if(v_copy_in_int(&row, arg_addr) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
 
-	if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
-		RETURN(EARGS);
+   if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
+      RETURN(EARGS);
 
    if( 0 > row || row >= CONSOLE_HEIGHT 
     || 0 > col || col >= CONSOLE_WIDTH)
       RETURN(EARGS);
 
-	set_cursor(row, col);
+   set_cursor(row, col);
    debug_print("console", "Successfully set cursor position. ");
-	RETURN(ESUCCESS);
+   RETURN(ESUCCESS);
 }
 
 void get_cursor_pos_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
-	int *row, *col;
-	int myrow, mycol;
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
+   int *row, *col;
+   int myrow, mycol;
 
-	/* Copy in user space addresses. */
+   /* Copy in user space addresses. */
    if(v_copy_in_intptr(&row, arg_addr) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
    
-	if(v_copy_in_intptr(&col, arg_addr + sizeof(int*)) < 0)
-		RETURN(EARGS);
+   if(v_copy_in_intptr(&col, arg_addr + sizeof(int*)) < 0)
+      RETURN(EARGS);
 
-	get_cursor(&myrow, &mycol);
+   get_cursor(&myrow, &mycol);
 
-	/* Copy out row and column. */
+   /* Copy out row and column. */
    if(v_copy_out_int(row, myrow) < 0)
-		RETURN(EBUF);
+      RETURN(EBUF);
 
    if(v_copy_out_int(col, mycol) < 0)
-		RETURN(EBUF);
+      RETURN(EBUF);
 
-	RETURN(ESUCCESS);
+   RETURN(ESUCCESS);
 }
 
 /************** End Syscall wrappers . **************/
@@ -174,36 +174,36 @@ void get_cursor_pos_handler(volatile regstate_t reg)
  */
 static void set_cursor_position(int row, int col)
 {
-	int address = row * CONSOLE_WIDTH + col;
-	
-	//Write LSB to the LSB index.
-	outb(CRTC_IDX_REG, CRTC_CURSOR_LSB_IDX);
-	outb(CRTC_DATA_REG, address & 0xff);
-	
-	//Write MSB to the MSB index.
-	outb(CRTC_IDX_REG, CRTC_CURSOR_MSB_IDX);
-	outb(CRTC_DATA_REG, (address >> 8) & 0xff);
+   int address = row * CONSOLE_WIDTH + col;
+   
+   //Write LSB to the LSB index.
+   outb(CRTC_IDX_REG, CRTC_CURSOR_LSB_IDX);
+   outb(CRTC_DATA_REG, address & 0xff);
+   
+   //Write MSB to the MSB index.
+   outb(CRTC_IDX_REG, CRTC_CURSOR_MSB_IDX);
+   outb(CRTC_DATA_REG, (address >> 8) & 0xff);
 }
 
 /** 
 * @brief Scrolls the console, writing the default console color
-* 	to the new line.
+*  to the new line.
 *
-* 	Does not modify cursor position.
+*  Does not modify cursor position.
 */
 void scroll_console(void)
 {
-	char *out = (char*)CONSOLE_MEM_BASE;	
-	char *in = (char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH);
-	
-	while(in < CONSOLE_END)
-		*(out++) = *(in++);
+   char *out = (char*)CONSOLE_MEM_BASE;   
+   char *in = (char*)(CONSOLE_MEM_BASE + 2 * CONSOLE_WIDTH);
+   
+   while(in < CONSOLE_END)
+      *(out++) = *(in++);
 
-	while(out < CONSOLE_END)
-	{
-		*(out++) = 0;
-		*(out++) = console_color;
-	}
+   while(out < CONSOLE_END)
+   {
+      *(out++) = 0;
+      *(out++) = console_color;
+   }
 }
 
 /** @brief Prints character ch at the current location
@@ -224,45 +224,45 @@ void scroll_console(void)
 int putbyte(char ch)
 {
 
-	switch(ch)
-	{
-		case '\n': 
-			console_col = 0;
-			console_row++;
-			break;
-		
-		case '\r':
-			console_col = 0;
-			break;
-		
-		case '\b':
-			if(console_col != 0) 
-				console_col--;
-			draw_char(console_row, console_col, ' ', console_color);
-			break;
-		
-		default: 
-			draw_char(console_row, console_col, ch, console_color);
-			console_col++;
-			break;
-	}
-	
-	if(console_col >= CONSOLE_WIDTH)
-	{
-		console_col = 0;
-		console_row++;
-	}
+   switch(ch)
+   {
+      case '\n': 
+         console_col = 0;
+         console_row++;
+         break;
+      
+      case '\r':
+         console_col = 0;
+         break;
+      
+      case '\b':
+         if(console_col != 0) 
+            console_col--;
+         draw_char(console_row, console_col, ' ', console_color);
+         break;
+      
+      default: 
+         draw_char(console_row, console_col, ch, console_color);
+         console_col++;
+         break;
+   }
+   
+   if(console_col >= CONSOLE_WIDTH)
+   {
+      console_col = 0;
+      console_row++;
+   }
 
-	if(console_row >= CONSOLE_HEIGHT)
-	{
-		console_row = CONSOLE_HEIGHT - 1;
-		scroll_console();
-	}
+   if(console_row >= CONSOLE_HEIGHT)
+   {
+      console_row = CONSOLE_HEIGHT - 1;
+      scroll_console();
+   }
 
-	if(!cursor_hidden)
-		set_cursor_position(console_row, console_col);
+   if(!cursor_hidden)
+      set_cursor_position(console_row, console_col);
 
-	return (int)(unsigned char)ch;
+   return (int)(unsigned char)ch;
 }
 
 /** @brief Prints the string s, starting at the current
@@ -284,9 +284,9 @@ int putbyte(char ch)
  */
 void putbytes(const char* s, int len)
 {
-	if(s && len > 0)
-		while(len--)
-			putbyte(*(s++));
+   if(s && len > 0)
+      while(len--)
+         putbyte(*(s++));
 }
 
 /** @brief Prints character ch with the specified color
@@ -302,13 +302,13 @@ void putbytes(const char* s, int len)
  */
 void draw_char(int row, int col, int ch, int color)
 {
-	if(row < CONSOLE_HEIGHT && 
-		col < CONSOLE_WIDTH && 
-		color <= MAX_VALID_COLOR)
-	{
-		*(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col)) = ch; 
-		*(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col) + 1) = color; 
-	}
+   if(row < CONSOLE_HEIGHT && 
+      col < CONSOLE_WIDTH && 
+      color <= MAX_VALID_COLOR)
+   {
+      *(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col)) = ch; 
+      *(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col) + 1) = color; 
+   }
 }
 
 /** @brief Returns the character displayed at position (row, col).
@@ -318,12 +318,12 @@ void draw_char(int row, int col, int ch, int color)
  */
 char get_char(int row, int col)
 {
-	if(row < CONSOLE_HEIGHT && col < CONSOLE_WIDTH)
-	{
-		return *(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col)); 
-	}
+   if(row < CONSOLE_HEIGHT && col < CONSOLE_WIDTH)
+   {
+      return *(char *)(CONSOLE_MEM_BASE + 2 * (row * CONSOLE_WIDTH + col)); 
+   }
 
-	return 0;
+   return 0;
 }
 
 /** @brief Changes the foreground and background color
@@ -337,12 +337,12 @@ char get_char(int row, int col)
  */
 int set_term_color(int color)
 {
-	if(color <= MAX_VALID_COLOR)
-	{
-		console_color = color;
-		return 0;
-	}
-	return -1;
+   if(color <= MAX_VALID_COLOR)
+   {
+      console_color = color;
+      return 0;
+   }
+   return -1;
 }
 
 /** @brief Writes the current foreground and background
@@ -354,8 +354,8 @@ int set_term_color(int color)
  */
 void get_term_color(int* color)
 {
-	//If color is invalid it's your own fault.
-	*color = console_color;
+   //If color is invalid it's your own fault.
+   *color = console_color;
 }
 
 /** @brief Sets the position of the cursor to the
@@ -373,18 +373,18 @@ void get_term_color(int* color)
  */
 int set_cursor(int row, int col)
 {
-	if(0 <= row && row < CONSOLE_HEIGHT && 
-			0 <= col && col < CONSOLE_WIDTH)
-	{
-		console_row = row;
-		console_col = col;
+   if(0 <= row && row < CONSOLE_HEIGHT && 
+         0 <= col && col < CONSOLE_WIDTH)
+   {
+      console_row = row;
+      console_col = col;
 
-		if(!cursor_hidden)
-			set_cursor_position(row, col);
+      if(!cursor_hidden)
+         set_cursor_position(row, col);
 
-		return 0;
-	}
-	return -1;
+      return 0;
+   }
+   return -1;
 }
 
 /** @brief Writes the current position of the cursor
@@ -397,9 +397,9 @@ int set_cursor(int row, int col)
  */
 void get_cursor(int* row, int* col)
 {
-	//If row or col are invalid it's your own fault.
-	*row = console_row;
-	*col = console_col;
+   //If row or col are invalid it's your own fault.
+   *row = console_row;
+   *col = console_col;
 }
 
 /** @brief Hides the cursor.
@@ -411,11 +411,11 @@ void get_cursor(int* row, int* col)
  */
 void hide_cursor()
 {
-	if(!cursor_hidden)
-	{
-		cursor_hidden = TRUE;
-		set_cursor_position(CONSOLE_WIDTH, CONSOLE_HEIGHT);
-	}
+   if(!cursor_hidden)
+   {
+      cursor_hidden = TRUE;
+      set_cursor_position(CONSOLE_WIDTH, CONSOLE_HEIGHT);
+   }
 }
 
 /** @brief Shows the cursor.
@@ -426,11 +426,11 @@ void hide_cursor()
  */
 void show_cursor()
 {
-	if(cursor_hidden)
-	{
-		cursor_hidden = FALSE;
-		set_cursor_position(console_row, console_col);
-	}
+   if(cursor_hidden)
+   {
+      cursor_hidden = FALSE;
+      set_cursor_position(console_row, console_col);
+   }
 }
 
 /** @brief Clears the entire console.
@@ -441,15 +441,15 @@ void show_cursor()
  */
 void clear_console()
 {
-	char *out = (char*)CONSOLE_MEM_BASE;	
-	
-	while(out < CONSOLE_END)
-	{
-		*(out++) = ' ';
-		*(out++) = console_color;
-	}
+   char *out = (char*)CONSOLE_MEM_BASE;   
+   
+   while(out < CONSOLE_END)
+   {
+      *(out++) = ' ';
+      *(out++) = console_color;
+   }
 
-	set_cursor(0,0);
+   set_cursor(0,0);
 }
 
 

@@ -87,7 +87,7 @@ static boolean_t validate_kernel_write(void* addr)
  * @return The number of bytes copied, or a negative error code.
  */
 int v_cpy(char *dst, char *src, int max_len, 
-		boolean_t user_source, boolean_t copying_string) {
+      boolean_t user_source, boolean_t copying_string) {
    int n;
    boolean_t (*validate_write)(void*);
    boolean_t (*validate_read)(void*);
@@ -116,24 +116,24 @@ int v_cpy(char *dst, char *src, int max_len,
          
       if(!SAME_PAGE(dst, dst - 1) && (!validate_write(dst))) 
          break;
-		
-		if (copying_string) {
-	      if((*dst = *src) == '\0') {
-      	   mutex_unlock(lock);
-				return n + 1;
-			}
-		}
-		else {
-			*dst = *src;
-		}
+      
+      if (copying_string) {
+         if((*dst = *src) == '\0') {
+            mutex_unlock(lock);
+            return n + 1;
+         }
+      }
+      else {
+         *dst = *src;
+      }
    }
    
    mutex_unlock(lock);
    
-	if (!copying_string)
-		return n;
-	else if (n == max_len)
-		return ELEN;
+   if (!copying_string)
+      return n;
+   else if (n == max_len)
+      return ELEN;
    else
       return EBUF;
 }
@@ -158,7 +158,7 @@ int v_cpy(char *dst, char *src, int max_len,
  */
 int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source)
 {
-	return v_cpy(dst, src, max_len, user_source, TRUE);
+   return v_cpy(dst, src, max_len, user_source, TRUE);
 }
 
 /**
@@ -177,6 +177,6 @@ int v_strcpy(char *dst, char *src, int max_len, boolean_t user_source)
  */
 int v_memcpy(char *dst, char *src, int len, boolean_t user_source) 
 {
-	return v_cpy(dst, src, len, user_source, FALSE);
+   return v_cpy(dst, src, len, user_source, FALSE);
 }
 

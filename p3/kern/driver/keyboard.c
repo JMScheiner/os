@@ -1,7 +1,7 @@
 /** 
 * @file keyboard.c
 * @brief Responsible for responding to keyboard interrupts
-* 	and generally for the keyboard interface.
+*  and generally for the keyboard interface.
 *
 * @author Justin Scheiner
 *
@@ -45,11 +45,11 @@ static cond_t keyboard_signal;
 
 /** @brief Get the index in keybuf following the given index. */
 #define NEXT(index) \
-	(((index) + 1) & (KEY_BUF_SIZE - 1))
+   (((index) + 1) & (KEY_BUF_SIZE - 1))
 
 /** @brief Get the index in keybuf preceding the given index. */
 #define PREV(index) \
-	(((index) - 1) & (KEY_BUF_SIZE - 1))
+   (((index) - 1) & (KEY_BUF_SIZE - 1))
 
 
 /** 
@@ -64,7 +64,7 @@ static cond_t keyboard_signal;
 void getchar_handler(volatile regstate_t reg)
 {
    //TODO
-	lprintf("Ignoring getchar");
+   lprintf("Ignoring getchar");
 }
 
 /** @brief Reads the next line from the console and copies it into the
@@ -101,10 +101,10 @@ void getchar_handler(volatile regstate_t reg)
  */
 void readline_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
    int len;
    char* buf;
-	char readbuf[KEY_BUF_SIZE];
+   char readbuf[KEY_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
       RETURN(EARGS);
@@ -112,24 +112,24 @@ void readline_handler(volatile regstate_t reg)
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
       RETURN(EARGS);
    
-	if (len < 0 || len > KEY_BUF_SIZE) {
+   if (len < 0 || len > KEY_BUF_SIZE) {
       debug_print("readline", "len %d unreasonable.", len);
-		RETURN(ELEN);
-	}
+      RETURN(ELEN);
+   }
    
-	debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
-			get_tcb()->tid, len, buf);
-	
-	mutex_lock(&keyboard_lock);
-	int read = readline(readbuf, len);
-	mutex_unlock(&keyboard_lock);
-	int copied;
-	if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
+   debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
+         get_tcb()->tid, len, buf);
+   
+   mutex_lock(&keyboard_lock);
+   int read = readline(readbuf, len);
+   mutex_unlock(&keyboard_lock);
+   int copied;
+   if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
       debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
-		MAGIC_BREAK;
-		RETURN(EBUF);
-	}
-	RETURN(read);
+      MAGIC_BREAK;
+      RETURN(EBUF);
+   }
+   RETURN(read);
 }
 
 
@@ -144,16 +144,16 @@ void readline_handler(volatile regstate_t reg)
 /*
 int readchar(void)
 {
-	kh_type augchar;
-	while(keybuf_head != keybuf_tail)
-	{
-		augchar = process_scancode(keybuf[keybuf_head]);
-		keybuf_head = (keybuf_head + 1) & (KEY_BUF_SIZE - 1);
-		
-		if(KH_HASDATA(augchar) && KH_ISMAKE(augchar))
-			return KH_GETCHAR(augchar);
-	}
-	return -1;
+   kh_type augchar;
+   while(keybuf_head != keybuf_tail)
+   {
+      augchar = process_scancode(keybuf[keybuf_head]);
+      keybuf_head = (keybuf_head + 1) & (KEY_BUF_SIZE - 1);
+      
+      if(KH_HASDATA(augchar) && KH_ISMAKE(augchar))
+         return KH_GETCHAR(augchar);
+   }
+   return -1;
 }
 */
 
@@ -168,76 +168,76 @@ int readchar(void)
 */
 void keyboard_handler(void)
 {
-	int next_tail = NEXT(keybuf_tail);
-	kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
-	if (KH_HASDATA(augchar) && KH_ISMAKE(augchar)) {
-		char c = KH_GETCHAR(augchar);
+   int next_tail = NEXT(keybuf_tail);
+   kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
+   if (KH_HASDATA(augchar) && KH_ISMAKE(augchar)) {
+      char c = KH_GETCHAR(augchar);
 
-		if (c == '\b') {
-			if (keybuf_tail != keybuf_head && 
-					keybuf_tail != keybuf_divider) {
-				keybuf_tail = PREV(keybuf_tail);
-				if (readers > 0) putbyte(c);
-			}
-		}
-		else {
-			if (next_tail == keybuf_head && newlines == 0) {
-				// Backup one char so we can place the new char
-				next_tail = keybuf_tail;
-				keybuf_tail = PREV(keybuf_tail);
-				if (readers > 0) putbyte('\b');
-			}
-			if (next_tail != keybuf_head) {
-				keybuf[keybuf_tail] = c;
-				keybuf_tail = next_tail;
-				if (readers > 0) putbyte(c);
-				if (c == '\n') {
-					/* A blocked thread can be released if a full line has 
-					 * been read. */
-					atomic_add(&readers, -1);
-					newlines++;
-					keybuf_divider = keybuf_tail;
-					/* Interrupts are disabled, so set the lock depth to 1 
-					 * to indicate this, otherwise cond_signal will enable all
-					 * interrupts. */
-					quick_lock();
-					cond_signal(&keyboard_signal);
+      if (c == '\b') {
+         if (keybuf_tail != keybuf_head && 
+               keybuf_tail != keybuf_divider) {
+            keybuf_tail = PREV(keybuf_tail);
+            if (readers > 0) putbyte(c);
+         }
+      }
+      else {
+         if (next_tail == keybuf_head && newlines == 0) {
+            // Backup one char so we can place the new char
+            next_tail = keybuf_tail;
+            keybuf_tail = PREV(keybuf_tail);
+            if (readers > 0) putbyte('\b');
+         }
+         if (next_tail != keybuf_head) {
+            keybuf[keybuf_tail] = c;
+            keybuf_tail = next_tail;
+            if (readers > 0) putbyte(c);
+            if (c == '\n') {
+               /* A blocked thread can be released if a full line has 
+                * been read. */
+               atomic_add(&readers, -1);
+               newlines++;
+               keybuf_divider = keybuf_tail;
+               /* Interrupts are disabled, so set the lock depth to 1 
+                * to indicate this, otherwise cond_signal will enable all
+                * interrupts. */
+               quick_lock();
+               cond_signal(&keyboard_signal);
                quick_unlock();
-				}
-			}
-		}
-	}
-	outb(INT_CTL_PORT, INT_ACK_CURRENT);
+            }
+         }
+      }
+   }
+   outb(INT_CTL_PORT, INT_ACK_CURRENT);
    enable_interrupts();
 }
 
 int readline(char *buf, int len) {
-	/* Prevent other readers from interfering. They can't accomplish 
-	 * anything until we're done anyway. */
-	atomic_add(&readers, 1);
-	
-	quick_lock();
-	if (newlines == 0) {
-		/* Wait for the keyboard_handler to process a full line. */
-		cond_wait(&keyboard_signal);
-	}
-	else {
-		quick_unlock();
-	}
-	int read;
-	assert(newlines > 0);
+   /* Prevent other readers from interfering. They can't accomplish 
+    * anything until we're done anyway. */
+   atomic_add(&readers, 1);
    
-	debug_print("readline", "Beginning read!");
-	for (read = 0; read < len; read++) {
-		buf[read] = keybuf[keybuf_head];
-		keybuf_head = NEXT(keybuf_head);
-		if (buf[read] == '\n') {
-			atomic_add(&newlines, -1);
-			break;
-		}
-	}
-	debug_print("readline", "Read complete!");
-	return read;
+   quick_lock();
+   if (newlines == 0) {
+      /* Wait for the keyboard_handler to process a full line. */
+      cond_wait(&keyboard_signal);
+   }
+   else {
+      quick_unlock();
+   }
+   int read;
+   assert(newlines > 0);
+   
+   debug_print("readline", "Beginning read!");
+   for (read = 0; read < len; read++) {
+      buf[read] = keybuf[keybuf_head];
+      keybuf_head = NEXT(keybuf_head);
+      if (buf[read] == '\n') {
+         atomic_add(&newlines, -1);
+         break;
+      }
+   }
+   debug_print("readline", "Read complete!");
+   return read;
 }
 
 /** 
@@ -245,8 +245,8 @@ int readline(char *buf, int len) {
 */
 void keyboard_init(void)
 {
-	mutex_init(&keyboard_lock);
-	cond_init(&keyboard_signal);
+   mutex_init(&keyboard_lock);
+   cond_init(&keyboard_signal);
 }
 
 

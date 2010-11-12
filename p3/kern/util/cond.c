@@ -18,9 +18,9 @@
  * @param cv The condition variable to initialize.
  */
 void cond_init(cond_t *cv) {
-	assert(cv);
-	cv->initialized = TRUE;
-	cv->tcb = NULL;
+   assert(cv);
+   cv->initialized = TRUE;
+   cv->tcb = NULL;
 }
 
 /**
@@ -29,9 +29,9 @@ void cond_init(cond_t *cv) {
  * @param cv The condition variable to destroy.
  */
 void cond_destroy(cond_t *cv) {
-	assert(cv);
-	assert(cv->tcb == NULL);
-	cv->initialized = FALSE;
+   assert(cv);
+   assert(cv->tcb == NULL);
+   cv->initialized = FALSE;
 }
 
 /**
@@ -46,18 +46,18 @@ void cond_destroy(cond_t *cv) {
  *   cond_wait(&signal);
  * }
  * else {
- * 	quick_unlock();
+ *    quick_unlock();
  * }
  * 
  * @param cv The condition variable to wait on.
  */
 void cond_wait(cond_t *cv) {
-	assert(cv);
-	assert(cv->initialized);
-	quick_assert_locked();
+   assert(cv);
+   assert(cv->initialized);
+   quick_assert_locked();
 
-	cv->tcb = get_tcb();
-	scheduler_block();
+   cv->tcb = get_tcb();
+   scheduler_block();
 }
 
 /**
@@ -68,12 +68,12 @@ void cond_wait(cond_t *cv) {
  * @param cv The condition variable to signal.
  */
 void cond_signal(cond_t *cv) {
-	assert(cv);
-	assert(cv->initialized);
+   assert(cv);
+   assert(cv->initialized);
 
-	if (cv->tcb != NULL) {
-		scheduler_unblock(cv->tcb);
-		cv->tcb = NULL;
-	}
+   if (cv->tcb != NULL) {
+      scheduler_unblock(cv->tcb);
+      cv->tcb = NULL;
+   }
 }
 

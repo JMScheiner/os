@@ -41,7 +41,7 @@ void alloc_init()
    heap_sanity_start = _smalloc(1);
    _sfree(heap_sanity_start, 1);
 
-	mutex_init(&heap_lock);
+   mutex_init(&heap_lock);
 }
 
 void *malloc(size_t size)
@@ -108,10 +108,10 @@ void *smalloc(size_t size)
 
 void *scalloc(size_t nmemb, size_t size)
 {
-	void *ret = smalloc(nmemb * size);
-	if (ret != NULL) 
-		memset(ret, 0, nmemb * size);
-	return ret;
+   void *ret = smalloc(nmemb * size);
+   if (ret != NULL) 
+      memset(ret, 0, nmemb * size);
+   return ret;
 }
 
 /** 
@@ -194,7 +194,7 @@ void *smemalign(size_t alignment, size_t size)
 
 void sfree(void *buf, size_t size)
 {
-	memset(buf, 0, size);
+   memset(buf, 0, size);
    mutex_lock(&heap_lock);
   
    assert(heap_sanity_start <= buf && buf < (void*)USER_MEM_START);

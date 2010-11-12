@@ -47,29 +47,29 @@
  * @return returns the number of bytes copied on success; -1 on failure
  */
 int getbytes( const char *filename, int offset, int size, char *buf ) {
-	int i;
-	int bytes;
-	for (i = 0; i < exec2obj_userapp_count; i++) {
-		exec2obj_userapp_TOC_entry file_entry = exec2obj_userapp_TOC[i];
-		if (strcmp(file_entry.execname, filename) == 0) {
-			bytes = (size < file_entry.execlen - offset) 
-				? size 
-				: file_entry.execlen - offset;
-			memcpy(buf, file_entry.execbytes + offset, bytes);
-			return bytes;
-		}
-	}
+   int i;
+   int bytes;
+   for (i = 0; i < exec2obj_userapp_count; i++) {
+      exec2obj_userapp_TOC_entry file_entry = exec2obj_userapp_TOC[i];
+      if (strcmp(file_entry.execname, filename) == 0) {
+         bytes = (size < file_entry.execlen - offset) 
+            ? size 
+            : file_entry.execlen - offset;
+         memcpy(buf, file_entry.execbytes + offset, bytes);
+         return bytes;
+      }
+   }
 
   return -1;
 }
 
 /** @brief Set a flag in a bit vector. */
 #define SET(bit_vector, flag) \
-	bit_vector |= flag
+   bit_vector |= flag
 
 /** @brief Unset a flag in a bit vector. */
 #define UNSET(bit_vector, flag) \
-	bit_vector &= ~flag
+   bit_vector &= ~flag
 
 /**
  * @brief Align an address by rounding up to an alignment boundary.
@@ -80,7 +80,7 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
  * @return The aligned address.
  */
 #define ALIGN_UP(addr, align) \
-	(void *)((((unsigned int)(addr) + (align) - 1) / (align)) * (align))
+   (void *)((((unsigned int)(addr) + (align) - 1) / (align)) * (align))
 
 /**
  * @brief Align an address by rounding down to an alignment boundary.
@@ -91,7 +91,7 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
  * @return The aligned address.
  */
 #define ALIGN_DOWN(addr, align) \
-	(void *)(((unsigned int)(addr) / (align)) * (align))
+   (void *)(((unsigned int)(addr) / (align)) * (align))
 
 /**
  * @brief Get a value for the eflags register suitable for use in user 
@@ -101,12 +101,12 @@ int getbytes( const char *filename, int offset, int size, char *buf ) {
  */
 unsigned int get_user_eflags() 
 {
-	unsigned int eflags = get_eflags();
-	SET(eflags, EFL_RESV1);
-	SET(eflags, EFL_IF);
-	UNSET(eflags, EFL_IOPL_RING3);
-	UNSET(eflags, EFL_AC);
-	return eflags;
+   unsigned int eflags = get_eflags();
+   SET(eflags, EFL_RESV1);
+   SET(eflags, EFL_IF);
+   UNSET(eflags, EFL_IOPL_RING3);
+   UNSET(eflags, EFL_AC);
+   return eflags;
 }
 
 /**
@@ -120,51 +120,51 @@ unsigned int get_user_eflags()
  * @return The base of the user stack.
  */
 void *copy_to_stack(int argc, char *argv, int arg_len) {
-	char *ptr = (char *)USER_STACK_BASE;
-	char *args = ptr - arg_len;
+   char *ptr = (char *)USER_STACK_BASE;
+   char *args = ptr - arg_len;
    assert(args > (char*)(USER_STACK_BASE - PAGE_SIZE));
 
-	/* Copy the value of the arguments onto the stack. */
-	memcpy(args, argv, arg_len);
+   /* Copy the value of the arguments onto the stack. */
+   memcpy(args, argv, arg_len);
 
-	/* Move ptr to the address of argc on the user stack. */
-	ptr = ALIGN_DOWN(args, sizeof(void *));
-	ptr -= sizeof(char *) * (argc + 1) + sizeof(int) + sizeof(char **);
+   /* Move ptr to the address of argc on the user stack. */
+   ptr = ALIGN_DOWN(args, sizeof(void *));
+   ptr -= sizeof(char *) * (argc + 1) + sizeof(int) + sizeof(char **);
 
-	/* The stack base is one word below argc. */
-	void *user_stack = ptr - sizeof(void *);
-	*(int *)ptr = argc;
-	ptr += sizeof(int);
-	*(char ***)ptr = (char **)(ptr + 4);
-	ptr += sizeof(char **);
+   /* The stack base is one word below argc. */
+   void *user_stack = ptr - sizeof(void *);
+   *(int *)ptr = argc;
+   ptr += sizeof(int);
+   *(char ***)ptr = (char **)(ptr + 4);
+   ptr += sizeof(char **);
 
-	/* Copy the address of each argument to form the argv array. */
-	int i;
-	for (i = 0; i < argc; i++) {
-		*(char **)ptr = args;
-		ptr += sizeof(char *);
-		args += strlen(args) + 1;
-	}
+   /* Copy the address of each argument to form the argv array. */
+   int i;
+   for (i = 0; i < argc; i++) {
+      *(char **)ptr = args;
+      ptr += sizeof(char *);
+      args += strlen(args) + 1;
+   }
 
-	/* argv must be NULL terminated. */
-	*(char **)ptr = NULL;
-	return user_stack;
+   /* argv must be NULL terminated. */
+   *(char **)ptr = NULL;
+   return user_stack;
 }
 
 int get_elf(char *exec, simple_elf_t *elf_hdr) {
-	int err;
-	if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
-		return err;
-	}
+   int err;
+   if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
+      return err;
+   }
 
-	return elf_load_helper(elf_hdr, exec);
+   return elf_load_helper(elf_hdr, exec);
 }
 
 void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip) {
-	unsigned int user_eflags = get_user_eflags();
-	debug_print("loader", "Running %s", exec);
-	sim_reg_process(tcb->dir_p, exec);
-	mode_switch(tcb->kstack, stack, user_eflags, eip);
+   unsigned int user_eflags = get_user_eflags();
+   debug_print("loader", "Running %s", exec);
+   sim_reg_process(tcb->dir_p, exec);
+   mode_switch(tcb->kstack, stack, user_eflags, eip);
 }
 
 /** @brief Load a new task from a file
@@ -179,21 +179,21 @@ void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip) {
  */
 int load_new_task(char *exec, int argc, char *argv, int arg_len) {
    int err;
-	simple_elf_t elf_hdr;
-	if ((err = get_elf(exec, &elf_hdr)) != ELF_SUCCESS)
-		return err;
-	
-	pcb_t* pcb = initialize_process(TRUE);
+   simple_elf_t elf_hdr;
+   if ((err = get_elf(exec, &elf_hdr)) != ELF_SUCCESS)
+      return err;
+   
+   pcb_t* pcb = initialize_process(TRUE);
    if(pcb == NULL) 
       return ENOMEM;
    
    set_cr3((int)pcb->dir_p);
-	if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
+   if ((err = initialize_memory(exec, elf_hdr, pcb)) != 0) {
       sfree(pcb->status, sizeof(status_t));
       free_process_resources(pcb, FALSE);
-		return err;
-	}
-	
+      return err;
+   }
+   
    tcb_t* tcb = initialize_thread(pcb);
    if(tcb == NULL)
    {
@@ -203,16 +203,16 @@ int load_new_task(char *exec, int argc, char *argv, int arg_len) {
       return ENOMEM;
    }
 
-	void *stack = copy_to_stack(argc, argv, arg_len);
+   void *stack = copy_to_stack(argc, argv, arg_len);
 
-	quick_fake_unlock();
-	scheduler_register(tcb);
-	
-	switch_to_user(tcb, exec, stack, (void *)elf_hdr.e_entry);
+   quick_fake_unlock();
+   scheduler_register(tcb);
+   
+   switch_to_user(tcb, exec, stack, (void *)elf_hdr.e_entry);
 
-	// Never get here
-	assert(FALSE);
-	return 0;
+   // Never get here
+   assert(FALSE);
+   return 0;
 }
 
 /*@}*/
