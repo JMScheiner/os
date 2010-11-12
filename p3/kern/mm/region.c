@@ -50,9 +50,6 @@ int allocate_region(
    if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
       return ENOMEM;
    
-   debug_print("region", "Allocated new region_t at %p", 
-      region);
-
    region->fault = fault;
    region->start = start;
    region->end = end;
@@ -64,7 +61,8 @@ int allocate_region(
       sfree(region, sizeof(region_t));
       return ret;
    }
-   
+   debug_print("region", "Allocated new region [%p, %p] at %p", start, end, region);
+
    /* Insert the region into the list. */
    mutex_lock(&pcb->region_lock);
    assert(pcb->regions != region);
