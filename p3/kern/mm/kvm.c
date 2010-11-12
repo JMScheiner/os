@@ -204,7 +204,7 @@ void* kvm_new_page()
       if(kvm_alloc_page(new_page) == NULL)
          return NULL;
    }
-	memset(new_page, 0, PAGE_SIZE);
+   memset(new_page, 0, PAGE_SIZE);
    return new_page;
 }
 

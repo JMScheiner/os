@@ -1,9 +1,9 @@
 /** 
 * @file rwlock2.c
 * @brief Rules for rwlocks: 
-* 	1. The last reader is obligated to signal the first writer.
-* 	2. Only the last writer can let the readers read.
-* 		- Subsequent writers have to be on the list before they can block readers.
+*  1. The last reader is obligated to signal the first writer.
+*  2. Only the last writer can let the readers read.
+*     - Subsequent writers have to be on the list before they can block readers.
 */
 
 #include <rwlock.h>
@@ -14,9 +14,9 @@
 
 /** 
 * @brief Initializes a reader-writer lock.
-* 	Specifically initializes the internal condition variables 
-* 	associated with readers and writers, as well as a mutex 
-* 	for those condition variables.
+*  Specifically initializes the internal condition variables 
+*  associated with readers and writers, as well as a mutex 
+*  for those condition variables.
 * 
 * @param rwlock The reader-writer lock to initialize.
 * 
@@ -26,21 +26,21 @@
 */
 int rwlock_init( rwlock_t *rwlock )
 {
-	if(!rwlock) return RWLOCK_NULL;
-	if(rwlock->initialized) return RWLOCK_INIT;
-	
-	// This value doesn't matter, since clear will be true.
-	rwlock->mode = RWLOCK_READ;
-	
-	rwlock->writers = 0;
-	rwlock->waiting_writers = 0;
-	rwlock->readers = 0;
-	rwlock->initialized = TRUE;
-	mutex_init(&rwlock->rw_count_lock);
-	cond_init(&rwlock->wait_write);	
-	cond_init(&rwlock->wait_read);	
-	
-	return 0;
+   if(!rwlock) return RWLOCK_NULL;
+   if(rwlock->initialized) return RWLOCK_INIT;
+   
+   // This value doesn't matter, since clear will be true.
+   rwlock->mode = RWLOCK_READ;
+   
+   rwlock->writers = 0;
+   rwlock->waiting_writers = 0;
+   rwlock->readers = 0;
+   rwlock->initialized = TRUE;
+   mutex_init(&rwlock->rw_count_lock);
+   cond_init(&rwlock->wait_write);  
+   cond_init(&rwlock->wait_read);   
+   
+   return 0;
 }
 
 /** 
@@ -54,13 +54,13 @@ int rwlock_init( rwlock_t *rwlock )
 */
 int rwlock_destroy( rwlock_t *rwlock )
 {
-	if(!rwlock) return RWLOCK_NULL;
-	if(!rwlock->initialized) return RWLOCK_INIT;
+   if(!rwlock) return RWLOCK_NULL;
+   if(!rwlock->initialized) return RWLOCK_INIT;
 
-	mutex_destroy(&rwlock->rw_count_lock);
-	cond_destroy(&rwlock->wait_write);	
-	cond_destroy(&rwlock->wait_read);	
-	return 0;
+   mutex_destroy(&rwlock->rw_count_lock);
+   cond_destroy(&rwlock->wait_write);  
+   cond_destroy(&rwlock->wait_read);   
+   return 0;
 }
 
 
@@ -80,53 +80,53 @@ int rwlock_destroy( rwlock_t *rwlock )
 */
 int rwlock_lock( rwlock_t *rwlock, int type )
 {
-	int ret;
-	if(!rwlock) return RWLOCK_NULL;
-	if(!rwlock->initialized) return RWLOCK_INIT;
-	
-	switch(type)
-	{
-		case RWLOCK_READ: 
-			lprintf("[%d] Trying to acquire reader lock.", thr_getid());
-			
-			// Wait for clearance to read from the active readers / writer
-			mutex_lock(&rwlock->rw_count_lock);
-			while(rwlock->writers > 0)
-				cond_wait(&rwlock->wait_read, &rwlock->rw_count_lock);
-			
-			//Atomically increment the number of readers.
-			atomic_add(&rwlock->readers, 1);
-			rwlock->mode = RWLOCK_READ;
-			
-			//Let other readers into the critical section if possible.
-			mutex_unlock(&rwlock->rw_count_lock);
-			
-			break;	
-		
-		case RWLOCK_WRITE: 
-			lprintf("[%d] Trying to acquire writer lock.", thr_getid());
-			
-			// Wait for clearance to write from the active writer / readers.
-			atomic_add(&rwlock->writers, 1);
-			
-			mutex_lock(&rwlock->rw_count_lock);
-			if(rwlock->waiting_writers > 0 || rwlock->readers > 0)
-			{
-				rwlock->waiting_writers++;
-				if((ret = cond_wait(&rwlock->wait_write, &rwlock->rw_count_lock)) != 0)
-					return ret;
-				rwlock->waiting_writers--;
-			}
+   int ret;
+   if(!rwlock) return RWLOCK_NULL;
+   if(!rwlock->initialized) return RWLOCK_INIT;
+   
+   switch(type)
+   {
+      case RWLOCK_READ: 
+         lprintf("[%d] Trying to acquire reader lock.", thr_getid());
+         
+         // Wait for clearance to read from the active readers / writer
+         mutex_lock(&rwlock->rw_count_lock);
+         while(rwlock->writers > 0)
+            cond_wait(&rwlock->wait_read, &rwlock->rw_count_lock);
+         
+         //Atomically increment the number of readers.
+         atomic_add(&rwlock->readers, 1);
+         rwlock->mode = RWLOCK_READ;
+         
+         //Let other readers into the critical section if possible.
+         mutex_unlock(&rwlock->rw_count_lock);
+         
+         break;   
+      
+      case RWLOCK_WRITE: 
+         lprintf("[%d] Trying to acquire writer lock.", thr_getid());
+         
+         // Wait for clearance to write from the active writer / readers.
+         atomic_add(&rwlock->writers, 1);
+         
+         mutex_lock(&rwlock->rw_count_lock);
+         if(rwlock->waiting_writers > 0 || rwlock->readers > 0)
+         {
+            rwlock->waiting_writers++;
+            if((ret = cond_wait(&rwlock->wait_write, &rwlock->rw_count_lock)) != 0)
+               return ret;
+            rwlock->waiting_writers--;
+         }
 
-			//Writers hold onto the clear lock until they exit.
-			rwlock->mode = RWLOCK_WRITE;
-			break;	
-		
-		default: return RWLOCK_INVALID_TYPE;
-	}
-	
-	//We are free to read or write.
-	return 0;
+         //Writers hold onto the clear lock until they exit.
+         rwlock->mode = RWLOCK_WRITE;
+         break;   
+      
+      default: return RWLOCK_INVALID_TYPE;
+   }
+   
+   //We are free to read or write.
+   return 0;
 }
 
 /** 
@@ -141,67 +141,67 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 * @param rwlock The lock to release.
 * 
 * @return 0 on success.
-* 			RWLOCK_NULL if the lock is NULL.
-* 			RWLOCK_INIT if the lock isn't initialized.
+*        RWLOCK_NULL if the lock is NULL.
+*        RWLOCK_INIT if the lock isn't initialized.
 */
 int rwlock_unlock( rwlock_t *rwlock )
 {
-	int readers, writers;
-	if(!rwlock) return RWLOCK_NULL;
-	if(!rwlock->initialized) return RWLOCK_INIT;
+   int readers, writers;
+   if(!rwlock) return RWLOCK_NULL;
+   if(!rwlock->initialized) return RWLOCK_INIT;
 
-	switch(rwlock->mode)
-	{
-		case RWLOCK_WRITE: 
+   switch(rwlock->mode)
+   {
+      case RWLOCK_WRITE: 
 
-			//Decrement the number of writers.
-			writers = atomic_add(&rwlock->writers, -1);
-			
-			// If the next writer doesn't beat us here, he doesn't get to run 
-			// 	until the readers are done.
-			if(writers > 1)
-			{
-				lprintf("[%d] Releasing writer lock to next writer.", thr_getid());
-				cond_signal(&rwlock->wait_write);
-			}
-			else
-			{
-				lprintf("[%d] Releasing writer lock to all readers.", thr_getid());
-				cond_broadcast(&rwlock->wait_read);
-			}
-			
-			//We still own the "clear" lock.
-			mutex_unlock(&rwlock->rw_count_lock);
+         //Decrement the number of writers.
+         writers = atomic_add(&rwlock->writers, -1);
+         
+         // If the next writer doesn't beat us here, he doesn't get to run 
+         //    until the readers are done.
+         if(writers > 1)
+         {
+            lprintf("[%d] Releasing writer lock to next writer.", thr_getid());
+            cond_signal(&rwlock->wait_write);
+         }
+         else
+         {
+            lprintf("[%d] Releasing writer lock to all readers.", thr_getid());
+            cond_broadcast(&rwlock->wait_read);
+         }
+         
+         //We still own the "clear" lock.
+         mutex_unlock(&rwlock->rw_count_lock);
 
-			break;
-		
-		case RWLOCK_READ:
-			
-			// Grab the clear lock.
-			mutex_lock(&rwlock->rw_count_lock);
+         break;
+      
+      case RWLOCK_READ:
+         
+         // Grab the clear lock.
+         mutex_lock(&rwlock->rw_count_lock);
 
-			//Decrement the number of active readers.
-			readers = atomic_add(&rwlock->readers, -1);
+         //Decrement the number of active readers.
+         readers = atomic_add(&rwlock->readers, -1);
 
-			//If we are the last reader to decrement,
-			if(readers == 1 && rwlock->writers)
-			{
-				lprintf("[%d] Releasing reader lock to next writer.", thr_getid());
-				//Let the first writer go if one is ready.
-				cond_signal(&rwlock->wait_write);
-			} 
-			else
-			{
-				lprintf("[%d] Decrementing readers to %d - writers = %d.", 
-					thr_getid(), readers - 1, rwlock->writers);
-			}
-			mutex_unlock(&rwlock->rw_count_lock);
+         //If we are the last reader to decrement,
+         if(readers == 1 && rwlock->writers)
+         {
+            lprintf("[%d] Releasing reader lock to next writer.", thr_getid());
+            //Let the first writer go if one is ready.
+            cond_signal(&rwlock->wait_write);
+         } 
+         else
+         {
+            lprintf("[%d] Decrementing readers to %d - writers = %d.", 
+               thr_getid(), readers - 1, rwlock->writers);
+         }
+         mutex_unlock(&rwlock->rw_count_lock);
 
-			break;
+         break;
 
-		default: return RWLOCK_INVALID_TYPE;
-	}
-	return 0;
+      default: return RWLOCK_INVALID_TYPE;
+   }
+   return 0;
 }
 
 

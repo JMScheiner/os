@@ -5,6 +5,6 @@
 
 int main()
 {
-	printf("My tid is 0x%x", gettid());
+   printf("My tid is 0x%x", gettid());
    return 7;
 }

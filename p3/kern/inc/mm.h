@@ -42,17 +42,17 @@
  * @return True iff addr1 and addr2 are on the same page.
  */
 #define SAME_PAGE(addr1, addr2) \
-	(PAGE_OF(addr1) == PAGE_OF(addr2))
+   (PAGE_OF(addr1) == PAGE_OF(addr2))
 
 /** @brief Test whether a mask is completely set in the page given 
  * by addr. */
 #define TEST_SET(addr, mask) \
-	(((addr) & (mask)) == (mask))
+   (((addr) & (mask)) == (mask))
 
 /** @brief Test whether a mask is completely unset in the page given 
  * by addr. */
 #define TEST_UNSET(addr, mask) \
-	(((addr) & (mask)) == 0)
+   (((addr) & (mask)) == 0)
 
 /**
  * @brief Count the number of pages spanned by the range [addr, addr+len]
@@ -63,8 +63,8 @@
  * @return The number of pages in the range
  */
 #define NUM_PAGES(addr, len) \
-	((PAGE_OF((unsigned long)(addr) + (len) - 1) \
-		- PAGE_OF(addr)) / PAGE_SIZE + 1)
+   ((PAGE_OF((unsigned long)(addr) + (len) - 1) \
+      - PAGE_OF(addr)) / PAGE_SIZE + 1)
 
 /** Initialize **/
 int mm_init(void); 

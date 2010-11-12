@@ -46,32 +46,32 @@ void gettid_handler(volatile regstate_t reg)
 */
 void yield_handler(volatile regstate_t reg)
 {
-	int tid = (int)SYSCALL_ARG(reg);
-	if (tid == -1) {
-		debug_print("yield", "%d yielding to anyone", get_tcb()->tid);
-		quick_lock();
-		scheduler_next();
-		RETURN(ESUCCESS);
-	}
-	else {
-		mutex_lock(&tcb_table.lock);
-		tcb_t *next = hashtable_get(&tcb_table, tid);
-		debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
-		if (next == NULL) {
-			mutex_unlock(&tcb_table.lock);
-			debug_print("yield", "%d failed to find desired yield", 
-					get_tcb()->tid);
-			RETURN(ENAME);
-		}
-		else if (scheduler_run(next, &tcb_table.lock)) {
-			RETURN(ESUCCESS);
-		}
-		else {
-			debug_print("yield", "%d desired yield is descheduled or blocked", 
-					get_tcb()->tid);
-			RETURN(ESTATE);
-		}
-	}
+   int tid = (int)SYSCALL_ARG(reg);
+   if (tid == -1) {
+      debug_print("yield", "%d yielding to anyone", get_tcb()->tid);
+      quick_lock();
+      scheduler_next();
+      RETURN(ESUCCESS);
+   }
+   else {
+      mutex_lock(&tcb_table.lock);
+      tcb_t *next = hashtable_get(&tcb_table, tid);
+      debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
+      if (next == NULL) {
+         mutex_unlock(&tcb_table.lock);
+         debug_print("yield", "%d failed to find desired yield", 
+               get_tcb()->tid);
+         RETURN(ENAME);
+      }
+      else if (scheduler_run(next, &tcb_table.lock)) {
+         RETURN(ESUCCESS);
+      }
+      else {
+         debug_print("yield", "%d desired yield is descheduled or blocked", 
+               get_tcb()->tid);
+         RETURN(ESTATE);
+      }
+   }
 }
 
 /** 
@@ -97,28 +97,28 @@ void yield_handler(volatile regstate_t reg)
 */
 void deschedule_handler(volatile regstate_t reg)
 {
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
    int reject;
-	tcb_t *tcb = get_tcb();
-	mutex_lock(&tcb->deschedule_lock);
+   tcb_t *tcb = get_tcb();
+   mutex_lock(&tcb->deschedule_lock);
    
    if(v_copy_in_int(&reject, arg_addr) < 0)
    {
       debug_print("deschedule", "Failed to copy reject arg");
-	   mutex_unlock(&tcb->deschedule_lock);
+      mutex_unlock(&tcb->deschedule_lock);
       RETURN(EARGS);
    }
-	if (reject == 0) {
-		debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
-		/* deschedule will release our lock */
-		scheduler_deschedule(&tcb->deschedule_lock);
-		debug_print("deschedule", "Rescheduling %d now", get_tcb()->tid);
-	}
-	else {
-		debug_print("deschedule", "Reject nonzero");
-		mutex_unlock(&tcb->deschedule_lock);
-	}
-	RETURN(ESUCCESS);
+   if (reject == 0) {
+      debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
+      /* deschedule will release our lock */
+      scheduler_deschedule(&tcb->deschedule_lock);
+      debug_print("deschedule", "Rescheduling %d now", get_tcb()->tid);
+   }
+   else {
+      debug_print("deschedule", "Reject nonzero");
+      mutex_unlock(&tcb->deschedule_lock);
+   }
+   RETURN(ESUCCESS);
 }
 
 /** 
@@ -135,27 +135,27 @@ void deschedule_handler(volatile regstate_t reg)
 */
 void make_runnable_handler(volatile regstate_t reg)
 {
-	int tid = (int)SYSCALL_ARG(reg);
-	int ret = 0;
-	mutex_lock(&tcb_table.lock);
-	tcb_t *tcb = hashtable_get(&tcb_table, tid);
-	debug_print("make_runnable", "Acquired deschedule_lock");
-	if (tcb == NULL) {
-		debug_print("make_runnable", "%d failed, target does not exist", 
-				get_tcb()->tid);
-		ret = ENAME;
-	}
-	else {
-		mutex_lock(&tcb->deschedule_lock);
-		if (!scheduler_reschedule(tcb)) {
-			debug_print("make_runnable", "%d failed, %d is already runnable", 
-					tcb->tid, get_tcb()->tid);
-			ret = ESTATE;
-		}
-		mutex_unlock(&tcb->deschedule_lock);
-	}
-	mutex_unlock(&tcb_table.lock);
-	RETURN(ret);
+   int tid = (int)SYSCALL_ARG(reg);
+   int ret = 0;
+   mutex_lock(&tcb_table.lock);
+   tcb_t *tcb = hashtable_get(&tcb_table, tid);
+   debug_print("make_runnable", "Acquired deschedule_lock");
+   if (tcb == NULL) {
+      debug_print("make_runnable", "%d failed, target does not exist", 
+            get_tcb()->tid);
+      ret = ENAME;
+   }
+   else {
+      mutex_lock(&tcb->deschedule_lock);
+      if (!scheduler_reschedule(tcb)) {
+         debug_print("make_runnable", "%d failed, %d is already runnable", 
+               tcb->tid, get_tcb()->tid);
+         ret = ESTATE;
+      }
+      mutex_unlock(&tcb->deschedule_lock);
+   }
+   mutex_unlock(&tcb_table.lock);
+   RETURN(ret);
 }
 
 /** 

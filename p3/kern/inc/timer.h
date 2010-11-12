@@ -8,9 +8,9 @@ void timer_init(void);
 
 /** 
 * @brief A basic wrapper for the timer handler.
-* 	- Pushes all registers.
-* 	- Calls timer handler.
-* 	- Pops all registers.
+*  - Pushes all registers.
+*  - Calls timer handler.
+*  - Pops all registers.
 */
 void asm_timer_wrapper(void);
 long time(void);

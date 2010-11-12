@@ -70,7 +70,7 @@ int allocate_region(
    pcb->regions = region;
    mutex_unlock(&pcb->region_lock);
    
-	return ESUCCESS;
+   return ESUCCESS;
 }
 
 /** 

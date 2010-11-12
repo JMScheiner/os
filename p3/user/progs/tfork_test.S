@@ -6,7 +6,7 @@
 main: 
 
    int $THREAD_FORK_INT
-	testl  %eax, %eax 
+   testl  %eax, %eax 
    jnz PARENT
 CHILD:
    jmp CHILD

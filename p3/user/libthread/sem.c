@@ -28,19 +28,19 @@ static int sem_id = 0;
 */
 int sem_init(sem_t* sem, int count)
 {
-	if(!sem) return SEM_NULL;
-	if(sem->initialized) return SEM_INIT;
-		
-	sem->open_slots = count;
-	sem->initialized = TRUE;
+   if(!sem) return SEM_NULL;
+   if(sem->initialized) return SEM_INIT;
+      
+   sem->open_slots = count;
+   sem->initialized = TRUE;
 
-	sem->id = atomic_add(&sem_id, 1);
-	sem->waiting = 0;
-	
-	if(mutex_init(&sem->lock) != 0) return MUTEX_INIT;
-	if(cond_init(&sem->nonzero) != 0) return COND_INIT;
+   sem->id = atomic_add(&sem_id, 1);
+   sem->waiting = 0;
+   
+   if(mutex_init(&sem->lock) != 0) return MUTEX_INIT;
+   if(cond_init(&sem->nonzero) != 0) return COND_INIT;
 
-	return 0;
+   return 0;
 }
 
 /** 
@@ -56,39 +56,39 @@ int sem_init(sem_t* sem, int count)
 */
 int sem_destroy( sem_t* sem )
 {
-	if(!sem) return SEM_NULL;
-	if(!sem->initialized) return SEM_INIT;
-	sem->initialized = FALSE;
-	if(mutex_destroy(&sem->lock) != 0) return MUTEX_INIT;
-	if(cond_destroy(&sem->nonzero) != 0) return COND_INIT;
-	return 0;
+   if(!sem) return SEM_NULL;
+   if(!sem->initialized) return SEM_INIT;
+   sem->initialized = FALSE;
+   if(mutex_destroy(&sem->lock) != 0) return MUTEX_INIT;
+   if(cond_destroy(&sem->nonzero) != 0) return COND_INIT;
+   return 0;
 }
 
 /** 
 * @brief Attempts to decrement the semaphores count. 
-* 	
+*  
 * If the semaphores count is zero, then blocks until it becomes nonzero.
 * 
 * @param sem The semaphore to decrement.
 * 
 * @return 0 on success.
-* 				< 0 on failure. Failure may occur if the semaphore's mutex or
-* 				condition variable fails.
+*           < 0 on failure. Failure may occur if the semaphore's mutex or
+*           condition variable fails.
 */
 int sem_wait(sem_t* sem)
 {
-	int ret;
-	if ((ret = mutex_lock(&sem->lock)) != 0)
-		return ret;
-	
-	if (sem->waiting > 0 || sem->open_slots == 0) {
-		sem->waiting++;
-		if ((ret = cond_wait(&sem->nonzero, &sem->lock)) != 0)
-			return ret;
-		sem->waiting--;
-	}
-	atomic_add(&sem->open_slots, -1);
-	return mutex_unlock(&sem->lock);
+   int ret;
+   if ((ret = mutex_lock(&sem->lock)) != 0)
+      return ret;
+   
+   if (sem->waiting > 0 || sem->open_slots == 0) {
+      sem->waiting++;
+      if ((ret = cond_wait(&sem->nonzero, &sem->lock)) != 0)
+         return ret;
+      sem->waiting--;
+   }
+   atomic_add(&sem->open_slots, -1);
+   return mutex_unlock(&sem->lock);
 }
 
 /** 
@@ -102,8 +102,8 @@ int sem_wait(sem_t* sem)
 */
 int sem_signal(sem_t* sem)
 {
-	atomic_add(&sem->open_slots, 1);
-	return cond_signal(&sem->nonzero);
+   atomic_add(&sem->open_slots, 1);
+   return cond_signal(&sem->nonzero);
 }
 
 

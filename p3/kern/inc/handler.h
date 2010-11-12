@@ -19,16 +19,16 @@ typedef char* trap_gate_t;
 * @param tg The address of the gate. 
 */
 #define IDT_INIT(tg)                                                                   \
-	do {                                                                                \
-		tg[7] = 0x00;                                /* offset[31:24]          	      */ \
-		tg[6] = 0x00;                                /* offset[23:16]          	      */ \
-		tg[5] = 0x8f;                                /* {P[1], DPL[2], 0, D[1], 111}	*/ \
-		tg[4] = 0x00;                                /* {0[3], reserved[5]}  	      */ \
-		tg[3] = ((SEGSEL_KERNEL_CS & 0xFF00) >> 8);  /* segment[15:8]          	      */ \
-		tg[2] = (SEGSEL_KERNEL_CS & 0x00FF);         /* segment[7:0]           	      */ \
-		tg[1] = 0x00;                                /* offset[15:8]           	      */ \
-		tg[0] = 0x00;                                /* offset[7:0]	           	      */ \
-	} while(0)
+   do {                                                                                \
+      tg[7] = 0x00;                                /* offset[31:24]                 */ \
+      tg[6] = 0x00;                                /* offset[23:16]                 */ \
+      tg[5] = 0x8f;                                /* {P[1], DPL[2], 0, D[1], 111}  */ \
+      tg[4] = 0x00;                                /* {0[3], reserved[5]}           */ \
+      tg[3] = ((SEGSEL_KERNEL_CS & 0xFF00) >> 8);  /* segment[15:8]                 */ \
+      tg[2] = (SEGSEL_KERNEL_CS & 0x00FF);         /* segment[7:0]                  */ \
+      tg[1] = 0x00;                                /* offset[15:8]                  */ \
+      tg[0] = 0x00;                                /* offset[7:0]                   */ \
+   } while(0)
 
 #define IDT_SET_OFFSET(tg, address)                         \
    {                                                        \

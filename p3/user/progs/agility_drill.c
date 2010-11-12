@@ -108,7 +108,7 @@ void * chase(void * arg) {
     // TODO: here's the point that we 'periodically do something' such as sleep() or yield()
     if (((my_creation_number % STUPID_MAGIC_CONSTANT) == 0)
         && ((highest_mutex_released % STUPID_MAGIC_CONSTANT) == 0)) {
-      yield(-1);	
+      yield(-1);  
     }
     // we only start releasing mutexes when we've acquired a total of "footprint" mutexes
     if (next_mutex_to_acquire >= footprint) {
@@ -141,15 +141,15 @@ int main( int argc, char *argv[] ) {
             n_mutexes = atoi(argv[1]);
             /* fall through */
         default:
-		break;
+      break;
     }
-	
-	// the requirement for n_chasethreads is obscure but not entirely stupid
-	// what we're trying to make sure is that there are some threads that
-	// get 'caught behind' a 'yielder' thread under most normal scheduling choices
+   
+   // the requirement for n_chasethreads is obscure but not entirely stupid
+   // what we're trying to make sure is that there are some threads that
+   // get 'caught behind' a 'yielder' thread under most normal scheduling choices
 
     if ( (argc > 4) ||
-		 (footprint < 1) ||
+       (footprint < 1) ||
          (n_chasethreads < (2 * STUPID_MAGIC_CONSTANT - 1)) ||
          (n_mutexes < 3) ||
          (n_mutexes <= footprint)
@@ -158,7 +158,7 @@ int main( int argc, char *argv[] ) {
         printf("Number of mutexes must be at least 3 and strictly greater than footprint\n");
         printf("Number of chasethreads must be at least (2 * STUPID_MAGIC_CONSTANT - 1) = %d\n", (2 * STUPID_MAGIC_CONSTANT - 1));
         printf("Footprint (number of locks acquired at the same time) must be at least 1\n");
-	/* don't REPORT anything: abort, attract attention of TA */
+   /* don't REPORT anything: abort, attract attention of TA */
         exit(1);
     }
     thrgrp_init_group(&tg);
@@ -172,7 +172,7 @@ int main( int argc, char *argv[] ) {
     for (i = 0; i < n_chasethreads; i++) {
         assert(thrgrp_join(&tg, &status_temporary) == 0);
     }
-	free(mtxs);
+   free(mtxs);
     REPORT_END_SUCCESS; 
     exit(0);
 }

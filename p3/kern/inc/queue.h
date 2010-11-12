@@ -23,11 +23,11 @@
  *        type must define next and prev pointers.
  */
 #define DEFINE_QUEUE(queue_type, node_type) \
-	struct queue_type##_queue_struct { \
-		node_type first; \
-		node_type last; \
-	}; \
-	typedef struct queue_type##_queue_struct queue_type
+   struct queue_type##_queue_struct { \
+      node_type first; \
+      node_type last; \
+   }; \
+   typedef struct queue_type##_queue_struct queue_type
 
 /** @def STATIC_INIT_QUEUE(queue)
  *
@@ -36,11 +36,11 @@
  * @param queue The queue to instantiate.
  */
 #define STATIC_INIT_QUEUE(queue) \
-	do { \
-		(queue).first = NULL; \
-		(queue).last = NULL; \
-	} \
-	while (0)
+   do { \
+      (queue).first = NULL; \
+      (queue).last = NULL; \
+   } \
+   while (0)
 
 /** @def ENQUEUE_FIRST(queue, node)
  *
@@ -50,15 +50,15 @@
  * @param node The node to place on the queue.
  */
 #define ENQUEUE_FIRST(queue, node) \
-	do { \
-		if ((queue).first) \
-			(queue).first->prev = node; \
-		else \
-			(queue).last = node; \
-		(node)->next = (queue).first; \
-		(node)->prev = NULL; \
-		(queue).first = node; \
-	} while (0)
+   do { \
+      if ((queue).first) \
+         (queue).first->prev = node; \
+      else \
+         (queue).last = node; \
+      (node)->next = (queue).first; \
+      (node)->prev = NULL; \
+      (queue).first = node; \
+   } while (0)
 
 /** @def ENQUEUE_LAST(queue, node)
  *
@@ -68,15 +68,15 @@
  * @param node The node to place on the queue.
  */
 #define ENQUEUE_LAST(queue, node) \
-	do { \
-		if ((queue).last) \
-			(queue).last->next = node; \
-		else \
-			(queue).first = node; \
-		(node)->prev = (queue).last; \
-		(node)->next = NULL; \
-		(queue).last = node; \
-	} while (0)
+   do { \
+      if ((queue).last) \
+         (queue).last->next = node; \
+      else \
+         (queue).first = node; \
+      (node)->prev = (queue).last; \
+      (node)->next = NULL; \
+      (queue).last = node; \
+   } while (0)
 
 /** @def ENQUEUE_BEFORE(queue, queue_node, new_node)
  *
@@ -87,20 +87,20 @@
  * @param new_node The node to place before queue_node in the queue.
  */
 #define ENQUEUE_BEFORE(queue, queue_node, new_node) \
-	do { \
-		if ((queue_node) == (queue).first) { \
-			ENQUEUE_FIRST(queue, new_node); \
-		} \
-		else if ((queue_node) == NULL) { \
-			ENQUEUE_LAST(queue, new_node); \
-		} \
-		else { \
-			(new_node)->prev = (queue_node)->prev; \
-			(new_node)->next = queue_node; \
-			(queue_node)->prev->next = new_node; \
-			(queue_node)->prev = new_node; \
-		} \
-	} while (0)
+   do { \
+      if ((queue_node) == (queue).first) { \
+         ENQUEUE_FIRST(queue, new_node); \
+      } \
+      else if ((queue_node) == NULL) { \
+         ENQUEUE_LAST(queue, new_node); \
+      } \
+      else { \
+         (new_node)->prev = (queue_node)->prev; \
+         (new_node)->next = queue_node; \
+         (queue_node)->prev->next = new_node; \
+         (queue_node)->prev = new_node; \
+      } \
+   } while (0)
 
 /** @def ENQUEUE_AFTER(queue, queue_node, new_node)
  *
@@ -111,20 +111,20 @@
  * @param new_node The node to place after queue_node in the queue.
  */
 #define ENQUEUE_AFTER(queue, queue_node, new_node) \
-	do { \
-		if ((queue_node) == (queue).last) { \
-			ENQUEUE_LAST(queue, new_node); \
-		} \
-		else if ((queue_node) == NULL) { \
-			ENQUEUE_FIRST(queue, new_node); \
-		} \
-		else { \
-			(new_node)->next = (queue_node)->next; \
-			(new_node)->prev = queue_node; \
-			(queue_node)->next->prev = new_node; \
-			(queue_node)->next = new_node; \
-		} \
-	} while (0)
+   do { \
+      if ((queue_node) == (queue).last) { \
+         ENQUEUE_LAST(queue, new_node); \
+      } \
+      else if ((queue_node) == NULL) { \
+         ENQUEUE_FIRST(queue, new_node); \
+      } \
+      else { \
+         (new_node)->next = (queue_node)->next; \
+         (new_node)->prev = queue_node; \
+         (queue_node)->next->prev = new_node; \
+         (queue_node)->next = new_node; \
+      } \
+   } while (0)
 
 /** @def DEQUEUE_FIRST(queue, node)
  *
@@ -135,19 +135,19 @@
  *        removed head is discarded.
  */
 #define DEQUEUE_FIRST(queue, node) \
-	do { \
-		(node) = (queue).first; \
-		if ((queue).first) { \
-			if ((queue).first == (queue).last) { \
-				(queue).first = NULL; \
-				(queue).last = NULL; \
-			} \
-			else { \
-				(queue).first = (queue).first->next; \
-				(queue).first->prev = NULL; \
-			} \
-		} \
-	} while (0)
+   do { \
+      (node) = (queue).first; \
+      if ((queue).first) { \
+         if ((queue).first == (queue).last) { \
+            (queue).first = NULL; \
+            (queue).last = NULL; \
+         } \
+         else { \
+            (queue).first = (queue).first->next; \
+            (queue).first->prev = NULL; \
+         } \
+      } \
+   } while (0)
 
 /** @def DEQUEUE_LAST(queue, node)
  *
@@ -158,21 +158,21 @@
  *        removed tail is discarded.
  */
 #define DEQUEUE_LAST(queue, node) \
-	do { \
-		if (node) { \
-			(node) = (queue).last; \
-		} \
-		if ((queue).last) { \
-			if ((queue).last == (queue).first) { \
-				(queue).first = NULL; \
-				(queue).last = NULL; \
-			} \
-			else { \
-				(queue).last = (queue).last->prev; \
-				(queue).last->next = NULL; \
-			} \
-		} \
-	} while (0)
+   do { \
+      if (node) { \
+         (node) = (queue).last; \
+      } \
+      if ((queue).last) { \
+         if ((queue).last == (queue).first) { \
+            (queue).first = NULL; \
+            (queue).last = NULL; \
+         } \
+         else { \
+            (queue).last = (queue).last->prev; \
+            (queue).last->next = NULL; \
+         } \
+      } \
+   } while (0)
 
 /** @def DEQUEUE_ELEM(queue, node)
  *
@@ -182,18 +182,18 @@
  * @param node The node to remove.
  */
 #define DEQUEUE_ELEM(queue, node) \
-	do { \
-		if ((node) == (queue).first) { \
-			DEQUEUE_FIRST(queue, node); \
-		} \
-		else if ((node) == (queue).last) { \
-			DEQUEUE_LAST(queue, node); \
-		} \
-		else { \
-			(node)->next->prev = (node)->prev; \
-			(node)->prev->next = (node)->next; \
-		} \
-	} while (0)
+   do { \
+      if ((node) == (queue).first) { \
+         DEQUEUE_FIRST(queue, node); \
+      } \
+      else if ((node) == (queue).last) { \
+         DEQUEUE_LAST(queue, node); \
+      } \
+      else { \
+         (node)->next->prev = (node)->prev; \
+         (node)->prev->next = (node)->next; \
+      } \
+   } while (0)
 
 /** @def EMPTY_QUEUE(queue)
  *
@@ -202,10 +202,10 @@
  * @param queue The queue to empty.
  */
 #define EMPTY_QUEUE(queue) \
-	do { \
-		(queue).first = NULL; \
-		(queue).last = NULL; \
-	} while (0)
+   do { \
+      (queue).first = NULL; \
+      (queue).last = NULL; \
+   } while (0)
 
 /** @def PEEK_FIRST(queue, node)
  *
@@ -216,7 +216,7 @@
  * @param node The variable to place the first node in.
  */
 #define PEEK_FIRST(queue, node) \
-	node = (queue).first
+   node = (queue).first
 
 /** @def PEEK_LAST(queue, node)
  *
@@ -227,7 +227,7 @@
  * @param node The variable to place the last node in.
  */
 #define PEEK_LAST(queue, node) \
-	node = (queue).last
+   node = (queue).last
 
 /** @def FOREACH(queue, node) \
  *
@@ -239,7 +239,7 @@
  *        node will be NULL after the iteration if iteration completes.
  */
 #define FOREACH(queue, node) \
-	for ((node) = (queue).first; (node) != NULL; (node) = (node)->next)
+   for ((node) = (queue).first; (node) != NULL; (node) = (node)->next)
 
 #endif
 

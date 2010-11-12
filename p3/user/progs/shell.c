@@ -65,11 +65,11 @@ main( int argc, char *argv[] )
   char buf[MAX_LENGTH];
   char * cmd_argv[MAX_LENGTH];
   char separators[4];
-	int n;
-	int pid;
-	int res;
-	int j;
-	int ret;
+   int n;
+   int pid;
+   int res;
+   int j;
+   int ret;
 
   separators[0] = ' ';
   separators[1] = '\t';
@@ -104,12 +104,12 @@ main( int argc, char *argv[] )
     }
     if( (strcmp( cmd_argv[0], "exit" ) == 0) ) {
       print( strlen( exitmsg ), exitmsg );
-			exit(0);
+         exit(0);
     }
-		if( (strcmp( cmd_argv[0], "ls" ) == 0 ) ) {
-			print_ls();
-			continue;
-		}
+      if( (strcmp( cmd_argv[0], "ls" ) == 0 ) ) {
+         print_ls();
+         continue;
+      }
 
     while( (cmd_argv[j++] = strtok(NULL, separators)) );
     
@@ -136,82 +136,82 @@ main( int argc, char *argv[] )
 
 static void print_ls( )
 {
-	char * buf;
-	char * bufptr;
-	char ** names;
-	int index = 0;
-	int size = 4096;
-	int num_entries;
-	int len;
+   char * buf;
+   char * bufptr;
+   char ** names;
+   int index = 0;
+   int size = 4096;
+   int num_entries;
+   int len;
 
-	/* get the array of entries */
-	buf = (char *)malloc(sizeof(char) * size);
-	printf("Listing the user tests\n");
-	while ( (num_entries = ls( size, buf )) < 0 ) {
-		size *= 2;
-		buf = (char *)realloc(buf, sizeof(char) * size);
-	}
+   /* get the array of entries */
+   buf = (char *)malloc(sizeof(char) * size);
+   printf("Listing the user tests\n");
+   while ( (num_entries = ls( size, buf )) < 0 ) {
+      size *= 2;
+      buf = (char *)realloc(buf, sizeof(char) * size);
+   }
 
-	names = (char **)calloc(num_entries, sizeof(char *));
+   names = (char **)calloc(num_entries, sizeof(char *));
 
-	/* get pointers to each string in the array */
-	bufptr = buf;
-	while ( (len = strlen( bufptr )) > 0 ) {
-		names[index++] = bufptr;
-		bufptr += len + 1;
-	}
+   /* get pointers to each string in the array */
+   bufptr = buf;
+   while ( (len = strlen( bufptr )) > 0 ) {
+      names[index++] = bufptr;
+      bufptr += len + 1;
+   }
 
-	//for ( index = 0; index < num_entries; index++ ) {
-	//	lprintf("%p: %s\n", names[index], names[index]);
-	//} 
-	quicksort( names, 0, num_entries - 1 );
+   //for ( index = 0; index < num_entries; index++ ) {
+   // lprintf("%p: %s\n", names[index], names[index]);
+   //} 
+   quicksort( names, 0, num_entries - 1 );
 
-	for ( index = 0; index < num_entries; index++ ) {
-		if ( index != 0 && index % (console_height() - 2) == 0 ) {
-			printf("Hit a key to continue\n");
-			getchar();
-		}
-		printf("%s\n", names[index]);
-	}
+   for ( index = 0; index < num_entries; index++ ) {
+      if ( index != 0 && index % (console_height() - 2) == 0 ) {
+         printf("Hit a key to continue\n");
+         getchar();
+      }
+      printf("%s\n", names[index]);
+   }
 
-	free(buf);
-	free(names);
-	buf = NULL;
-	names = NULL;
+   free(buf);
+   free(names);
+   buf = NULL;
+   names = NULL;
 }
 
 /* quicksort algorithm taken from CLRS */
 static void quicksort( char ** buf, int start, int end )
 {
-	int pivot_location;
+   int pivot_location;
 
-	if ( start < end ) {
-		pivot_location = partition( buf, start, end );
-		quicksort( buf, start, pivot_location-1 );
-		quicksort( buf, pivot_location+1, end );
-	}
+   if ( start < end ) {
+      pivot_location = partition( buf, start, end );
+      quicksort( buf, start, pivot_location-1 );
+      quicksort( buf, pivot_location+1, end );
+   }
 }
 
 static int partition( char ** buf, int start, int end )
 {
-	char * pivot = buf[end];
-	char * temp;
-	int i, j;
+   char * pivot = buf[end];
+   char * temp;
+   int i, j;
 
-	i = start - 1;
-	for ( j = start; j <= end - 1; j++ ) {
-		if ( strcmp( buf[j], pivot ) <= 0 ) {
-			i = i+1;
-			temp = buf[i];
-			buf[i] = buf[j];
-			buf[j] = temp;
-		}
-	}
-	temp = buf[i+1];
-	buf[i+1] = buf[end];
-	buf[end] = temp;
+   i = start - 1;
+   for ( j = start; j <= end - 1; j++ ) {
+      if ( strcmp( buf[j], pivot ) <= 0 ) {
+         i = i+1;
+         temp = buf[i];
+         buf[i] = buf[j];
+         buf[j] = temp;
+      }
+   }
+   temp = buf[i+1];
+   buf[i+1] = buf[end];
+   buf[end] = temp;
 
-	return i+1;
+   return i+1;
 }
 
 static int mystical_readline(int len, char *buf) {

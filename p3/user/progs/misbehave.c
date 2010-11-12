@@ -25,5 +25,5 @@ int main( int argc, char *argv[] )
 
   assuredly_misbehave(misbehave_val);
 
-	return 0;
+   return 0;
 }

@@ -25,10 +25,10 @@ int lock_initialized = 0;
  * Enforces that mutex_init is called only once for the heap lock.
  */
 static void try_initialize() {
-	if(!lock_initialized && atomic_add(&lock_initialized, 1) == 0)
-	{
-		mutex_init(&heap_lock);
-	}
+   if(!lock_initialized && atomic_add(&lock_initialized, 1) == 0)
+   {
+      mutex_init(&heap_lock);
+   }
 }
 
 /** @brief Thread safe wrapper for malloc.
@@ -39,14 +39,14 @@ static void try_initialize() {
  */
 void *malloc(size_t __size)
 {
-	void* ret;
-	
-	try_initialize();
-	
-	mutex_lock(&heap_lock);
-	ret = _malloc(__size);	
-	mutex_unlock(&heap_lock);
-	return ret;
+   void* ret;
+   
+   try_initialize();
+   
+   mutex_lock(&heap_lock);
+   ret = _malloc(__size);  
+   mutex_unlock(&heap_lock);
+   return ret;
 }
 
 /** @brief Thread safe wrapper for calloc.
@@ -58,14 +58,14 @@ void *malloc(size_t __size)
  */
 void *calloc(size_t __nelt, size_t __eltsize)
 {
-	void* ret;
-	
-	try_initialize();
+   void* ret;
+   
+   try_initialize();
 
-	mutex_lock(&heap_lock);
-	ret = _calloc(__nelt, __eltsize);	
-	mutex_unlock(&heap_lock);
-	return ret;
+   mutex_lock(&heap_lock);
+   ret = _calloc(__nelt, __eltsize);   
+   mutex_unlock(&heap_lock);
+   return ret;
 }
 
 /** @brief Thread safe wrapper for realloc.
@@ -77,14 +77,14 @@ void *calloc(size_t __nelt, size_t __eltsize)
  */
 void *realloc(void *__buf, size_t __new_size)
 {
-	void* ret;
+   void* ret;
 
-	try_initialize();
+   try_initialize();
 
-	mutex_lock(&heap_lock);
-	ret = _realloc(__buf, __new_size);	
-	mutex_unlock(&heap_lock);
-	return ret;
+   mutex_lock(&heap_lock);
+   ret = _realloc(__buf, __new_size);  
+   mutex_unlock(&heap_lock);
+   return ret;
 }
 
 /** @brief Thread safe wrapper for free.
@@ -93,10 +93,10 @@ void *realloc(void *__buf, size_t __new_size)
  */
 void free(void *__buf)
 {
-	try_initialize();
-	
-	mutex_lock(&heap_lock);
-	_free(__buf);	
-	mutex_unlock(&heap_lock);
+   try_initialize();
+   
+   mutex_lock(&heap_lock);
+   _free(__buf);  
+   mutex_unlock(&heap_lock);
 }
 

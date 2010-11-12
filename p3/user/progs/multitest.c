@@ -26,7 +26,7 @@ int main()
   int i;
   int count = 0;
   char * tests[] = {"agility_drill", "cvar_test", "cyclone", 
-		     "join_specific_test", "thr_exit_join"};
+           "join_specific_test", "thr_exit_join"};
 
   char * ad[] = {"agility_drill",(char *)0};
   char * ct[] = {"cvar_test",(char *)0};
@@ -44,10 +44,10 @@ int main()
       int tid = fork();
       
       if(tid == 0) {
-	printf("execing %s\n",tests[i]);
-	exec(tests[i],argsvec[i]);
-	printf("test %s could not exec\n",tests[i]);
-	return 0;
+   printf("execing %s\n",tests[i]);
+   exec(tests[i],argsvec[i]);
+   printf("test %s could not exec\n",tests[i]);
+   return 0;
       }
       
     }

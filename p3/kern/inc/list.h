@@ -44,18 +44,18 @@
 #define LIST_INIT_EMPTY(list) list = NULL
 
 #define LIST_INIT_NONEMPTY(list, instance) \
-	do { \
+   do { \
       LIST_NEXT(list, instance) = list; \
       LIST_PREV(list, instance) = list; \
-	} \
-	while (0)
+   } \
+   while (0)
 
 #define LIST_INIT_NODE(node, instance) \
-	do { \
+   do { \
       LIST_NEXT(node, instance) = NULL; \
       LIST_PREV(node, instance) = NULL; \
-	} \
-	while (0)
+   } \
+   while (0)
 
 /** @brief Get the next element of the list
  *
@@ -80,10 +80,10 @@
  * @param instance The list type to iterate over
  */
 #define LIST_FORALL(list, iter, instance) \
-	for ((iter) = (list); \
-			((iter) != NULL); \
-			(iter) = LIST_NEXT(iter, instance) == (list) ? \
-			NULL : LIST_NEXT(iter, instance))
+   for ((iter) = (list); \
+         ((iter) != NULL); \
+         (iter) = LIST_NEXT(iter, instance) == (list) ? \
+         NULL : LIST_NEXT(iter, instance))
 
 /** @brief Insert an element into a list before the given node
  *
@@ -92,7 +92,7 @@
  * @param instance The type of the list to insert into
  */
 #define LIST_INSERT_BEFORE(list, node, instance) \
-	do { \
+   do { \
       if(!(list)) \
       { \
          (list) = (node); \
@@ -108,7 +108,7 @@
          assert(LIST_PREV(node, instance) != NULL); \
       }\
       else assert(0); \
-	} while (0)
+   } while (0)
 
 /** @brief Insert an element into a list after the given node
  *
@@ -117,7 +117,7 @@
  * @param instance The type of the list to insert into
  */
 #define LIST_INSERT_AFTER(list, node, instance) \
-	do { \
+   do { \
       if(!(list)) \
       { \
          (list) = (node); \
@@ -134,7 +134,7 @@
          assert(LIST_PREV(node, instance) != NULL); \
       } \
       else assert(0); \
-	} while (0)
+   } while (0)
 
 /** @brief Remove an element from a list
  *
@@ -143,10 +143,10 @@
  * @param instance The type of the list to remove from
  */
 #define LIST_REMOVE(list, node, instance) \
-	do { \
+   do { \
       if(LIST_NEXT(node, instance) == (node) ) \
       { \
-			assert(list == node); \
+         assert(list == node); \
          list = NULL; \
       } \
       else if (LIST_NEXT(node, instance) != NULL) \
@@ -156,12 +156,12 @@
             (list) = LIST_NEXT(node, instance); \
          } \
          LIST_NEXT(LIST_PREV(node, instance), instance) = \
-				LIST_NEXT(node, instance); \
+            LIST_NEXT(node, instance); \
          LIST_PREV(LIST_NEXT(node, instance), instance) = \
-				LIST_PREV(node, instance); \
+            LIST_PREV(node, instance); \
       } \
-		LIST_NEXT(node, instance) = NULL; \
-		LIST_PREV(node, instance) = NULL; \
+      LIST_NEXT(node, instance) = NULL; \
+      LIST_PREV(node, instance) = NULL; \
    } while (0)
 
 #endif

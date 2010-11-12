@@ -43,48 +43,48 @@ void* thread1(void* token);
  */
 int main(int argc, char *argv[])
 {
-	int spawn_tid;
-	int status;
-	int i;
+   int spawn_tid;
+   int status;
+   int i;
 
-	REPORT_LOCAL_INIT;
+   REPORT_LOCAL_INIT;
 
-	REPORT_START_CMPLT;
+   REPORT_START_CMPLT;
 
-	REPORT_ON_ERR(thr_init(STACK_SIZE));
+   REPORT_ON_ERR(thr_init(STACK_SIZE));
 
-	for (i = 0; i < MAX_MISBEHAVE; i++) {
-	  thread_exited = 0;
-	  thr_exit_return = 0;
+   for (i = 0; i < MAX_MISBEHAVE; i++) {
+     thread_exited = 0;
+     thr_exit_return = 0;
 
-	  lprintf("%s%strying mode %d",TEST_PFX,test_name,i);
-	  misbehave(i);
+     lprintf("%s%strying mode %d",TEST_PFX,test_name,i);
+     misbehave(i);
 
-	  REPORT_FAILOUT_ON_ERR((spawn_tid = thr_create(thread1, (void*)i)));
+     REPORT_FAILOUT_ON_ERR((spawn_tid = thr_create(thread1, (void*)i)));
 
-	  REPORT_FAILOUT_ON_ERR(thr_join(spawn_tid, (void**)&status));
+     REPORT_FAILOUT_ON_ERR(thr_join(spawn_tid, (void**)&status));
 
-	  if(thread_exited == 0) {
-	    REPORT_MISC("Thread joined before exited");
-	    REPORT_END_FAIL;
-	    return -40;
-	  }
+     if(thread_exited == 0) {
+       REPORT_MISC("Thread joined before exited");
+       REPORT_END_FAIL;
+       return -40;
+     }
 
-	  if(status != i) {
-	    REPORT_ERR("wrong token returned as status: ",status);
-	    REPORT_END_FAIL;
-	    return -60;
-	  }
-	  
-	  if(thr_exit_return) {
-	  REPORT_MISC("ERR: thr_exit() returned.");
-	  }
-	}
+     if(status != i) {
+       REPORT_ERR("wrong token returned as status: ",status);
+       REPORT_END_FAIL;
+       return -60;
+     }
+     
+     if(thr_exit_return) {
+     REPORT_MISC("ERR: thr_exit() returned.");
+     }
+   }
 
 
-	REPORT_END_SUCCESS;
+   REPORT_END_SUCCESS;
 
-	return 1;
+   return 1;
 }
 
 /**
@@ -95,9 +95,9 @@ int main(int argc, char *argv[])
  */
 void* thread1(void* token)
 {
-	thread_exited = 1;
-	thr_exit(token);
-	thr_exit_return = 1;
+   thread_exited = 1;
+   thr_exit(token);
+   thr_exit_return = 1;
 
-	return token;
+   return token;
 }

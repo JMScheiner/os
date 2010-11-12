@@ -17,14 +17,14 @@ DEF_TEST_NAME("wild_test1:");
 /* Main */
 int main(int argc, char *argv[])
 {
-	int *wild = (int *)0x31337000;
+   int *wild = (int *)0x31337000;
 
-	REPORT_START_ABORT;
-	
+   REPORT_START_ABORT;
+   
 
-	*wild = 0x2badd00d;
+   *wild = 0x2badd00d;
 
   REPORT_END_FAIL;
 
-	exit( -1 );
+   exit( -1 );
 }

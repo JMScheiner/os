@@ -20,30 +20,30 @@
 
 typedef struct rwlock 
 {
-	/* @brief The active mode of the reader writer lock. RWLOCK_READ or RWLOCK_WRITE*/
-	int mode;
+   /* @brief The active mode of the reader writer lock. RWLOCK_READ or RWLOCK_WRITE*/
+   int mode;
 
-	/* @brief The number of waiting writers */
-	int writers;
-	
-	/* @brief The number of writers cond_waiting, to ensure the right person acquires the lock.*/
-	int waiting_writers;
+   /* @brief The number of waiting writers */
+   int writers;
+   
+   /* @brief The number of writers cond_waiting, to ensure the right person acquires the lock.*/
+   int waiting_writers;
 
-	/* @brief The number of active readers in the critical section*/
-	int readers;
-	
-	/* @brief A condition indicating the number of waiting writers is 0
-	 * 	...otherwise, we are free to read. */ 
-	cond_t wait_read;
-	
-	/* @brief The condition that there are no active readers. */ 
-	cond_t wait_write; 
-	
-	/* @brief Protects access to the number of readers and writers. */
-	mutex_t rw_count_lock;
-	
-	/* @brief A flag indicating that this struct is initialized. */
-	boolean_t initialized;
+   /* @brief The number of active readers in the critical section*/
+   int readers;
+   
+   /* @brief A condition indicating the number of waiting writers is 0
+    *    ...otherwise, we are free to read. */ 
+   cond_t wait_read;
+   
+   /* @brief The condition that there are no active readers. */ 
+   cond_t wait_write; 
+   
+   /* @brief Protects access to the number of readers and writers. */
+   mutex_t rw_count_lock;
+   
+   /* @brief A flag indicating that this struct is initialized. */
+   boolean_t initialized;
 
 } rwlock_t;
 

@@ -38,52 +38,52 @@
 
 
 typedef struct myArgs{
-	char cookie; /** each of my threads.... gets a cookie :) **/
+   char cookie; /** each of my threads.... gets a cookie :) **/
 } myArgs;
 
 void *baseFunc (void* args)
 {
-	myArgs *argsin = (myArgs *)args;
+   myArgs *argsin = (myArgs *)args;
 
-	yield(-1);
-	print (1, &(argsin->cookie));
+   yield(-1);
+   print (1, &(argsin->cookie));
 
-	return args;
+   return args;
 }
 
 int main(int argc, char **argv)
 {
-	int error;
-	int tids[30];
-	int i;
-	myArgs *curArg;
-	char *myOutput="Hello, world!\n";
-	
-	thr_init(stackSize);
+   int error;
+   int tids[30];
+   int i;
+   myArgs *curArg;
+   char *myOutput="Hello, world!\n";
+   
+   thr_init(stackSize);
 
-	for (i=0; i<strlen(myOutput); i++)
-		{
-			curArg=malloc(sizeof(myArgs));
-			
-			curArg->cookie=myOutput[i];
-			
-			tids[i]=thr_create(baseFunc, (void *)curArg);
-		}
+   for (i=0; i<strlen(myOutput); i++)
+      {
+         curArg=malloc(sizeof(myArgs));
+         
+         curArg->cookie=myOutput[i];
+         
+         tids[i]=thr_create(baseFunc, (void *)curArg);
+      }
 
-	for(i=strlen(myOutput)-1; i>=0; i--)
-		{
-			if((error = thr_join(tids[i], (void **)&curArg)) !=SUCCESS)
-				{
-					lprintf("Thr_join error %d\n",error);
-				}
+   for(i=strlen(myOutput)-1; i>=0; i--)
+      {
+         if((error = thr_join(tids[i], (void **)&curArg)) !=SUCCESS)
+            {
+               lprintf("Thr_join error %d\n",error);
+            }
 
-			if(curArg != NULL)
-				{
-					free(curArg);
-				}
-		}
+         if(curArg != NULL)
+            {
+               free(curArg);
+            }
+      }
 
-	return 0;
-	
+   return 0;
+   
 }
 

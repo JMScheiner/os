@@ -19,23 +19,23 @@
  * @return The ID of the child thread on success, less than 0 on error
  */
 thread_fork:
-	pushl  %ebp              // Save previous stack frame
-	movl   %esp, %ebp        // Set up new stack frame
-	int    $THREAD_FORK_INT  // Generate the trap
-	testl  %eax, %eax        // Check the return value, we are the parent if non-zero
-	jnz    PARENT            // Jump to the end if we are the parent thread
-	movl   16(%ebp), %esp    // Move to the base of the child's stack frame
-	pushl  20(%ebp)          // Push the tcb of the child as an argument
-	pushl  12(%ebp)          // Push arg as an argument
-	pushl  8(%ebp)           // Push func as an argument
-	call   thr_child_init    // Initialize and run the child
-	// We should never reach here
+   pushl  %ebp              // Save previous stack frame
+   movl   %esp, %ebp        // Set up new stack frame
+   int    $THREAD_FORK_INT  // Generate the trap
+   testl  %eax, %eax        // Check the return value, we are the parent if non-zero
+   jnz    PARENT            // Jump to the end if we are the parent thread
+   movl   16(%ebp), %esp    // Move to the base of the child's stack frame
+   pushl  20(%ebp)          // Push the tcb of the child as an argument
+   pushl  12(%ebp)          // Push arg as an argument
+   pushl  8(%ebp)           // Push func as an argument
+   call   thr_child_init    // Initialize and run the child
+   // We should never reach here
 PARENT:
-	pushl  %eax              // Save the return of THREAD_FORK_INT
-	pushl  20(%ebp)          // Push the tcb of the child as an argument
-	call   wait_for_child    // Wait for the child to initialize itself
-	subl   $-4, %esp         // Pop the arguments
-	popl   %eax              // Restore return of THREAD_FORK_INT 
-	leave                    // Tear down stack frame
-	ret
+   pushl  %eax              // Save the return of THREAD_FORK_INT
+   pushl  20(%ebp)          // Push the tcb of the child as an argument
+   call   wait_for_child    // Wait for the child to initialize itself
+   subl   $-4, %esp         // Pop the arguments
+   popl   %eax              // Restore return of THREAD_FORK_INT 
+   leave                    // Tear down stack frame
+   ret
 
