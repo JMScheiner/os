@@ -2,7 +2,7 @@
 * @file atomic.h
 * @brief Wrappers for atomic x86 instructions. 
 *
-*	See chapter 7 of "intel-sys.pdf"
+*  See chapter 7 of "intel-sys.pdf"
 *
 * @author Justin Scheiner
 */

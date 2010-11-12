@@ -93,18 +93,18 @@ int oldTargetPos = 50; /** old target position */
  **/
 void scheduleUpdate(void)
 {
-	int error;
-	/** lock the update flag **/
-	try(mutex_lock(&updateLock));
+   int error;
+   /** lock the update flag **/
+   try(mutex_lock(&updateLock));
 
-	/** set the pending update flag **/
-	updatePending=1;
+   /** set the pending update flag **/
+   updatePending=1;
 
-	/** signal update if it was waiting **/
-	try(cond_signal(&updates));
-	
-	/** unlock update flag **/
-	try(mutex_unlock(&updateLock));
+   /** signal update if it was waiting **/
+   try(cond_signal(&updates));
+   
+   /** unlock update flag **/
+   try(mutex_unlock(&updateLock));
 
 }
 
@@ -117,19 +117,19 @@ void scheduleUpdate(void)
 
 void waitUpdate(void)
 {
-	int error;
-	/** lock the update mutex **/
-	try(mutex_lock(&updateLock));
-	if(updatePending==0)
-		{
-			/** wait for an update **/
-			try(cond_wait(&updates, &updateLock));
+   int error;
+   /** lock the update mutex **/
+   try(mutex_lock(&updateLock));
+   if(updatePending==0)
+      {
+         /** wait for an update **/
+         try(cond_wait(&updates, &updateLock));
 
-		 
-		}
-	updatePending=0;
-	/* give back the update mutex **/
-	try(mutex_unlock(&updateLock));
+       
+      }
+   updatePending=0;
+   /* give back the update mutex **/
+   try(mutex_unlock(&updateLock));
 }
 
 /** @brief Update the world
@@ -140,49 +140,49 @@ void waitUpdate(void)
 
 void *update(void *ignored)
 {
-	int error;
+   int error;
 
-	while(1)
-		{
-			/** await for a request to update the world **/
-			waitUpdate();
+   while(1)
+      {
+         /** await for a request to update the world **/
+         waitUpdate();
 
        if(goFlag)
         return (void *)UPDATE_EXIT_CODE;
 
-			//lprintf("updateThread: ping!");
-			/** request received; re-draw the world **/
-			try(mutex_lock(&worldLock));
-			
-			/* draw the target */
-			set_cursor_pos(GAMEBAR_ROW, oldTargetPos);
-			print(1, GAMEBAR_BAR);
-			set_cursor_pos(GAMEBAR_ROW, targetPos);
-			print(1, GAME_TARGET);
-			oldTargetPos=targetPos;
+         //lprintf("updateThread: ping!");
+         /** request received; re-draw the world **/
+         try(mutex_lock(&worldLock));
+         
+         /* draw the target */
+         set_cursor_pos(GAMEBAR_ROW, oldTargetPos);
+         print(1, GAMEBAR_BAR);
+         set_cursor_pos(GAMEBAR_ROW, targetPos);
+         print(1, GAME_TARGET);
+         oldTargetPos=targetPos;
 
-			/* draw the player */
-			set_cursor_pos(P1_ROW, oldP1Cursor);
-			print(1, ERASE_CURSOR);
-			set_cursor_pos(P1_ROW, p1Cursor);
-			print(1, GAME_CURSOR);
-			oldP1Cursor=p1Cursor;
+         /* draw the player */
+         set_cursor_pos(P1_ROW, oldP1Cursor);
+         print(1, ERASE_CURSOR);
+         set_cursor_pos(P1_ROW, p1Cursor);
+         print(1, GAME_CURSOR);
+         oldP1Cursor=p1Cursor;
 
-			/* draw the score */
-			set_cursor_pos(22,0);
-			printf("Score: %d\n",p1Score);
-			
-		
-			
-			/** unlock world **/
-			try(mutex_unlock(&worldLock));
+         /* draw the score */
+         set_cursor_pos(22,0);
+         printf("Score: %d\n",p1Score);
+         
+      
+         
+         /** unlock world **/
+         try(mutex_unlock(&worldLock));
 
      
       
-			yield(-1);
-		}
+         yield(-1);
+      }
 }
-	 
+    
 /** @brief Receives control input and updates the world 
  *
  *  Function to receive control updates. It updates the position of the
@@ -193,33 +193,33 @@ void *update(void *ignored)
 void *controlThread(void *ignored)
 {
 
-	int error;
-  int done = 0;	
-	while(!done)
-		{
-			//lprintf("controlThread: ping!\n");
-			switch(getchar())
-				{
-				case '.':
-					try(mutex_lock(&worldLock));
-					p1Cursor++;
-					if(p1Cursor > CURSOR_MAX)
-						{
-							p1Cursor=CURSOR_MAX;
-						}
-					scheduleUpdate();
-					try(mutex_unlock(&worldLock));
-					break;
-				case ',':
-					try(mutex_lock(&worldLock));
-					p1Cursor--;
-					if(p1Cursor < CURSOR_MIN)
-						{
-							p1Cursor=CURSOR_MIN;
-						}
-					scheduleUpdate();
-					try(mutex_unlock(&worldLock));
-					break;
+   int error;
+  int done = 0;   
+   while(!done)
+      {
+         //lprintf("controlThread: ping!\n");
+         switch(getchar())
+            {
+            case '.':
+               try(mutex_lock(&worldLock));
+               p1Cursor++;
+               if(p1Cursor > CURSOR_MAX)
+                  {
+                     p1Cursor=CURSOR_MAX;
+                  }
+               scheduleUpdate();
+               try(mutex_unlock(&worldLock));
+               break;
+            case ',':
+               try(mutex_lock(&worldLock));
+               p1Cursor--;
+               if(p1Cursor < CURSOR_MIN)
+                  {
+                     p1Cursor=CURSOR_MIN;
+                  }
+               scheduleUpdate();
+               try(mutex_unlock(&worldLock));
+               break;
         case 'q':
           printf("Game over.\n");
           goFlag=1;
@@ -227,9 +227,9 @@ void *controlThread(void *ignored)
           /* exit the loop */
           return (void *)CONTROL_EXIT_CODE;
           break;
-				}
-			yield(-1);
-		}
+            }
+         yield(-1);
+      }
   return (void *)CONTROL_EXIT_CODE;
 }
 
@@ -241,47 +241,47 @@ void *controlThread(void *ignored)
 
 void *targetThread(void *ignored)
 {
-	int nextStep=FIRSTSTEP;
-	int error;
-	
-	while(1)
-		{
-			//lprintf("targetThread: Ping!");
-			sleep(TARGET_TIME);
-			
-			/** choose ``random'' direction for target **/
-			nextStep ^= nextStep>> 5;
-			nextStep ^= nextStep<< 13;
-			
-			/** grab world lock **/
-			try(mutex_lock(&worldLock));
-			
-			/** move target **/
-			if((nextStep & 0x01))
-				{
-					targetPos++;
-					if(targetPos > CURSOR_MAX)
-						{
-							targetPos = CURSOR_MAX;
-						}
-				}
-			else
-				{
-					targetPos--;
-					if(targetPos < CURSOR_MIN)
-						{
-							targetPos = CURSOR_MIN;
-						}
-				}
-			
-			/** schedule an update **/
-			scheduleUpdate();
-			try(mutex_unlock(&worldLock));
+   int nextStep=FIRSTSTEP;
+   int error;
+   
+   while(1)
+      {
+         //lprintf("targetThread: Ping!");
+         sleep(TARGET_TIME);
+         
+         /** choose ``random'' direction for target **/
+         nextStep ^= nextStep>> 5;
+         nextStep ^= nextStep<< 13;
+         
+         /** grab world lock **/
+         try(mutex_lock(&worldLock));
+         
+         /** move target **/
+         if((nextStep & 0x01))
+            {
+               targetPos++;
+               if(targetPos > CURSOR_MAX)
+                  {
+                     targetPos = CURSOR_MAX;
+                  }
+            }
+         else
+            {
+               targetPos--;
+               if(targetPos < CURSOR_MIN)
+                  {
+                     targetPos = CURSOR_MIN;
+                  }
+            }
+         
+         /** schedule an update **/
+         scheduleUpdate();
+         try(mutex_unlock(&worldLock));
       if(goFlag)
         return (void *) BEAD_EXIT_CODE;
-			
-		}
-	
+         
+      }
+   
 }
 
 /** @brief Updates the score 
@@ -298,68 +298,68 @@ void *targetThread(void *ignored)
 
 void *scoreThread(void *ignore)
 {
-	int error;
+   int error;
 
-	while (1)
-		{
-			sleep(SCORE_TIME);
+   while (1)
+      {
+         sleep(SCORE_TIME);
 
-			/* lock the world */
-			try(mutex_lock(&worldLock));
-			
-			/* check for scoring state */
-			if(targetPos == p1Cursor)
-				{
-					p1Score++;
-				}
+         /* lock the world */
+         try(mutex_lock(&worldLock));
+         
+         /* check for scoring state */
+         if(targetPos == p1Cursor)
+            {
+               p1Score++;
+            }
 
-			try(mutex_unlock(&worldLock));
+         try(mutex_unlock(&worldLock));
       if(goFlag)
         return (void *)SCORE_EXIT_CODE;
-		}
+      }
 }
 
 void initScreen(void)
 {
-	int i;
-	for(i=0; i<24; i++)
-	printf("                                                                                ");
-	set_cursor_pos(GAMEBAR_ROW, 3);
-	print(1,"<");
-	for(i=0; i<74; i++)
-		{
-			print(1, GAMEBAR_BAR);
-		}
-	print(1,">");
+   int i;
+   for(i=0; i<24; i++)
+   printf("                                                                                ");
+   set_cursor_pos(GAMEBAR_ROW, 3);
+   print(1,"<");
+   for(i=0; i<74; i++)
+      {
+         print(1, GAMEBAR_BAR);
+      }
+   print(1,">");
 }
 
 int main(int argc, char ** argv)
 {
-	int error;
+   int error;
   int i;
   int retcode;
   thrgrp_group_t tg;
 
 
-	try(thr_init(7*1024));
-	try(mutex_init(&worldLock));
-	try(mutex_init(&updateLock));
-	try(cond_init(&updates));
-	try(cond_init(&gameOver));
-	initScreen();
-	
+   try(thr_init(7*1024));
+   try(mutex_init(&worldLock));
+   try(mutex_init(&updateLock));
+   try(cond_init(&updates));
+   try(cond_init(&gameOver));
+   initScreen();
+   
   thrgrp_init_group(&tg);
-	try(thrgrp_create(&tg,update, 0));
-	try(thrgrp_create(&tg,controlThread, 0));
-	try(thrgrp_create(&tg,targetThread, 0));
-	try(thrgrp_create(&tg,scoreThread, 0));
+   try(thrgrp_create(&tg,update, 0));
+   try(thrgrp_create(&tg,controlThread, 0));
+   try(thrgrp_create(&tg,targetThread, 0));
+   try(thrgrp_create(&tg,scoreThread, 0));
 
-	/** finish drawing the screen **/
-	//scheduleUpdate();
+   /** finish drawing the screen **/
+   //scheduleUpdate();
 
-	/** lock down until the game finishes **/
-	try(mutex_lock(&worldLock));
-	try(cond_wait(&gameOver, &worldLock));
+   /** lock down until the game finishes **/
+   try(mutex_lock(&worldLock));
+   try(cond_wait(&gameOver, &worldLock));
   try(mutex_unlock(&worldLock));
 
   /** game is over **/
@@ -372,5 +372,5 @@ int main(int argc, char ** argv)
       printf("Worker thread returned with code %d.\n",retcode);
     }
  
-	return 0;
+   return 0;
 }

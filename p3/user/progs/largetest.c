@@ -41,7 +41,7 @@ void* wtf(void* what) {
     thr_join(tid, (void **)&status);
 
     lprintf("%d joined with %d which exited with status %d\n",
-	    id,tid,status);
+       id,tid,status);
     assert(tid == status);
   } else 
     tid = thr_create(wtf, (void *)what);
@@ -68,7 +68,7 @@ int main()
     lprintf("-----------main is trying to join-------------------\n");
     thrgrp_join(&tg, (void **)&status);
     lprintf("%d joined with a worker which exited with status %d\n",
-	   id,status);
+      id,status);
   }
 
   thr_exit((void*)-1);

@@ -49,7 +49,7 @@ extern pcb_t *init_process;
  * @brief Initialize the lifecycle handler data structures.
  */
 void lifecycle_init() {
-	mutex_init(&zombie_stack_lock);
+   mutex_init(&zombie_stack_lock);
 }
 
 /**
@@ -59,66 +59,66 @@ void lifecycle_init() {
  */
 void exec_handler(volatile regstate_t reg) {
    quick_assert_unlocked();
-	char *arg_addr = (char *)SYSCALL_ARG(reg);
+   char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
    char** argvec;
    char execname_buf[MAX_NAME_LENGTH];
-	char execargs_buf[MAX_TOTAL_LENGTH];
-	char *args_ptr = execargs_buf;
-	int total_bytes = 0;
-	int argc;
-	/* Verify that the arguments lie in valid memory. */
+   char execargs_buf[MAX_TOTAL_LENGTH];
+   char *args_ptr = execargs_buf;
+   int total_bytes = 0;
+   int argc;
+   /* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
    
    if(v_copy_in_dptr(&argvec, arg_addr + sizeof(char*)) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
    
    pcb_t* pcb = get_pcb();
 
-	/* If we pass this every other thread has exited or is exiting. */
+   /* If we pass this every other thread has exited or is exiting. */
    if(pcb->thread_count > 1)
       RETURN(EMULTHR);
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH, TRUE) < 0) 
-		RETURN(ENAME);
+      RETURN(ENAME);
 
    debug_print("exec", "Called with program %s", execname_buf);
 
-	/* Loop over every argument, copying it to the kernel stack. */
+   /* Loop over every argument, copying it to the kernel stack. */
    for(argc = 0 ;; argc++, argvec++)
    {
       char* arg;
-		if (total_bytes == MAX_TOTAL_LENGTH) 
-			RETURN(EBUF);
-	   
+      if (total_bytes == MAX_TOTAL_LENGTH) 
+         RETURN(EBUF);
+      
       if(v_copy_in_ptr(&arg, (char*)argvec) < 0)
-			RETURN(EARGS);
+         RETURN(EARGS);
       
       if(arg == NULL)
          break;
-	   
+      
       int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes, TRUE);
       
       if (arg_len < 0) 
-			RETURN(EARGS);
-		
+         RETURN(EARGS);
+      
       debug_print("exec", "Arg %d is %s", argc, args_ptr);
-		total_bytes += arg_len;
-		args_ptr += arg_len;
-	}
-	
-	int err;
-	simple_elf_t elf_hdr;
-	if ((err = get_elf(execname_buf, &elf_hdr)) != ELF_SUCCESS) {
-		RETURN(err);
-	}
-	
+      total_bytes += arg_len;
+      args_ptr += arg_len;
+   }
+   
+   int err;
+   simple_elf_t elf_hdr;
+   if ((err = get_elf(execname_buf, &elf_hdr)) != ELF_SUCCESS) {
+      RETURN(err);
+   }
+   
    /* Free user memory, user memory regions. */
    assert(pcb->regions);
    free_region_list(pcb);
    mm_free_user_space(pcb);
-	if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
+   if(initialize_memory(execname_buf, elf_hdr, pcb) < 0)
    {
       /* Since user memory is gone - the only thing to do is die. 
        * TODO  Ideally we would recognize that we can't satisfy 
@@ -126,13 +126,13 @@ void exec_handler(volatile regstate_t reg) {
        * */
       assert(0); 
    }
-	void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
+   void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
-	switch_to_user(get_tcb(), execname_buf, stack, 
-			(void *)elf_hdr.e_entry);
-	
-	// Never get here
-	assert(0);
+   switch_to_user(get_tcb(), execname_buf, stack, 
+         (void *)elf_hdr.e_entry);
+   
+   // Never get here
+   assert(0);
 }
 
 /** 
@@ -152,14 +152,14 @@ void thread_fork_handler(volatile regstate_t reg)
    tcb_t* new_tcb;
 
    pcb = get_pcb();
-	debug_print("thread_fork", "Called from process %p", pcb);
+   debug_print("thread_fork", "Called from process %p", pcb);
    new_tcb = initialize_thread(pcb);
    
    if(new_tcb == NULL)
       RETURN(ENOMEM);
    
    newtid = new_tcb->tid;
-	debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
+   debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
    
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
@@ -185,38 +185,38 @@ void fork_handler(volatile regstate_t reg)
    pcb_t *new_pcb; 
    tcb_t *new_tcb;
 
-	quick_assert_unlocked();
+   quick_assert_unlocked();
    tcb_t *current_tcb = get_tcb();
    pcb_t *current_pcb = current_tcb->pcb;
    
    if(current_pcb->thread_count > 1) {
-		debug_print("fork", "Failed due to multiple threads");
+      debug_print("fork", "Failed due to multiple threads");
       RETURN(EMULTHR);
-	}
+   }
    
    new_pcb = initialize_process(FALSE);
    if(new_pcb == NULL)
    {
-		debug_print("fork", "Failed to intialize pcb");
+      debug_print("fork", "Failed to intialize pcb");
       goto fork_fail_pcb;
    }
    
    new_pcb->regions = duplicate_region_list(current_pcb);
    if(new_pcb->regions == NULL)
    {
-		debug_print("fork", "Failed to deuplicate regions");
+      debug_print("fork", "Failed to deuplicate regions");
       goto fork_fail_dup_regions;
    }
 
    new_tcb = initialize_thread(new_pcb);
    if(new_tcb == NULL)
    {
-		debug_print("fork", "Failed to intialize thread");
+      debug_print("fork", "Failed to intialize thread");
       goto fork_fail_tcb;
    }
 
-	debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
-	debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
+   debug_print("fork", "Parent pcb %p, tcb %p", current_pcb, current_tcb);
+   debug_print("fork", "New pcb %p, tcb %p", new_pcb, new_tcb);
    
    newpid = new_pcb->pid;
   
@@ -233,17 +233,17 @@ void fork_handler(volatile regstate_t reg)
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
   
-	debug_print("children", "%p has %d children before incrementing",
-			current_pcb, current_pcb->unclaimed_children);
-	atomic_add(&current_pcb->unclaimed_children, 1);
-	debug_print("children", "%p has %d children after incrementing",
-			current_pcb, current_pcb->unclaimed_children);
-	mutex_lock(&current_pcb->child_lock);
-	
+   debug_print("children", "%p has %d children before incrementing",
+         current_pcb, current_pcb->unclaimed_children);
+   atomic_add(&current_pcb->unclaimed_children, 1);
+   debug_print("children", "%p has %d children after incrementing",
+         current_pcb, current_pcb->unclaimed_children);
+   mutex_lock(&current_pcb->child_lock);
+   
    if (current_pcb != init_process)
-	   LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
+      LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
 
-	mutex_unlock(&current_pcb->child_lock);
+   mutex_unlock(&current_pcb->child_lock);
    
    /* Register the first thread in the new TCB. */
    sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);
@@ -342,10 +342,10 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
 */
 void set_status_handler(volatile regstate_t reg)
 {
-	pcb_t *pcb = get_pcb();
-	pcb->status->status = (int)SYSCALL_ARG(reg);
-	debug_print("vanish", "Set status of pcb %p to %d", pcb, 
-			pcb->status->status);
+   pcb_t *pcb = get_pcb();
+   pcb->status->status = (int)SYSCALL_ARG(reg);
+   debug_print("vanish", "Set status of pcb %p to %d", pcb, 
+         pcb->status->status);
 }
 
 /**
@@ -356,19 +356,19 @@ void set_status_handler(volatile regstate_t reg)
  */
 void thread_kill(char* error_message)
 {
-	mutex_t *lock = get_print_lock();
-	mutex_lock(lock);
+   mutex_t *lock = get_print_lock();
+   mutex_lock(lock);
    putbytes(error_message, strlen(error_message));
    putbytes("\n", 1);
-	mutex_unlock(lock);
+   mutex_unlock(lock);
    
    pcb_t* pcb = get_pcb();
 
-	/* If we really are the only thread in our process, this cannot be
-	 * changed between the time we chack and act, because there is no one
-	 * else to change it. */
-	if (pcb->thread_count == 1)
-	   pcb->status->status = STATUS_KILLED;
+   /* If we really are the only thread in our process, this cannot be
+    * changed between the time we chack and act, because there is no one
+    * else to change it. */
+   if (pcb->thread_count == 1)
+      pcb->status->status = STATUS_KILLED;
    vanish_handler();
 }
 
@@ -385,9 +385,9 @@ void thread_kill(char* error_message)
 */
 void vanish_handler()
 {
-	tcb_t *tcb = get_tcb();
-	pcb_t *pcb = tcb->pcb;
-	debug_print("vanish", "Thread %p from process %p", tcb, pcb);
+   tcb_t *tcb = get_tcb();
+   pcb_t *pcb = tcb->pcb;
+   debug_print("vanish", "Thread %p from process %p", tcb, pcb);
    
    /* 
     * Doing this protects against context switching back and setting 
@@ -396,104 +396,104 @@ void vanish_handler()
     **/
    tcb->dir_p = global_pcb()->dir_p;
 
-	int remaining_threads = atomic_add(&pcb->thread_count, -1);
-	if (remaining_threads == 1) {
-		/* We are the last thread in the process. We should free our process
-		 * resources and notify our next of kin before exiting. */
+   int remaining_threads = atomic_add(&pcb->thread_count, -1);
+   if (remaining_threads == 1) {
+      /* We are the last thread in the process. We should free our process
+       * resources and notify our next of kin before exiting. */
       pcb->vanishing = TRUE;
 
-		/* Tell all of our children we are dead. */
-		mutex_lock(&pcb->child_lock);
-		pcb_t *child;
-		LIST_FORALL(pcb->children, child, child_node) {
-			child->parent = init_process;
-		}
-		mutex_unlock(&pcb->child_lock);
-		
-		/* Free the statuses left to us by children that have exited since
-		 * they will never be collected. */
-		mutex_lock(&pcb->status_lock);
-		status_t *status = pcb->zombie_statuses;
-		status_t *free_status;
-		while (status != NULL) {
-			free_status = status;
-			status = status->next;
-			sfree(free_status, sizeof(status_t));
-		}
-		mutex_unlock(&pcb->status_lock);
+      /* Tell all of our children we are dead. */
+      mutex_lock(&pcb->child_lock);
+      pcb_t *child;
+      LIST_FORALL(pcb->children, child, child_node) {
+         child->parent = init_process;
+      }
+      mutex_unlock(&pcb->child_lock);
+      
+      /* Free the statuses left to us by children that have exited since
+       * they will never be collected. */
+      mutex_lock(&pcb->status_lock);
+      status_t *status = pcb->zombie_statuses;
+      status_t *free_status;
+      while (status != NULL) {
+         free_status = status;
+         status = status->next;
+         sfree(free_status, sizeof(status_t));
+      }
+      mutex_unlock(&pcb->status_lock);
 
-		/* Get a reference to our parent and ensure they don't disappear
-		 * before we update them. */
-		quick_lock();
-		pcb_t *parent = pcb->parent;
-		atomic_add(&parent->vanishing_children, 1);
-		quick_unlock();
+      /* Get a reference to our parent and ensure they don't disappear
+       * before we update them. */
+      quick_lock();
+      pcb_t *parent = pcb->parent;
+      atomic_add(&parent->vanishing_children, 1);
+      quick_unlock();
 
-		/* Tell our parent we are dead. */
-		mutex_lock(&parent->child_lock);
-		if (parent != init_process)
-			LIST_REMOVE(parent->children, pcb, child_node);
-		mutex_unlock(&parent->child_lock);
-		
-		/* Give our status to our parent. */
-		mutex_lock(&parent->status_lock);
-		status = pcb->status;
-		if (parent->vanishing) {
-			/* If our parent is vanishing, they may already have freed child
-			 * statuses, so we need to free ours ourself. */
-			sfree(status, sizeof(status_t));
-		}
-		else {
-			/* Our parent is guaranteed to see this. They cannot free their
-			 * statuses while we are holding their status lock. */
-			status->next = parent->zombie_statuses;
-			parent->zombie_statuses = status;
-		}
-		mutex_unlock(&parent->status_lock);
+      /* Tell our parent we are dead. */
+      mutex_lock(&parent->child_lock);
+      if (parent != init_process)
+         LIST_REMOVE(parent->children, pcb, child_node);
+      mutex_unlock(&parent->child_lock);
+      
+      /* Give our status to our parent. */
+      mutex_lock(&parent->status_lock);
+      status = pcb->status;
+      if (parent->vanishing) {
+         /* If our parent is vanishing, they may already have freed child
+          * statuses, so we need to free ours ourself. */
+         sfree(status, sizeof(status_t));
+      }
+      else {
+         /* Our parent is guaranteed to see this. They cannot free their
+          * statuses while we are holding their status lock. */
+         status->next = parent->zombie_statuses;
+         parent->zombie_statuses = status;
+      }
+      mutex_unlock(&parent->status_lock);
 
-		/* Signal our parent of our demise and release the vanish locks. */
-		debug_print("vanish", "Last thread, signalling %p", parent);
-		cond_signal(&parent->wait_signal);
+      /* Signal our parent of our demise and release the vanish locks. */
+      debug_print("vanish", "Last thread, signalling %p", parent);
+      cond_signal(&parent->wait_signal);
 
       assert(pcb->thread_count == 0);
 
-		quick_lock();
-		/* If we are the only exiting child of our parent, notify our parent
-		 * that they are free to exit now. */
-		if (atomic_add(&parent->vanishing_children, -1) == 1) {
-			cond_signal(&parent->vanish_signal);
-		}
+      quick_lock();
+      /* If we are the only exiting child of our parent, notify our parent
+       * that they are free to exit now. */
+      if (atomic_add(&parent->vanishing_children, -1) == 1) {
+         cond_signal(&parent->vanish_signal);
+      }
 
-		/* Wait for all children who are currently exiting to finish
-		 * exiting. We already changed all our children's parent pointers,
-		 * so no children of ours will depend on us after this. */
-		if (pcb->vanishing_children != 0) {
-			cond_wait(&pcb->vanish_signal);
-		}
-		else {
-			quick_unlock();
-		}
+      /* Wait for all children who are currently exiting to finish
+       * exiting. We already changed all our children's parent pointers,
+       * so no children of ours will depend on us after this. */
+      if (pcb->vanishing_children != 0) {
+         cond_wait(&pcb->vanish_signal);
+      }
+      else {
+         quick_unlock();
+      }
 
-		/* Jump to the global directory and free our process resources. */
+      /* Jump to the global directory and free our process resources. */
       set_cr3((int)tcb->dir_p);
       free_process_resources(pcb, TRUE);
-	}
+   }
    
-	mutex_lock(&tcb_table.lock);
-	/* Remove ourself from the global table of threads. */
-	hashtable_remove(&tcb_table, tcb->tid);
-	mutex_unlock(&tcb_table.lock);
-	mutex_destroy(&tcb->deschedule_lock);
-	mutex_lock(&zombie_stack_lock);
-	debug_print("vanish", "Freeing zombie %p", zombie_stack);
-	/* Free the stack of he last thread who exited. */
-	if (zombie_stack) 
+   mutex_lock(&tcb_table.lock);
+   /* Remove ourself from the global table of threads. */
+   hashtable_remove(&tcb_table, tcb->tid);
+   mutex_unlock(&tcb_table.lock);
+   mutex_destroy(&tcb->deschedule_lock);
+   mutex_lock(&zombie_stack_lock);
+   debug_print("vanish", "Freeing zombie %p", zombie_stack);
+   /* Free the stack of he last thread who exited. */
+   if (zombie_stack) 
       kvm_free_page(zombie_stack);
-	zombie_stack = tcb;
-	/* Pass off our lock so no one frees us before we jump off our stack
-	 * for the last time. */
-	scheduler_die(&zombie_stack_lock);
-	assert(FALSE);
+   zombie_stack = tcb;
+   /* Pass off our lock so no one frees us before we jump off our stack
+    * for the last time. */
+   scheduler_die(&zombie_stack_lock);
+   assert(FALSE);
 }
 
 /** 
@@ -504,64 +504,64 @@ void vanish_handler()
 */
 void wait_handler(volatile regstate_t reg)
 {
-	int *status_addr = (int *)SYSCALL_ARG(reg);
-	debug_print("wait", "Called with status address %p", status_addr);
-	if (status_addr != NULL && 
-			!mm_validate_write(status_addr, sizeof(int))) {
-		RETURN(EARGS);
-	}
-	
+   int *status_addr = (int *)SYSCALL_ARG(reg);
+   debug_print("wait", "Called with status address %p", status_addr);
+   if (status_addr != NULL && 
+         !mm_validate_write(status_addr, sizeof(int))) {
+      RETURN(EARGS);
+   }
+   
    pcb_t *pcb = get_pcb();
-	debug_print("wait", "pcb = %p", pcb);
-	mutex_lock(&pcb->check_waiter_lock);
-	if (pcb != init_process && pcb->unclaimed_children == 0) {
-		/* There are threads waiting on every child process. We will not be 
-		 * able to collect a status so return immediately. */
-		mutex_unlock(&pcb->check_waiter_lock);
-		RETURN(ECHILD);
-	}
+   debug_print("wait", "pcb = %p", pcb);
+   mutex_lock(&pcb->check_waiter_lock);
+   if (pcb != init_process && pcb->unclaimed_children == 0) {
+      /* There are threads waiting on every child process. We will not be 
+       * able to collect a status so return immediately. */
+      mutex_unlock(&pcb->check_waiter_lock);
+      RETURN(ECHILD);
+   }
 
-	debug_print("children", "%p has %d children before decrementing",
-			pcb, pcb->unclaimed_children);
-	atomic_add(&pcb->unclaimed_children, -1);
-	debug_print("children", "%p has %d children after decrementing",
-			pcb, pcb->unclaimed_children);
-	/* The unclaimed_children field will be meaningless for init_process. */
-	assert(pcb == init_process || pcb->unclaimed_children >= 0);
-	mutex_unlock(&pcb->check_waiter_lock);
+   debug_print("children", "%p has %d children before decrementing",
+         pcb, pcb->unclaimed_children);
+   atomic_add(&pcb->unclaimed_children, -1);
+   debug_print("children", "%p has %d children after decrementing",
+         pcb, pcb->unclaimed_children);
+   /* The unclaimed_children field will be meaningless for init_process. */
+   assert(pcb == init_process || pcb->unclaimed_children >= 0);
+   mutex_unlock(&pcb->check_waiter_lock);
 
-	/* Serialize waits so only one thread per process collects at one time. */
-	mutex_lock(&pcb->waiter_lock);
-	debug_print("wait", "zombie child status = %p before cond_wait", 
-			pcb->zombie_statuses);
-	quick_lock();
-	if (pcb->zombie_statuses == NULL) {
-		cond_wait(&pcb->wait_signal);
-	}
-	else {
-		quick_unlock();
-	}
+   /* Serialize waits so only one thread per process collects at one time. */
+   mutex_lock(&pcb->waiter_lock);
+   debug_print("wait", "zombie child status = %p before cond_wait", 
+         pcb->zombie_statuses);
+   quick_lock();
+   if (pcb->zombie_statuses == NULL) {
+      cond_wait(&pcb->wait_signal);
+   }
+   else {
+      quick_unlock();
+   }
 
-	debug_print("wait", "zombie child status = %p after cond_wait", 
-			pcb->zombie_statuses);
+   debug_print("wait", "zombie child status = %p after cond_wait", 
+         pcb->zombie_statuses);
 
    /* Remove the first childs status. */
-	mutex_lock(&pcb->status_lock);
-	/* Remove the most recently exited child status from our list. */
-	status_t *status = pcb->zombie_statuses;
-	assert(status != NULL);
-	pcb->zombie_statuses = pcb->zombie_statuses->next;
-	mutex_unlock(&pcb->status_lock);
+   mutex_lock(&pcb->status_lock);
+   /* Remove the most recently exited child status from our list. */
+   status_t *status = pcb->zombie_statuses;
+   assert(status != NULL);
+   pcb->zombie_statuses = pcb->zombie_statuses->next;
+   mutex_unlock(&pcb->status_lock);
 
-	mutex_unlock(&pcb->waiter_lock);
+   mutex_unlock(&pcb->waiter_lock);
 
-	if (status_addr) {
-		// There's nothing we can do if the copy fails, but don't crash. */
+   if (status_addr) {
+      // There's nothing we can do if the copy fails, but don't crash. */
       v_copy_out_int(status_addr, status->status);
-	}
-	int tid = status->tid;
-	sfree(status, sizeof(status_t));
-	RETURN(tid);
+   }
+   int tid = status->tid;
+   sfree(status, sizeof(status_t));
+   RETURN(tid);
 }
 
 /** 

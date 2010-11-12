@@ -5,8 +5,8 @@
 #include <reg.h>
 
 //NOTE: This value must be a power of 2
-//	2048 is maybe excessively large for a key buffer, but
-//	it matches the size of the console.
+// 2048 is maybe excessively large for a key buffer, but
+// it matches the size of the console.
 #define KEY_BUF_SIZE 2048
 
 int readchar(void);

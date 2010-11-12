@@ -1,9 +1,9 @@
 /** 
 * @file rwlock2.c
 * @brief Rules for rwlocks: 
-* 	1. The last reader is obligated to signal the first writer.
-* 	2. Only the last writer can let the readers read.
-* 		- Subsequent writers have to be on the list before they can block readers.
+*  1. The last reader is obligated to signal the first writer.
+*  2. Only the last writer can let the readers read.
+*     - Subsequent writers have to be on the list before they can block readers.
 */
 
 #include <rwlock.h>
@@ -14,9 +14,9 @@
 
 /** 
 * @brief Initializes a reader-writer lock.
-* 	Specifically initializes the internal condition variables 
-* 	associated with readers and writers, as well as a mutex 
-* 	for those condition variables.
+*  Specifically initializes the internal condition variables 
+*  associated with readers and writers, as well as a mutex 
+*  for those condition variables.
 * 
 * @param rwlock The reader-writer lock to initialize.
 * 
@@ -26,16 +26,16 @@
 */
 int rwlock_init( rwlock_t *rwlock )
 {
-	if(!rwlock) return RWLOCK_NULL;
-	if(rwlock->initialized) return RWLOCK_INIT;
-	
-	// This value doesn't matter, since clear will be true.
-	rwlock->mode = RWLOCK_READ;
-	
-	rwlock->readers = 0;
-	rwlock->initialized = TRUE;
-	
-	return 0;
+   if(!rwlock) return RWLOCK_NULL;
+   if(rwlock->initialized) return RWLOCK_INIT;
+   
+   // This value doesn't matter, since clear will be true.
+   rwlock->mode = RWLOCK_READ;
+   
+   rwlock->readers = 0;
+   rwlock->initialized = TRUE;
+   
+   return 0;
 }
 
 /** 
@@ -49,10 +49,10 @@ int rwlock_init( rwlock_t *rwlock )
 */
 int rwlock_destroy( rwlock_t *rwlock )
 {
-	if(!rwlock) return RWLOCK_NULL;
-	if(!rwlock->initialized) return RWLOCK_INIT;
+   if(!rwlock) return RWLOCK_NULL;
+   if(!rwlock->initialized) return RWLOCK_INIT;
 
-	return 0;
+   return 0;
 }
 
 
@@ -72,31 +72,31 @@ int rwlock_destroy( rwlock_t *rwlock )
 */
 int rwlock_lock( rwlock_t *rwlock, int type )
 {
-	if(!rwlock) return RWLOCK_NULL;
-	if(rwlock->initialized == FALSE) return RWLOCK_INIT;
-	
-	int ticket = atomic_add(&rwlock->ticket, 1);
+   if(!rwlock) return RWLOCK_NULL;
+   if(rwlock->initialized == FALSE) return RWLOCK_INIT;
+   
+   int ticket = atomic_add(&rwlock->ticket, 1);
 
-	while(ticket != rwlock->now_serving)
-		thr_yield(NULL_TID);
-	
-	rwlock->mode = type;
-	switch (type) {
-		case RWLOCK_READ:
-			rwlock->mode = type;
-			atomic_add(&rwlock->readers, 1);
-			rwlock->now_serving++;
-			break;
-		case RWLOCK_WRITE:
-			while (rwlock->readers > 0)
-				thr_yield(NULL_TID);
-			rwlock->mode = type;
-			break;
-		default:
-			return RWLOCK_INVALID_TYPE;
-	}
+   while(ticket != rwlock->now_serving)
+      thr_yield(NULL_TID);
+   
+   rwlock->mode = type;
+   switch (type) {
+      case RWLOCK_READ:
+         rwlock->mode = type;
+         atomic_add(&rwlock->readers, 1);
+         rwlock->now_serving++;
+         break;
+      case RWLOCK_WRITE:
+         while (rwlock->readers > 0)
+            thr_yield(NULL_TID);
+         rwlock->mode = type;
+         break;
+      default:
+         return RWLOCK_INVALID_TYPE;
+   }
 
-	return 0;
+   return 0;
 }
 
 /** 
@@ -111,20 +111,20 @@ int rwlock_lock( rwlock_t *rwlock, int type )
 * @param rwlock The lock to release.
 * 
 * @return 0 on success.
-* 			RWLOCK_NULL if the lock is NULL.
-* 			RWLOCK_INIT if the lock isn't initialized.
+*        RWLOCK_NULL if the lock is NULL.
+*        RWLOCK_INIT if the lock isn't initialized.
 */
 int rwlock_unlock( rwlock_t *rwlock )
 {
-	switch (rwlock->mode) {
-		case RWLOCK_READ:
-			atomic_add(&rwlock->readers, -1);
-			break;
-		case RWLOCK_WRITE:
-			rwlock->now_serving++;
-		default:
-			return RWLOCK_INVALID_TYPE;
-	}
-	return 0;
+   switch (rwlock->mode) {
+      case RWLOCK_READ:
+         atomic_add(&rwlock->readers, -1);
+         break;
+      case RWLOCK_WRITE:
+         rwlock->now_serving++;
+      default:
+         return RWLOCK_INVALID_TYPE;
+   }
+   return 0;
 }
 

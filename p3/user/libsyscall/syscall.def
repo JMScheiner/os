@@ -17,18 +17,18 @@
 
 NAME:
 #if PARAM_COUNT == 0
-	int    $TRAP           // Generate the trap
+   int    $TRAP           // Generate the trap
 #else
-	pushl  %esi            // Save callee save register
+   pushl  %esi            // Save callee save register
 #if PARAM_COUNT == 1
-	movl   8(%esp), %esi   // Move param to esi register
+   movl   8(%esp), %esi   // Move param to esi register
 #else
-	leal   8(%esp), %esi   // Move address of first param to esi register
+   leal   8(%esp), %esi   // Move address of first param to esi register
 #endif
-	int    $TRAP           // Generate the trap
-	popl   %esi            // Restore the value of %esi
+   int    $TRAP           // Generate the trap
+   popl   %esi            // Restore the value of %esi
 #endif
-	ret                    // %eax contains the return value
+   ret                    // %eax contains the return value
 
 #undef PARAM_COUNT
 #undef TRAP

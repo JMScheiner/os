@@ -58,7 +58,7 @@ typedef struct REGSTATE
 * @return The argument.
 */
 #define SYSCALL_ARG(regstate) \
-	((regstate).pusha.esi)
+   ((regstate).pusha.esi)
 
 /**
  * @brief Return with the given value. Useful for trap handlers to set the eax
@@ -69,10 +69,10 @@ typedef struct REGSTATE
  * @param ret The value to return.
  */
 #define RETURN(ret) \
-	do { \
-		reg.pusha.eax = (ret); \
-		return; \
-	} while (0)
+   do { \
+      reg.pusha.eax = (ret); \
+      return; \
+   } while (0)
 
 #endif /* end of include guard: REG_X239SB19 */
 

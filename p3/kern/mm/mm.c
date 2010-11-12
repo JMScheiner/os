@@ -592,15 +592,15 @@ int mm_getflags(void* addr)
  */
 boolean_t mm_validate_write(void *addr, int len)
 {
-	unsigned int npages = NUM_PAGES(addr, len);
-	int i;
-	for (i = 0; i < npages; i++) {
-		int tflags = mm_getflags((void*)addr + i*PAGE_SIZE);
-		if(tflags <= 0 || 
-				!TEST_SET(tflags, (PTENT_PRESENT | PTENT_RW | PTENT_USER)))
-			return FALSE;
-	}
-	return TRUE;
+   unsigned int npages = NUM_PAGES(addr, len);
+   int i;
+   for (i = 0; i < npages; i++) {
+      int tflags = mm_getflags((void*)addr + i*PAGE_SIZE);
+      if(tflags <= 0 || 
+            !TEST_SET(tflags, (PTENT_PRESENT | PTENT_RW | PTENT_USER)))
+         return FALSE;
+   }
+   return TRUE;
 }
 
 /** 

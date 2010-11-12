@@ -13,7 +13,7 @@ waiter(void *p)
   thr_exit((void *) 0);
 
   while(1)
-	continue; /* placate compiler portably */
+   continue; /* placate compiler portably */
 }
 
 int main()
@@ -27,5 +27,5 @@ int main()
   thr_exit((void *)'!');
 
   while(1)
-	continue; /* placate compiler portably */
+   continue; /* placate compiler portably */
 }

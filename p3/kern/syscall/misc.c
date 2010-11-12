@@ -38,18 +38,18 @@ void halt_handler(volatile regstate_t reg)
 */
 void ls_handler(volatile regstate_t reg)
 {
-	char *arg_addr, *filename, *buf; 
+   char *arg_addr, *filename, *buf; 
    char zero = 0;
    int i, len;
    size_t total, copied;
-	
+   
    arg_addr = (char *)SYSCALL_ARG(reg);
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
    
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-		RETURN(EARGS);
+      RETURN(EARGS);
    
    total = 0;
    for(i = 0; i < exec2obj_userapp_count; i++)
