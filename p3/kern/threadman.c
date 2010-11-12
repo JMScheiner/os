@@ -1,4 +1,10 @@
-
+/** @file threadman.c
+ *
+ * @brief Implementations of the thread management system call handlers.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 #include <threadman.h>
 #include <thread.h>
 #include <scheduler.h>

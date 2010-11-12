@@ -13,8 +13,6 @@ void free_thread_resources(tcb_t* tcb);
 void thread_init(void);
 tcb_t* initialize_thread(pcb_t *pcb);
 tcb_t *get_tcb(void);
-void set_esp0_helper();
-void check_esp(void *esp);
 void check_invariants(boolean_t synchronous);
 
 #endif
