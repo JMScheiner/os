@@ -185,7 +185,6 @@ static void initialize_region(const char *file, unsigned long offset,
  */
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
-   lprintf("txtstart 0x%lx\ntxtlen 0x%lx\nrodatstart 0x%lx\nrodatlen 0x%lx\ndatstart 0x%lx\ndatlen 0x%lx bssstart 0x%lx bsslen 0x%lx", elf.e_txtstart, elf.e_txtlen, elf.e_rodatstart, elf.e_rodatlen, elf.e_datstart, elf.e_datlen, elf.e_datstart + elf.e_datlen, elf.e_bsslen);
    // Allocate text region. 
    if(allocate_region(
          (char*)elf.e_txtstart, (char *)elf.e_txtstart + elf.e_txtlen, 

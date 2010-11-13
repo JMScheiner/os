@@ -24,17 +24,17 @@ Data Structures
   Uncollected child statuses are stored in singly linked lists. The
   hashtable uses chaining of singly linked lists.
 
-Decisions we made (in no particular order)
+<b> Decisions we made </b> (in no particular order)
 - We have a global pcb/tcb that we initialize on startup and jump to
   whenerver no one else can usefully run. This is the equivalent of the
   idle program.
 
-- Debug statements are all encapsulated in <code>debug_print</code> statements that
-  work like lprintf statements, but take an additional string. The debug
-  statement only prints if the additional argument is in a list of strings
-  currently being debugged. This is useful for debugging a specific
-  complex component like readline without seeing log messages for the rest
-  of the kernel.
+- Debug statements are all encapsulated in <code>debug_print</code>
+  statements that work like lprintf statements, but take an additional
+  string. The debug statement only prints if the additional argument is in
+  a list of strings currently being debugged. This is useful for debugging
+  a specific complex component like readline without seeing log messages
+  for the rest of the kernel.
 
 - To vanish as the last thread in a process, the thread first sets a flag
   to indicate that it is vanishing.  Next the thread notifies its children
@@ -51,6 +51,20 @@ Decisions we made (in no particular order)
   waits until a status has been made available to it by a child thread.
   Finally, we collect this status (which is allocated seperately from the
   child tcb) and free it.
+
+<b> Favorite Fixed Bugs </b>
+- Occassionally calling set_esp0 with our current esp instead of the base
+  address of our stack will cause kernel stacks to overflow.
+
+- Occassionally failing to call set_esp0 at all will cause multiple
+  threads to run on the same stack :(
+
+- Counting incorrectly causes things that look like memory leaks to appear
+  even when we don't.
+
+- bss sections don't start at the next byte after the dat section despite
+  what the spec says. They need to be aligned according to a field in the
+  elf header we don't have access to.
 
 <b> Memory Organization: </b>
 
@@ -95,7 +109,6 @@ operation that blocks subsequent KVM allocations, since we need to take
 time to map the new table in every existing processes directory.
 Fortunately, it doesn't happen often, and generally happens less over
 time, as frames dedicated to the user shift to the kernel as necessary.
-   
 
 <b> Request/Allocate </b> To simplify error handling (e.g. out of frames)
 allocation is separated into requests and allocations. Requests are only
