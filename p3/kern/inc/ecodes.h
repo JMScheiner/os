@@ -1,3 +1,10 @@
+/** 
+* @file ecodes.h
+* @brief Kernel error codes. 
+* @author Justin Scheiner 
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #ifndef SYSCALL_CODES_FDKJ3489
 #define SYSCALL_CODES_FDKJ3489
 

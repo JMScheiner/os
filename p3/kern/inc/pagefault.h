@@ -1,3 +1,12 @@
+/** 
+* @file pagefault.h
+*
+* @brief Definitions of various pagefault handlers. 
+*     For different regions of user memory. 
+*
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef PAGEFAULT_2T3M3QNV
 

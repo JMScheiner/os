@@ -1,3 +1,10 @@
+/** 
+* @file vstring.h
+* @brief Safe copying from user to kernel memory and back again. 
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #ifndef VALIDATION_H_FJWK2143
 #define VALIDATION_H_FJWK2143

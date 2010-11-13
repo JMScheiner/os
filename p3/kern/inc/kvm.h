@@ -1,3 +1,10 @@
+/** 
+* @file kvm.h
+* @brief Definitions for kernel virtual memory.
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #ifndef KVM_OMG6HOB6
 #define KVM_OMG6HOB6
 

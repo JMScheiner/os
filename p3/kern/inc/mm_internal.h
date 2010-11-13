@@ -1,3 +1,12 @@
+/** 
+* @file mm_internal.h
+*
+* @brief Definitions for the internal memory management code. 
+*
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #ifndef MM_INTERNAL_DR6WBXWC
 #define MM_INTERNAL_DR6WBXWC
 

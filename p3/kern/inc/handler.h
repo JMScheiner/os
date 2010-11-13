@@ -1,3 +1,13 @@
+/** 
+* @file handler.h
+*
+* @brief Interrupt descriptor table setup code. 
+*  Very messy, but works. 
+*
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #ifndef HANDLER_W0H6K1DA
 
 #define HANDLER_W0H6K1DA

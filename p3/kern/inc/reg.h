@@ -1,3 +1,18 @@
+/** 
+* @file reg.h
+* @brief This one is cool. 
+* 
+* On entry to one of our handlers, a regstate_t describes 
+*  the physical contents of the stack, so we can mutate user 
+*  state as part of the regstate struct. 
+*
+*  They are also convenient definitions for setting up the context
+*   for a fork. 
+*
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #ifndef REG_X239SB19
 #define REG_X239SB19

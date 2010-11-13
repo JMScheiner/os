@@ -1,3 +1,10 @@
+/** 
+* @file scheduler.h
+* @brief Definitions for the scheduler.
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #ifndef SCHEDULER_JIJV6ZY3
 #define SCHEDULER_JIJV6ZY3

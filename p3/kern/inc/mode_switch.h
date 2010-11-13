@@ -1,3 +1,13 @@
+/** 
+* @file mode_switch.h
+*
+* @brief Defintion for mode_switch
+*  - which takes us into user space for the first time. 
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef MODE_SWITCH_HGF87HGF3
 #define MODE_SWITCH_HGF87HGF3

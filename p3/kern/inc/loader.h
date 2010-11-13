@@ -1,9 +1,16 @@
-/* The 15-410 kernel project
+/*
+ * @file loader.h
+ * @brief
+ *
+ * The 15-410 kernel project
  *
  *     loader.h
  *
  * Structure definitions, #defines, and function prototypes
  * for the user process loader.
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
  */
 
 #ifndef _LOADER_H_HWIF23R4

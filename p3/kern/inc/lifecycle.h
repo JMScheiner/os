@@ -1,4 +1,13 @@
-
+/** 
+* @file lifecycle.h
+*
+* @brief Definitions for the lifecycle section of syscalls in the spec. 
+*  vanish, wait, fork, exec, etc. 
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef LIFECYCLE_DP4QFXLY
 #define LIFECYCLE_DP4QFXLY

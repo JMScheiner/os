@@ -1,3 +1,11 @@
+/** 
+* @file memman.h
+* @brief Defines memory management handlers 
+*  new_pages and remove_pages
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 #ifndef MEMMAN_ZSQTJ8CD
 
 #define MEMMAN_ZSQTJ8CD

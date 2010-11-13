@@ -1,3 +1,13 @@
+/** 
+* @file mutex.h
+* @brief Definitions for mutexes and quicklocks. 
+*
+* Quicklocks encompass most of the non-preemptibility in our kernel. 
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef MUTEX_H_GYTF3123G
 #define MUTEX_H_GYTF3123G

@@ -1,3 +1,12 @@
+/** 
+* @file heap.h
+* @brief A heap used for sleeping threads. 
+*  The sleep heap keys on wake time. 
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef HEAP_FW3O8P69
 

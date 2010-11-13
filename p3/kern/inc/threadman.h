@@ -1,3 +1,12 @@
+/** 
+* @file threadman.h
+* @brief Definitions for the thread management part of the spec. 
+*  Generally user-space operations on the scheduler.
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef THREADMAN_4AB52XKO
 

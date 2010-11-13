@@ -1,3 +1,10 @@
+/** 
+* @file timer.h
+* @brief Definitions for the timer handler. 
+* @author Justin Scheiner
+* @author Tim Wilson
+* @date 2010-11-12
+*/
 
 #ifndef TIMER_39YOD2E4
 #define TIMER_39YOD2E4

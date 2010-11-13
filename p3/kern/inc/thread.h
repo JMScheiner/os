@@ -1,3 +1,11 @@
+/** 
+* @file thread.h
+* @brief Definitions for the TCB. 
+*  Initialization, Destruction, etc. 
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef THREAD_FWFWJ23E
 #define THREAD_FWFWJ23E

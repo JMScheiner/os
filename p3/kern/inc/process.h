@@ -1,3 +1,11 @@
+/** 
+* @file process.h
+* @brief Definitions for the PCB, and operations on it. 
+*  Initialization, Destruction, etc.
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-12
+*/
 
 #ifndef PROCESS_HJSD67S
 #define PROCESS_HJSD67S
