@@ -97,7 +97,7 @@ It then builds the new address space by duplicating the current one.
  calls. 
 
 <b> Heap Occupants: </b> The heap is occupied by PCBs, statuses nodes, 
-   the tid->tcb heap, the sleep heap, global page tables, and region nodes. 
+   the tid->tcb hashtable, the sleep heap, global page tables, and region nodes. 
    That is all. 
 
 <b> Virtual Directories: </b> Since the user page tables are not direct mapped, we are required to keep 
