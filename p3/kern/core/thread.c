@@ -29,8 +29,8 @@
 /** @brief Number of pages per kernel stack. */
 
 static int next_tid = 1;
-
-hashtable_t tcb_table;
+static hashtable_t _tcb_table;
+inline hashtable_t* tcb_table() { return &_tcb_table; }
 
 /** 
 * @brief Return a unique tid. 
@@ -44,7 +44,7 @@ static int new_tid()
 
 void thread_init(void) 
 {
-   hashtable_init(&tcb_table, default_hash);
+   hashtable_init(&_tcb_table, default_hash);
 }
 
 void free_thread_resources(tcb_t* tcb)
@@ -91,9 +91,9 @@ tcb_t* initialize_thread(pcb_t *pcb)
 
    LIST_INIT_NODE(tcb, scheduler_node);
 
-   mutex_lock(&tcb_table.lock);
-   hashtable_put(&tcb_table, tcb->tid, tcb);
-   mutex_unlock(&tcb_table.lock);
+   mutex_lock(&_tcb_table.lock);
+   hashtable_put(&_tcb_table, tcb->tid, tcb);
+   mutex_unlock(&_tcb_table.lock);
 
    return tcb;
 }

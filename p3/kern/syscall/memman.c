@@ -23,6 +23,13 @@
 /* @brief Protects us from the user removing pages while we try 
  *  to execute a validated copy from user space. */
 mutex_t _new_pages_lock;
+
+
+/** 
+* @brief Return the new_pages lock. 
+* 
+* @return The new_pages lock. 
+*/
 inline mutex_t* new_pages_lock(){ return &_new_pages_lock; }
 
 void memman_init()
