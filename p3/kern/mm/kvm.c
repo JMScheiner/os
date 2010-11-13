@@ -302,7 +302,6 @@ void* kvm_new_table(void* addr)
    
    mutex_unlock(global_lock);
    
-   lprintf("Returning table at %p", table);
    return table;
 }
 

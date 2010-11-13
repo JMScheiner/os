@@ -29,17 +29,43 @@
 /*                                                                   */
 /*********************************************************************/
 
- /* @brief Simple ring buffer.  */
+/*
+ * Simple ring buffer: The key buffer is divided logically into two parts
+ * by a divider. Characters before the divider are promised to readers.
+ * The keyboard handler cannot overwrite them with backspaces. The
+ * characters after the divider are forbidden to readers and can be freely
+ * overwritten by backspaces.
+ *
+ * When the key buffer becomes full, repeatedly overwrite the last
+ * character in the buffer.
+ */
+
+/** @brief The buffer for characters. */
 static char keybuf[KEY_BUF_SIZE];
- 
+
+/** @brief The first unread character in the buffer. */
 static unsigned int keybuf_head = 0;
+
+/** @brief The last character in the buffer that a backspace can delete
+ * because it has not been promised to a reader. */
 static unsigned int keybuf_divider = 0;
+
+/** @brief One past the last character in the buffer. */
 static unsigned int keybuf_tail = 0;
+
+/** @brief The number of new line characters in the buffer. */
 static int newlines = 0;
+
+/** @brief The number of threads currently waiting to read from the
+ * buffer. */
 static int readers = 0;
 
+/** @brief Mutual exclusion lock ensuring reads from the keyboard are not
+ * interleaved. */
 static mutex_t keyboard_lock;
 
+/** @brief A signal used to notify a reader when a full line is available.
+ */
 static cond_t keyboard_signal;
 
 /** @brief Get the index in keybuf following the given index. */

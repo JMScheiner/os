@@ -1,3 +1,11 @@
+/** @file misc.c
+ *
+ * @brief Miscellaneous system calls
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
+
 #include <simics.h>
 #include <reg.h>
 #include <asm_helper.h>
