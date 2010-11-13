@@ -15,6 +15,7 @@
 #include <string.h>
 #include <asm.h>
 #include <stdio.h>
+#include <debug.h>
 
 int handler_install()
 {

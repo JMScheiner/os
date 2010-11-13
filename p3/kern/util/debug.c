@@ -14,7 +14,7 @@
 
 #define DEBUG_BUF_SIZE 256
 
-#define DEBUG_PRINT
+//#define KER_DEBUG
 
 char *debug_print_strings[] = {
    //"children", 
@@ -41,7 +41,7 @@ char *debug_print_strings[] = {
    //"memman", 
    NULL};
 
-#ifdef DEBUG_PRINT
+#ifdef KER_DEBUG
 void debug_print(const char *type, const char *fmt, ...) {
    int i;
    for (i = 0; debug_print_strings[i] != NULL; i++) {

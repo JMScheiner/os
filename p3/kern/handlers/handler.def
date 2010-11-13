@@ -16,6 +16,7 @@
  */
 ASM_NAME:
    pusha       /* Save user registers */
+#ifdef KER_DEBUG
 #ifdef IGNORE_THREAD_COUNT
    pushl $0
 #else
@@ -23,6 +24,7 @@ ASM_NAME:
 #endif
    call check_invariants
    popl %eax
+#endif
    call NAME   /* Call handler function */
    call quick_assert_unlocked
    popa        /* Restore user registers */
