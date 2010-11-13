@@ -82,7 +82,11 @@ int mm_init()
    
    /* Initialize global page directory. V = P */
    global_pcb()->dir_v = global_pcb()->dir_p = (void*)mm_new_kp_page();
+   assert(global_pcb()->dir_p != NULL);
+
    global_pcb()->virtual_dir = (void*)mm_new_kp_page();
+   assert(global_pcb()->virtual_dir != NULL);
+
    global_tcb()->dir_p = global_pcb()->dir_p;
    global_dir = (page_dirent_t*)global_pcb()->dir_v;
    virtual_dir = (page_dirent_t*)global_pcb()->virtual_dir;
@@ -92,6 +96,7 @@ int mm_init()
    {
       /* Allocate a direct mapped page table for each. */
       table = global_dir[i] = (page_tablent_t*)mm_new_kp_page();
+      assert(table != NULL);
       
       global_dir[i] = (page_dirent_t)(
          (unsigned long)table | (PDENT_RW | PDENT_PRESENT) );
@@ -634,13 +639,13 @@ int mm_request_frames(int n)
 {
    int ret = ENOVM;
    
-   if(n == 0) return 0;
+   if(n == 0) return ESUCCESS;
 
    mutex_lock(&request_lock);
    if((n_user_frames - n) >= 0)
    {
       n_user_frames -= n;
-      ret = 0;
+      ret = ESUCCESS;
    }
    mutex_unlock(&request_lock);
    assert(n_user_frames <= n_free_frames);

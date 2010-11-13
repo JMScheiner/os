@@ -76,7 +76,10 @@ tcb_t* initialize_thread(pcb_t *pcb)
       return NULL;
    
    void* kstack_page = kvm_new_page();
-   assert(kstack_page);
+   
+   /* This is a VERY exceptional case. */
+   if(kstack_page == NULL)
+      return NULL;
    
    debug_print("mm", "new kernel stack page at %p", kstack_page);
 

@@ -185,7 +185,6 @@ static void initialize_region(const char *file, unsigned long offset,
  */
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
-   lprintf("txtstart 0x%lx\ntxtlen 0x%lx\nrodatstart 0x%lx\nrodatlen 0x%lx\ndatstart 0x%lx\ndatlen 0x%lx bssstart 0x%lx bsslen 0x%lx", elf.e_txtstart, elf.e_txtlen, elf.e_rodatstart, elf.e_rodatlen, elf.e_datstart, elf.e_datlen, elf.e_datstart + elf.e_datlen, elf.e_bsslen);
    // Allocate text region. 
    if(allocate_region(
          (char*)elf.e_txtstart, (char *)elf.e_txtstart + elf.e_txtlen, 
@@ -204,14 +203,19 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
          PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) 
       goto fail_init_mem;
    
-   // Allocate bss region. Despite what the spec says, this is not the
-   // very next byte after the dat section. It must be aligned. I don't
-   // know if 32 bytes is always correct, but its what objdump reports for
-   // the mandelbrot program (which revealed this bug to us)
-   char *bss_start = ALIGN_UP(elf.e_datstart + elf.e_datlen, 32);
+   /* Allocate bss region. Despite what the spec says, this is not the
+       very next byte after the dat section. It must be aligned... 
+       It is not always 32 byte aligned as in mandelbrot, 
+       Or 4 byte aligned as in cho_variant...
+   
+       Since we want to pass both of these tests. Our only recourse
+        is to turn ZFOD off.  Frowny. Face. 
+    */
+
+   char *bss_start = (char*)(elf.e_datstart + elf.e_datlen);
    if(allocate_region(
          bss_start, bss_start + elf.e_bsslen, 
-         PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) 
+         PTENT_RW | PTENT_USER /*| PTENT_ZFOD*/, bss_fault, pcb) < 0) 
       goto fail_init_mem;
       
    // Allocate stack region (same for all processes).

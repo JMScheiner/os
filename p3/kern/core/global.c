@@ -53,6 +53,8 @@ void global_thread_init()
    mutex_init(&_global_list_lock);
    
    kstack = mm_new_kp_page() + PAGE_SIZE;
+   assert(kstack - PAGE_SIZE != NULL);
+
    _global_tcb = (tcb_t*)(kstack - PAGE_SIZE);
    _global_tcb->kstack = kstack;
    _global_tcb->esp = _global_tcb->kstack;
