@@ -126,7 +126,7 @@ is all.
 mapped, we are required to keep a directory of table virtual addresses
 along with the physical directory used by the memory managmenent hardware.
 An offset into the virtual directory gives the page aligned (virtual)
-address of the user table (in the range <code>[0xf0000000,
+address of the user table (in the range <code>[0xe0000000,
 0xffffffff]</code>)
 
 */

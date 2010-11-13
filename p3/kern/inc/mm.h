@@ -18,7 +18,7 @@
 /* The top n MB of addressable space will be used exclusively for kvm 
  *    This value must be table aligned. 
  **/
-#define USER_MEM_END 0xF0000000
+#define USER_MEM_END 0xE0000000
 #define ZFOD_FRAME ((void*)USER_MEM_START)
 
 #define PTENT_PRESENT      0x1

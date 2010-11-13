@@ -209,7 +209,6 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
          PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) 
       goto fail_init_mem;
       
-   
    // Allocate stack region (same for all processes).
    if(allocate_stack_region(pcb) < 0) goto fail_init_mem;
 
