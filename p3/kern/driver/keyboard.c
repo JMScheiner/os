@@ -29,10 +29,9 @@
 /*                                                                   */
 /*********************************************************************/
 
-/*
- * Simple ring buffer: 
- */
+ /* @brief Simple ring buffer.  */
 static char keybuf[KEY_BUF_SIZE];
+ 
 static unsigned int keybuf_head = 0;
 static unsigned int keybuf_divider = 0;
 static unsigned int keybuf_tail = 0;

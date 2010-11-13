@@ -15,7 +15,6 @@
 #include <page.h>
 #include <region.h>
 #include <thread.h>
-#include <pagefault.h>
 #include <mutex.h>
 #include <global_thread.h>
 #include <cond.h>
@@ -154,88 +153,6 @@ int get_pid() {
       return 0;
    }
    return tcb->pcb->pid;
-}
-
-/**
- * @brief Initialize a memory region for a new user with the appropriate
- * contents.
- *
- * @param file The executable file to intialize from.
- * @param offset The offset in the file to copy from.
- * @param len The number of bytes to copy, extra space in the region will
- *            be zeroed.
- * @param start The first address in memory to initialize
- * @param end The byte after the last address to initialize.
- */
-static void initialize_region(const char *file, unsigned long offset, 
-      unsigned long len, unsigned long start, unsigned long end) 
-{
-   getbytes(file, offset, len, (char *)start);
-   memset((char *)start + len, 0, end - start - len);
-}
-
-/**
- * @brief Initialize memory for a user with the appropriate contents.
- *
- * @param file The executable to initialize from.
- * @param elf An elf header for the executable.
- * @param pcb The pcb of the process.
- *
- * @return ESUCCESS if initialization was successful, EFAIL otherwise.
- */
-int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
-{
-   // Allocate text region. 
-   if(allocate_region(
-         (char*)elf.e_txtstart, (char *)elf.e_txtstart + elf.e_txtlen, 
-         PTENT_RO | PTENT_USER, txt_fault, pcb) < 0) 
-      goto fail_init_mem;
-      
-   // Allocate rodata region.
-   if(allocate_region(
-         (char*)elf.e_rodatstart, (char *)elf.e_rodatstart + elf.e_rodatlen, 
-         PTENT_RO | PTENT_USER, rodata_fault, pcb) < 0) 
-      goto fail_init_mem;
-   
-   // Allocate data region.
-   if(allocate_region(
-         (char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen,
-         PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) 
-      goto fail_init_mem;
-   
-   /* Allocate bss region. Despite what the spec says, this is not the
-       very next byte after the dat section. It must be aligned... 
-       It is not always 32 byte aligned as in mandelbrot, 
-       Or 4 byte aligned as in cho_variant...
-   
-       Since we want to pass both of these tests. Our only recourse
-        is to turn ZFOD off.  Frowny. Face. 
-    */
-
-   char *bss_start = (char*)(elf.e_datstart + elf.e_datlen);
-   if(allocate_region(
-         bss_start, bss_start + elf.e_bsslen, 
-         PTENT_RW | PTENT_USER /*| PTENT_ZFOD*/, bss_fault, pcb) < 0) 
-      goto fail_init_mem;
-      
-   // Allocate stack region (same for all processes).
-   if(allocate_stack_region(pcb) < 0) goto fail_init_mem;
-
-   initialize_region(file, elf.e_txtoff, elf.e_txtlen, 
-      elf.e_txtstart, elf.e_rodatstart);
-      
-   initialize_region(file, elf.e_rodatoff, elf.e_rodatlen, 
-      elf.e_rodatstart, elf.e_datstart);
-   
-   initialize_region(file, elf.e_datoff, elf.e_datlen, elf.e_datstart, 
-      elf.e_datstart + elf.e_datlen + elf.e_bsslen);
-         
-   return ESUCCESS;
-
-fail_init_mem:
-   free_region_list(pcb);
-   mm_free_user_space(pcb);
-   return EFAIL;
 }
 
 

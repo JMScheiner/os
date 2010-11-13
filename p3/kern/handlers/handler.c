@@ -17,7 +17,12 @@
 #include <stdio.h>
 #include <debug.h>
 
-int handler_install()
+/** 
+* @brief Boilerplate installation of all handlers.
+* 
+* @return 0 on success. 
+*/
+void handler_install()
 {
    trap_gate_t tg;
    void* base = idt_base();
@@ -175,8 +180,6 @@ int handler_install()
    tg = (trap_gate_t)(base + TRAP_GATE_SIZE * KEY_IDT_ENTRY);
    INSTALL_HANDLER(tg, asm_keyboard_handler);
    IDT_MAKE_INTERRUPT(tg);
-
-   return 0;
 }
 
 

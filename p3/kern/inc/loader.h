@@ -28,6 +28,7 @@ int getbytes( const char *filename, int offset, int size, char *buf );
  */
 
 unsigned int get_user_eflags();
+int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb);
 void *copy_to_stack(int argc, char *argv, int arg_len);
 int get_elf(char *exec, simple_elf_t *elf_hdr);
 void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip);

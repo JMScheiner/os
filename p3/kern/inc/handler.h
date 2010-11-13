@@ -62,7 +62,7 @@ typedef char* trap_gate_t;
    IDT_SET_OFFSET(tg, func);                       \
    IDT_SET_SS(tg, SEGSEL_KERNEL_CS);              
 
-int handler_install();
+void handler_install(void);
 
 #endif /* end of include guard: HANDLER_W0H6K1DA */
 
