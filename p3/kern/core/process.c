@@ -184,25 +184,30 @@ static void initialize_region(const char *file, unsigned long offset,
  */
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
-   // Allocate text region. FIXME Allocate text and rodata together.
-   if(allocate_region((char*)elf.e_txtstart, (char*)elf.e_rodatstart, 
-      PTENT_RO | PTENT_USER, txt_fault, pcb) < 0) goto fail_init_mem;
+   // Allocate text region. 
+   if(allocate_region(
+         (char*)elf.e_txtstart, (char *)elf.e_txtstart + elf.e_txtlen, 
+         PTENT_RO | PTENT_USER, txt_fault, pcb) < 0) 
+      goto fail_init_mem;
       
    // Allocate rodata region.
    if(allocate_region(
-      (char*)elf.e_rodatstart, elf.e_rodatstart + (char*)elf.e_rodatlen, 
-      PTENT_RO | PTENT_USER,  rodata_fault, pcb) < 0) goto fail_init_mem;
+         (char*)elf.e_rodatstart, (char *)elf.e_rodatstart + elf.e_rodatlen, 
+         PTENT_RO | PTENT_USER, rodata_fault, pcb) < 0) 
+      goto fail_init_mem;
    
    //Allocate data region.
-   if(allocate_region((char*)elf.e_datstart, 
-      (char*)elf.e_datstart + elf.e_datlen,
-      PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) goto fail_init_mem;
+   if(allocate_region(
+         (char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen,
+         PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) 
+      goto fail_init_mem;
       
    //Allocate bss region.
-   // TODO Keep a global "zero" read only page for ZFOD regions (like bss).
-   if(allocate_region((char*)elf.e_datstart + elf.e_datlen, 
-      elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
-      PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) goto fail_init_mem;
+   unsigned long bss_start = elf.e_datstart + eld.e_datlen;
+   if(allocate_region(
+         (char*)bss_start, (char *)bss_start + elf.e_bsslen, 
+         PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) 
+      goto fail_init_mem;
       
    
    // Allocate stack region (same for all processes).
