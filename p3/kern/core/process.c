@@ -200,11 +200,12 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
       
    //Allocate bss region.
    // TODO Keep a global "zero" read only page for ZFOD regions (like bss).
+   lprintf("Initializing bss region [%p, %p]\n", (void*)elf.e_datstart + elf.e_datlen, 
+      (void*)elf.e_datstart + elf.e_datlen + elf.e_bsslen);
    if(allocate_region((char*)elf.e_datstart + elf.e_datlen, 
-      elf.e_datstart + elf.e_datlen + elf.e_bsslen, 
+      elf.e_datstart + elf.e_datlen + elf.e_bsslen,
       PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) goto fail_init_mem;
       
-   
    // Allocate stack region (same for all processes).
    if(allocate_stack_region(pcb) < 0) goto fail_init_mem;
 

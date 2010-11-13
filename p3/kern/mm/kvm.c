@@ -33,6 +33,7 @@ inline void* kvm_initial_table() { return _kvm_initial_table; }
 /* A list of pages (virtual) that can be allocated.
  *    They are already mapped in the global directory.*/
 static void* kvm_bottom;
+static void* kvm_bottom_requested;
 static free_block_t* kernel_free_list;
 static mutex_t kernel_free_lock;
 static mutex_t new_table_lock;
@@ -61,10 +62,16 @@ int kvm_request_frames(int n_user, int n_kernel)
       n_user += (n_kernel - n_kernel_frames);
       n_kernel = n_kernel_frames;
    }
+
+   if(kvm_bottom_requested - n_user * PAGE_SIZE <= (void*)KVM_START)
+      return ret;
    
    ret = mm_request_frames(n_user);
-   if(ret == 0)
+   if(ret == ESUCCESS)
+   {
+      kvm_bottom_requested -= n_user * PAGE_SIZE;
       n_kernel_frames -= n_kernel;
+   }
 
    mutex_unlock(&kernel_request_lock);
    return ret;
@@ -81,7 +88,7 @@ void kvm_init()
    assert(_kvm_initial_table);
    
    kernel_free_list = NULL;
-   kvm_bottom = KVM_END;
+   kvm_bottom_requested = kvm_bottom = KVM_END;
    mutex_init(&kernel_free_lock);
    mutex_init(&new_table_lock);
    mutex_init(&kernel_request_lock);
@@ -192,8 +199,10 @@ void* kvm_new_page()
    {
       new_page = kvm_bottom = kvm_bottom - PAGE_SIZE;
       
-      /* When we fail this assertion it's time to do something smarter. */
+      /* This assertion doesn't fail, as it is part of the 
+       *  request / alloc setup. */
       assert(kvm_bottom > (void*)KVM_START);
+
       mutex_unlock(&kernel_free_lock);
       
       /* Frame the new page */
