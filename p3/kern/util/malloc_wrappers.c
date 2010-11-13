@@ -25,9 +25,6 @@
 #include <ecodes.h>
 #include <eflags.h>
 
-#define MAXSIZE 200
-int counts[MAXSIZE];
-
 /* safe versions of malloc functions */
 
 static mutex_t heap_lock;
@@ -99,13 +96,6 @@ void *smalloc(size_t size)
 
    if(ret)
    {
-      if(size < MAXSIZE)
-         counts[size]++;
-      else 
-      {
-         lprintf("allocated %d bytes", size);
-         MAGIC_BREAK;
-      }
       nallocs++;
       allocated += size;
       debug_print("malloc", "Malloc of size %d, allocated = %d", 
@@ -151,10 +141,6 @@ void *smemalign(size_t alignment, size_t size)
    
    if(ret)
    {
-      if(size < MAXSIZE)
-         counts[size]++;
-      else lprintf("allocated %d bytes", size);
-
       nallocs++;
       allocated += size;
       debug_print("malloc", 
@@ -173,14 +159,6 @@ void sfree(void *buf, size_t size)
   
    assert(heap_sanity_start <= buf && buf < (void*)USER_MEM_START);
    _sfree(buf, size);
-   
-   if(size < MAXSIZE)
-      counts[size]--;
-   else
-   {
-      lprintf("freed %d bytes", size);
-      MAGIC_BREAK;
-   }
    
    nfrees++;
    allocated -= size;
