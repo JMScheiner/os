@@ -203,14 +203,19 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
          PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) 
       goto fail_init_mem;
    
-   // Allocate bss region. Despite what the spec says, this is not the
-   // very next byte after the dat section. It must be aligned. I don't
-   // know if 32 bytes is always correct, but its what objdump reports for
-   // the mandelbrot program (which revealed this bug to us)
-   char *bss_start = ALIGN_UP(elf.e_datstart + elf.e_datlen, 32);
+   /* Allocate bss region. Despite what the spec says, this is not the
+       very next byte after the dat section. It must be aligned... 
+       It is not always 32 byte aligned as in mandelbrot, 
+       Or 4 byte aligned as in cho_variant...
+   
+       Since we want to pass both of these tests. Our only recourse
+        is to turn ZFOD off.  Frowny. Face. 
+    */
+
+   char *bss_start = (char*)(elf.e_datstart + elf.e_datlen);
    if(allocate_region(
          bss_start, bss_start + elf.e_bsslen, 
-         PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) 
+         PTENT_RW | PTENT_USER /*| PTENT_ZFOD*/, bss_fault, pcb) < 0) 
       goto fail_init_mem;
       
    // Allocate stack region (same for all processes).

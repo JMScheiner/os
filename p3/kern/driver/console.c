@@ -27,6 +27,10 @@
 /** @brief Index of the last valid color. */
 #define MAX_VALID_COLOR (0x8F)
 
+/** @brief The size of the print buffer (= the size of the console + 1) 
+ *    If the size of the console becomes comparable to a page size, 
+ *     this will need to change into a global static buffer. 
+ **/
 #define PRINT_BUF_SIZE ((CONSOLE_WIDTH * CONSOLE_HEIGHT) + 1)
 
 
@@ -124,6 +128,11 @@ void set_term_color_handler(volatile regstate_t reg)
    RETURN(ESUCCESS);
 }
 
+/** 
+* @brief Set the cursor position.
+* 
+* @param reg The register state on entry to the handler.
+*/
 void set_cursor_pos_handler(volatile regstate_t reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
@@ -144,6 +153,11 @@ void set_cursor_pos_handler(volatile regstate_t reg)
    RETURN(ESUCCESS);
 }
 
+/** 
+* @brief Returns the cursor position to the user. 
+* 
+* @param reg The register state on entry to the handler.
+*/
 void get_cursor_pos_handler(volatile regstate_t reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
