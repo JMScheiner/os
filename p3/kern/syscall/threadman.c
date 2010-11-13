@@ -54,6 +54,8 @@ void yield_handler(volatile regstate_t reg)
       RETURN(ESUCCESS);
    }
    else {
+      /* Find the thread in the tcb table. Hold onto the table lock so the
+       * thread cannot disappear. */
       mutex_lock(&tcb_table()->lock);
       tcb_t *next = hashtable_get(tcb_table(), tid);
       debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
@@ -64,9 +66,11 @@ void yield_handler(volatile regstate_t reg)
          RETURN(ENAME);
       }
       else if (scheduler_run(next, &tcb_table()->lock)) {
+         /* scheduler_run released our lock */
          RETURN(ESUCCESS);
       }
       else {
+         /* scheduler_run released our lock */
          debug_print("yield", "%d desired yield is descheduled or blocked", 
                get_tcb()->tid);
          RETURN(ESTATE);
