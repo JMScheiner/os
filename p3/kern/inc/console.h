@@ -4,7 +4,8 @@
  *  This contains the prototypes and global variables for the console
  *  driver
  *
- *  @author Michael Berman (mberman)
+ *  @author Tim Wilson (tjwilson)
+ *  @author Justin Scheiner (jscheine)
  *  @bug No known bugs.
  */
 

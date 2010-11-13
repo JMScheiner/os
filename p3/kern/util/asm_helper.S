@@ -1,3 +1,10 @@
+/** @file asm_helper.S
+ *
+ * @brief Helper assembly functions
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 
 .globl get_esp
 .globl halt

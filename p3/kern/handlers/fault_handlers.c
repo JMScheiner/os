@@ -54,31 +54,31 @@ void device_not_available_handler(regstate_t reg)
 
 void double_fault_handler(regstate_error_t reg)
 {
-   /* This never happens.*/
+   /* This should never happen.*/
    assert(0);
 }
 
 void invalid_tss_handler(regstate_error_t reg)
 {
-   /* This never happens.*/
+   /* This should never happen.*/
    assert(0); 
 }
 
 void segment_not_present_handler(regstate_error_t reg)
 {
-   /* This never happens.*/
+   /* This should never happen.*/
    assert(0); 
 }
 
 void stack_segment_fault_handler(regstate_error_t reg)
 {
-   /* This never happens.*/
+   /* This should never happen.*/
    assert(0); 
 }
 
 void general_protection_handler(regstate_error_t reg)
 {
-   /* This never happens.*/
+   /* This should never happen.*/
    assert(0); 
 }
 

@@ -1,4 +1,11 @@
-
+/** @file cond.c
+ *
+ * @brief A very basic condition variable that supports only one waiting
+ * thread.
+ *
+ * @author Tim Wilson (tjwilson)
+ * @author Justin Scheiner (jscheine)
+ */
 #ifndef COND_H_HDGW65321F
 #define COND_H_HDGW65321F
 

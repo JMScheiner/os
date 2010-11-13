@@ -1,11 +1,10 @@
-/** 
-* @file debug.c
-* @brief Debugging Utilities
-* @author Tim Wilson
-* @author Justin Scheiner
-* @date 2010-11-12
-*/
-
+/** @file debug.c
+ *
+ * Functions for debugging
+ *
+ * @author Tim Wilson
+ * @author Justin Scheiner
+ */
 #include <debug.h>
 #include <simics.h>
 #include <stdarg.h>
@@ -16,7 +15,6 @@
 #define DEBUG_BUF_SIZE 256
 
 #define DEBUG_PRINT
-#define DEBUG_BREAK
 
 char *debug_print_strings[] = {
    //"children", 
@@ -42,7 +40,6 @@ char *debug_print_strings[] = {
    //"console", 
    //"memman", 
    NULL};
-char *debug_break_strings[] = {NULL};
 
 #ifdef DEBUG_PRINT
 void debug_print(const char *type, const char *fmt, ...) {
@@ -64,22 +61,6 @@ void debug_print(const char *type, const char *fmt, ...) {
 }
 #else
 void debug_print(const char *type, const char *fmt, ...) {
-   return;
-}
-#endif
-
-#ifdef DEBUG_BREAK
-void debug_break(const char *type) {
-   int i;
-   for (i = 0; debug_break_strings[i] != NULL; i++) {
-      if (strcmp(debug_break_strings[i], type) == 0) {
-         MAGIC_BREAK;
-         return;
-      }
-   }
-}
-#else
-void debug_break(const char *type) {
    return;
 }
 #endif

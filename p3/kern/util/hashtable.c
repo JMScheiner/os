@@ -135,6 +135,7 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
       tcb = link->tcb;
       hashtable->table[hash] = hashtable->table[hash]->next;
       sfree(link, sizeof(hashtable_link_t));
+      hashtable->size--;
    }
    else {
       /* Otherwise search the bucket for the key and remove it. */
@@ -144,6 +145,7 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
             tcb = free_link->tcb;
             link->next = free_link->next;
             sfree(free_link, sizeof(hashtable_link_t));
+            hashtable->size--;
             break;
          }
       }
