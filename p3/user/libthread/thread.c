@@ -112,7 +112,7 @@ static unsigned int hash(int key);
  * @return 0 on success, less than 0 on error
  */
 int thr_init(unsigned int size) {
-   if (initialized) MAGIC_BREAK;
+   MAGIC_BREAK;
    assert(!initialized);
    int ret = 0;
    initialized = TRUE;

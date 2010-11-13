@@ -1,5 +1,7 @@
 /** @file hashtable.c
  *
+ * @brief A hashtable mapping tids to tcbs
+ *
  * @author Tim Wilson (tjwilson)
  */
 
@@ -51,6 +53,12 @@ unsigned int default_hash(int tid)
    return (unsigned int)tid;
 }
 
+/**
+ * @brief Initialize the hashtable
+ *
+ * @param hashtable The hashtable to initialize
+ * @param hash The hash function to use for this table.
+ */
 void hashtable_init(hashtable_t *hashtable, unsigned int (*hash)(int))
 {
    hashtable->size = 0;
@@ -62,6 +70,11 @@ void hashtable_init(hashtable_t *hashtable, unsigned int (*hash)(int))
                       sizeof(hashtable_link_t *));
 }
 
+/**
+ * @brief Resize the hashtable by roughly doubling its capacity.
+ *
+ * @param hashtable The hashtable to resize.
+ */
 static void hashtable_resize(hashtable_t *hashtable)
 {
    hashtable_link_t **table = (hashtable_link_t **)
@@ -88,6 +101,13 @@ static void hashtable_resize(hashtable_t *hashtable)
    hashtable->table_index++;
 }
 
+/**
+ * @brief Put a tid, tcb pair in the hash table
+ *
+ * @param hashtable The hashtable to insert in
+ * @param tid The tid to insert
+ * @param tcb The tcb to insert
+ */
 void hashtable_put(hashtable_t *hashtable, int tid, tcb_t *tcb)
 {
    size_t hash;
@@ -106,6 +126,15 @@ void hashtable_put(hashtable_t *hashtable, int tid, tcb_t *tcb)
    hashtable->size++;
 }
 
+/**
+ * @brief Get a tcb from the hashtable
+ *
+ * @param hashtable The hashtable to get from.
+ * @param tid The tid of the tcb to get.
+ *
+ * @return The tcb with the given tid, or NULL if no tcb with the given
+ * tid exists in the table.
+ */
 tcb_t *hashtable_get(hashtable_t *hashtable, int tid)
 {
    size_t hash = hashtable->hash(tid) % 
@@ -122,6 +151,15 @@ tcb_t *hashtable_get(hashtable_t *hashtable, int tid)
    return tcb;
 }
 
+/**
+ * @brief Remove the tcb with the given tid from the hashtable
+ *
+ * @param hashtable The hashtable to remove from.
+ * @param tid The tid of the tcb to remove
+ *
+ * @return The tcb with the given tid, or NULL if no tcb with the given
+ * tid exists in the table.
+ */
 tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
 {
    size_t hash = hashtable->hash(tid) % 
@@ -137,7 +175,7 @@ tcb_t *hashtable_remove(hashtable_t *hashtable, int tid)
       sfree(link, sizeof(hashtable_link_t));
       hashtable->size--;
    }
-   else {
+   else if (link != NULL) {
       /* Otherwise search the bucket for the key and remove it. */
       for ( ; link->next != NULL; link = link->next) {
          if (link->next->tid == tid) {
