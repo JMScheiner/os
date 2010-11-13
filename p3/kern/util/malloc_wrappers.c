@@ -110,24 +110,28 @@ void *scalloc(size_t nmemb, size_t size)
 {
    void *ret = smalloc(nmemb * size);
    if (ret != NULL) 
+   {   
+      debug_print("malloc", 
+         "scalloc of size %d", nmemb * size);
+      
       memset(ret, 0, nmemb * size);
+   }
    return ret;
 }
 
 void *srealloc(void* buf, size_t current_size, size_t new_size)
 {
-   if(new_size > current_size)
-   {
-      void* new_buf = smalloc(new_size);
+   void* new_buf = smalloc(new_size);
+   
+   if(!new_buf)
+      return NULL;
+   
+   debug_print("malloc", 
+      "srealloc of size %d, from %d", current_size, new_size); 
       
-      if(!new_buf)
-         return NULL;
-      
-      memcpy(new_buf, buf, current_size);
-      sfree(buf, current_size);
-      return new_buf;
-   }
-   else return buf;
+   memcpy(new_buf, buf, current_size);
+   sfree(buf, current_size);
+   return new_buf;
 }
 
 void *smemalign(size_t alignment, size_t size)
