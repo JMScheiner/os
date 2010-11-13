@@ -23,6 +23,11 @@ static pcb_t _global_pcb;
 static tcb_t* _global_tcb;
 static mutex_t _global_list_lock;
 
+/** 
+* @brief Initializes a global PCB that generally stands in
+*  when no true PCB is appropriate. It is spiritually the PCB 
+*  of the idle kernel process. 
+*/
 void global_thread_init()
 {
    void* kstack;
@@ -61,19 +66,40 @@ void global_thread_init()
    arrange_global_context();
 }
 
+/** 
+* @brief Return the global PCB. 
+* 
+* @return The global PCB.
+*/
 inline pcb_t* global_pcb() { 
    return &_global_pcb; 
 } 
 
+/** 
+* @brief Return the global tcb. 
+* 
+* @return The global TCB.
+*/
 inline tcb_t* global_tcb() { 
    return _global_tcb; 
 }
 
+/** 
+* @brief Return the global list lock - e.g. 
+*   the lock for the list in each PCB's global_node.
+* 
+* @return The lock.
+*/
 inline mutex_t* global_list_lock()
 {
    return &_global_list_lock;
 }
 
+/** 
+* @brief Remove the PCB from the global list. 
+* 
+* @param pcb The PCB to remove. 
+*/
 void global_list_remove(pcb_t* pcb)
 {
    pcb_t* global = &_global_pcb;
@@ -83,6 +109,11 @@ void global_list_remove(pcb_t* pcb)
    mutex_unlock(&_global_list_lock);
 }
 
+/** 
+* @brief Add a PCB to the global list. 
+* 
+* @param pcb The PCB to add.
+*/
 void global_list_add(pcb_t* pcb)
 {
    pcb_t* global = &_global_pcb;

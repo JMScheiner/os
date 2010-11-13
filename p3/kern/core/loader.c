@@ -122,6 +122,14 @@ void *copy_to_stack(int argc, char *argv, int arg_len) {
    return user_stack;
 }
 
+/** 
+* @brief Get an ELF header from an executable.
+* 
+* @param exec The name of the executable. 
+* @param elf_hdr The returned elf header. 
+* 
+* @return A negative integer on error, zero on success. 
+*/
 int get_elf(char *exec, simple_elf_t *elf_hdr) {
    int err;
    if ((err = elf_check_header(exec)) != ELF_SUCCESS) {
@@ -131,6 +139,14 @@ int get_elf(char *exec, simple_elf_t *elf_hdr) {
    return elf_load_helper(elf_hdr, exec);
 }
 
+/** 
+* @brief Jumps to the user process.
+* 
+* @param tcb The TCB of the starting thread. 
+* @param exec The name of the executable. 
+* @param stack The user stack to jump to.
+* @param eip The entry point of the executable. 
+*/
 void switch_to_user(tcb_t *tcb, char *exec, void *stack, void *eip) {
    unsigned int user_eflags = get_user_eflags();
    debug_print("loader", "Running %s", exec);

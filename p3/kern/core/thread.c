@@ -29,7 +29,13 @@
 /** @brief Number of pages per kernel stack. */
 
 static int next_tid = 1;
+
 static hashtable_t _tcb_table;
+/** 
+* @brief Returns the TCB table. 
+* 
+* @return The TCB table.
+*/
 inline hashtable_t* tcb_table() { return &_tcb_table; }
 
 /** 
@@ -42,11 +48,21 @@ static int new_tid()
    return atomic_add(&next_tid, 1);
 }
 
+/** 
+* @brief Initialize threading. 
+*/
 void thread_init(void) 
 {
    hashtable_init(&_tcb_table, default_hash);
 }
 
+/** 
+* @brief Frees the resources for this thread. 
+*
+*  In reality - this frees the kernel stack. 
+* 
+* @param tcb The TCB to free. 
+*/
 void free_thread_resources(tcb_t* tcb)
 {
    kvm_free_page((void*)tcb);
@@ -120,6 +136,9 @@ tcb_t *get_tcb()
    return ret;
 }
 
+/** 
+* @brief Sets esp0 to the kernel stack for the current thread. 
+*/
 void set_esp0_helper() {
    tcb_t *tcb = get_tcb();
    assert(tcb != NULL);
@@ -128,6 +147,13 @@ void set_esp0_helper() {
    set_esp0((unsigned int)tcb->kstack);
 }
 
+/** 
+* @brief Checks invariants that we expect to be true on every 
+*  invocation of a handler. 
+* 
+* @param synchronous Whether the handler is synchronous to the 
+*  instruction stream (i.e. not caused by a timer or keyboard interrupt)
+*/
 void check_invariants(boolean_t synchronous) {
    tcb_t *tcb = get_tcb();
    assert(tcb);
