@@ -54,16 +54,16 @@ void yield_handler(volatile regstate_t reg)
       RETURN(ESUCCESS);
    }
    else {
-      mutex_lock(&tcb_table.lock);
-      tcb_t *next = hashtable_get(&tcb_table, tid);
+      mutex_lock(&tcb_table()->lock);
+      tcb_t *next = hashtable_get(tcb_table(), tid);
       debug_print("yield", "%d yielding to %d", get_tcb()->tid, tid);
       if (next == NULL) {
-         mutex_unlock(&tcb_table.lock);
+         mutex_unlock(&tcb_table()->lock);
          debug_print("yield", "%d failed to find desired yield", 
                get_tcb()->tid);
          RETURN(ENAME);
       }
-      else if (scheduler_run(next, &tcb_table.lock)) {
+      else if (scheduler_run(next, &tcb_table()->lock)) {
          RETURN(ESUCCESS);
       }
       else {
@@ -137,8 +137,8 @@ void make_runnable_handler(volatile regstate_t reg)
 {
    int tid = (int)SYSCALL_ARG(reg);
    int ret = 0;
-   mutex_lock(&tcb_table.lock);
-   tcb_t *tcb = hashtable_get(&tcb_table, tid);
+   mutex_lock(&tcb_table()->lock);
+   tcb_t *tcb = hashtable_get(tcb_table(), tid);
    debug_print("make_runnable", "Acquired deschedule_lock");
    if (tcb == NULL) {
       debug_print("make_runnable", "%d failed, target does not exist", 
@@ -154,7 +154,7 @@ void make_runnable_handler(volatile regstate_t reg)
       }
       mutex_unlock(&tcb->deschedule_lock);
    }
-   mutex_unlock(&tcb_table.lock);
+   mutex_unlock(&tcb_table()->lock);
    RETURN(ret);
 }
 

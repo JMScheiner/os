@@ -250,10 +250,11 @@ void fork_handler(volatile regstate_t reg)
    RETURN(new_tcb->tid);
 
 fork_fail_dup: 
-   mutex_lock(&tcb_table.lock);
+
+   mutex_lock(&tcb_table()->lock);
    /* Remove ourself from the global table of threads. */
-   hashtable_remove(&tcb_table, new_tcb->tid);
-   mutex_unlock(&tcb_table.lock);
+   hashtable_remove(tcb_table(), new_tcb->tid);
+   mutex_unlock(&tcb_table()->lock);
    
    free_thread_resources(new_tcb);
    new_pcb->thread_count = 0;
@@ -268,6 +269,9 @@ fork_fail_pcb:
 /** 
 * @brief Arranges a context we can jump to if we need to 
 *  twiddle our thumbs, and plants it in the global TCB. 
+*
+*  In our kernel, this and loop stub stand in place of
+*   idle.
 */
 void arrange_global_context()
 {
@@ -483,10 +487,10 @@ void vanish_handler()
       free_process_resources(pcb, TRUE);
    }
    
-   mutex_lock(&tcb_table.lock);
+   mutex_lock(&tcb_table()->lock);
    /* Remove ourself from the global table of threads. */
-   hashtable_remove(&tcb_table, tcb->tid);
-   mutex_unlock(&tcb_table.lock);
+   hashtable_remove(tcb_table(), tcb->tid);
+   mutex_unlock(&tcb_table()->lock);
    mutex_destroy(&tcb->deschedule_lock);
    mutex_lock(&zombie_stack_lock);
    debug_print("vanish", "Freeing zombie %p", zombie_stack);

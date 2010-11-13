@@ -23,8 +23,6 @@
 #define PF_ECODE_RESERVED 0x8
 #define ERRBUF_SIZE 0x100
 
-extern int lock_depth;
-
 void generic_fault(void* addr, int ecode);
 
 /** 
@@ -47,8 +45,6 @@ void page_fault_handler(volatile regstate_error_t reg)
    
    /* The address that causes a page fault resides in cr2.*/
    addr = (void*)get_cr2();
-
-   assert(lock_depth == 0);
    enable_interrupts();
 
    pcb = get_pcb();
