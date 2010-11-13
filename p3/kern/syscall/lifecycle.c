@@ -250,13 +250,12 @@ void fork_handler(volatile regstate_t reg)
    RETURN(new_tcb->tid);
 
 fork_fail_dup: 
-   free_thread_resources(new_tcb);
-
    mutex_lock(&tcb_table.lock);
    /* Remove ourself from the global table of threads. */
    hashtable_remove(&tcb_table, new_tcb->tid);
    mutex_unlock(&tcb_table.lock);
    
+   free_thread_resources(new_tcb);
    new_pcb->thread_count = 0;
 fork_fail_tcb:
 fork_fail_dup_regions: 
