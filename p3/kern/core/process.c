@@ -23,6 +23,7 @@
 #include <ecodes.h>
 #include <simics.h>
 #include <malloc_wrappers.h>
+#include <macros.h>
 
 /**
  * @brief Next pid to assign to a process.
@@ -184,6 +185,7 @@ static void initialize_region(const char *file, unsigned long offset,
  */
 int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb) 
 {
+   lprintf("txtstart 0x%lx\ntxtlen 0x%lx\nrodatstart 0x%lx\nrodatlen 0x%lx\ndatstart 0x%lx\ndatlen 0x%lx bssstart 0x%lx bsslen 0x%lx", elf.e_txtstart, elf.e_txtlen, elf.e_rodatstart, elf.e_rodatlen, elf.e_datstart, elf.e_datlen, elf.e_datstart + elf.e_datlen, elf.e_bsslen);
    // Allocate text region. 
    if(allocate_region(
          (char*)elf.e_txtstart, (char *)elf.e_txtstart + elf.e_txtlen, 
@@ -196,16 +198,19 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
          PTENT_RO | PTENT_USER, rodata_fault, pcb) < 0) 
       goto fail_init_mem;
    
-   //Allocate data region.
+   // Allocate data region.
    if(allocate_region(
          (char*)elf.e_datstart, (char*)elf.e_datstart + elf.e_datlen,
          PTENT_RW | PTENT_USER,  dat_fault, pcb) < 0) 
       goto fail_init_mem;
-      
-   //Allocate bss region.
-   unsigned long bss_start = elf.e_datstart + eld.e_datlen;
+   
+   // Allocate bss region. Despite what the spec says, this is not the
+   // very next byte after the dat section. It must be aligned. I don't
+   // know if 32 bytes is always correct, but its what objdump reports for
+   // the mandelbrot program (which revealed this bug to us)
+   char *bss_start = ALIGN_UP(elf.e_datstart + elf.e_datlen, 32);
    if(allocate_region(
-         (char*)bss_start, (char *)bss_start + elf.e_bsslen, 
+         bss_start, bss_start + elf.e_bsslen, 
          PTENT_RO | PTENT_USER | PTENT_ZFOD, bss_fault, pcb) < 0) 
       goto fail_init_mem;
       
