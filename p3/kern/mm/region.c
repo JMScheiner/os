@@ -50,6 +50,7 @@ int allocate_region(
    if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
       return ENOMEM;
    
+   debug_print("region", "New region = %p", region); 
    region->fault = fault;
    region->start = start;
    region->end = end;
@@ -127,8 +128,6 @@ void free_region_list_helper(region_t* regions)
 * @brief Duplicates the region list in pcb and returns a pointer
 *  to the copied region list.
 *
-*  TODO CLEAN ME UP
-* 
 * @param pcb The process to copy the region list from.
 * 
 * @return A pointer to the new region list.

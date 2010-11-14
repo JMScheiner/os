@@ -5,11 +5,6 @@
 *  Since our kernel is meant to be air-tight, we should
 *   only invoke smalloc, smemalign,  and sfree. 
 *
-*   TODO Outstanding issues with memory management:
-*     - Need to cover memalign calls. 
-*     - Root out where we malloc, but don't initialize
-*        (I've found a few)
-*
 * @author Justin Scheiner
 * @author Tim Wilson
 */
@@ -33,6 +28,9 @@ static long long nallocs;
 static long long nfrees;
 void* heap_sanity_start;
 
+/**
+ * @brief Initialize the dynamic memory management library for the kernel.
+ */
 void alloc_init()
 {
    allocated = 0;
@@ -44,6 +42,13 @@ void alloc_init()
    mutex_init(&heap_lock);
 }
 
+/**
+ * @brief Allocate dynamic memory
+ *
+ * @param size The number of bytes to allocate.
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *malloc(size_t size)
 {
    mutex_lock(&heap_lock);
@@ -53,6 +58,14 @@ void *malloc(size_t size)
    return ret;
 }
 
+/**
+ * @brief Allocate aligned dynamic memory
+ *
+ * @param alignment The byte boundary to align to
+ * @param size The number of bytes to allocate.
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *memalign(size_t alignment, size_t size)
 {
    mutex_lock(&heap_lock);
@@ -62,6 +75,14 @@ void *memalign(size_t alignment, size_t size)
    return ret;
 }
 
+/**
+ * @brief Allocate dynamic memory and zero it out
+ *
+ * @param nelt The number of elements to allocate.
+ * @param eltsize The size of each element
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *calloc(size_t nelt, size_t eltsize)
 {
    mutex_lock(&heap_lock);
@@ -71,6 +92,14 @@ void *calloc(size_t nelt, size_t eltsize)
    return ret;
 }
 
+/**
+ * @brief Reallocate dynamic memory
+ *
+ * @param buf The buffer to reallocate
+ * @param size The new size of the buffer
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *realloc(void *buf, size_t new_size)
 {
    mutex_lock(&heap_lock);
@@ -80,6 +109,11 @@ void *realloc(void *buf, size_t new_size)
    return ret;
 }
 
+/**
+ * @brief Free dynamic memory
+ *
+ * @param buf The memory to free
+ */
 void free(void *buf)
 {
    mutex_lock(&heap_lock);
@@ -89,6 +123,13 @@ void free(void *buf)
    return;
 }
 
+/**
+ * @brief Allocate dynamic memory that we promise to remember the size of.
+ *
+ * @param size The number of bytes to allocate.
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *smalloc(size_t size)
 {
    mutex_lock(&heap_lock);
@@ -106,6 +147,15 @@ void *smalloc(size_t size)
    return ret;
 }
 
+/**
+ * @brief Allocate dynamic memory that we promise to remember the size 
+ * of and zero it out
+ *
+ * @param nelt The number of elements to allocate.
+ * @param eltsize The size of each element
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *scalloc(size_t nmemb, size_t size)
 {
    void *ret = smalloc(nmemb * size);
@@ -119,6 +169,16 @@ void *scalloc(size_t nmemb, size_t size)
    return ret;
 }
 
+/**
+ * @brief Reallocate dynamic memory that we promise to remember the size
+ * of.
+ *
+ * @param buf The buffer to reallocate
+ * @param current_size The current size of the buffer
+ * @param new_size The new size of the buffer
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *srealloc(void* buf, size_t current_size, size_t new_size)
 {
    void* new_buf = smalloc(new_size);
@@ -134,6 +194,15 @@ void *srealloc(void* buf, size_t current_size, size_t new_size)
    return new_buf;
 }
 
+/**
+ * @brief Allocate aligned dynamic memory that we promise to remember the
+ * size of
+ *
+ * @param alignment The byte boundary to align to
+ * @param size The number of bytes to allocate.
+ *
+ * @return The memory allocated, or NULL on failure.
+ */
 void *smemalign(size_t alignment, size_t size)
 {
    mutex_lock(&heap_lock);
@@ -152,6 +221,12 @@ void *smemalign(size_t alignment, size_t size)
    return ret;
 }
 
+/**
+ * @brief Free dynamic memory
+ *
+ * @param buf The memory to free
+ * @param The size of the memory region to fill
+ */
 void sfree(void *buf, size_t size)
 {
    memset(buf, 0, size);

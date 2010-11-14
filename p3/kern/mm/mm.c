@@ -31,8 +31,14 @@
 
 /* @brief Local copy of the total number of physical frames in the system.
  *  mm implementation assumes contiguous memory. */
+
+/* @brief The number of physical frames in the system. */
 static int n_phys_frames;
+
+/* @brief The number of free frames in the system. */
 static int n_free_frames;
+
+/* @brief The number of free frames that have been requested by users. */
 static int n_user_frames;
 
 static free_block_t* user_free_list;
@@ -208,7 +214,7 @@ void mm_free_address_space(pcb_t* pcb)
 * @brief Duplicates the current address space in the process
 *  indicated by pcb. 
 *
-* @param pcb The new process to copy into. The page directory 
+* @param new_pcb The new process to copy into. The page directory 
 *  should be empty, but allocated.  
 */
 int mm_duplicate_address_space(pcb_t* new_pcb) 
@@ -459,7 +465,7 @@ int mm_alloc(pcb_t* pcb, void* addr, size_t len, unsigned int flags)
       /* SKIP Pages that are already allocated to us. 
        *    - The assumption here is that this function will be called 
        *      in order of priority, and that flags set by previous users will 
-       *      be correct. To change flags use TODO mm_setflags(addr, flags)
+       *      be correct. 
        */
       if(PAGE_PRESENT((table_v[ TABLE_OFFSET(page) ]))) 
          continue;
@@ -520,11 +526,10 @@ void mm_frame_zfod_page(void* addr)
 * @brief Removes pages from the currently running processes address space. 
 *
 *  Essentially a support function for remove_pages. 
-*  TODO We can support freeing tables when appropriate by keeping a count 
-*   in the lower bits of virtual_dir. 
 *
-* @param addr The page aligned address to free. 
-* @param n The number of pages to remove. 
+* @param pcb The pcb continaing the address space to remove_pages in.
+* @param start The beginning of the region. 
+* @param start The end of the region. 
 */
 void mm_remove_pages(pcb_t* pcb, void* start, void* end)
 {
@@ -610,7 +615,8 @@ boolean_t mm_validate_write(void *addr, int len)
 
 /** 
 * @brief Allocates a new kernel physical page. 
-*  TODO Since we have stricter, consistent alignment requirements when we are 
+*
+*  ...Since we have stricter, consistent alignment requirements when we are 
 *     calling this, it may be beneficial to take some memory away
 *     from the kernel heap and replace it with our own frame allocator.
 * 
@@ -658,9 +664,9 @@ int mm_request_frames(int n)
 *  2. Maps that frame to the place indicated by "page" in rw/supervisor mode.
 *  3. Uses the new mapping to update the free list.
 *
-*  FIXME ASSUMES table_v is in the current address space. 
+*  ASSUMES table_v is in the current address space. 
 * 
-* @param table The page table that "page" belongs to. 
+* @param table_v The page table that "page" belongs to. 
 * @param page The page to map. 
 * 
 * @return The physical address of the new frame.

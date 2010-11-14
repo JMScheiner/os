@@ -193,7 +193,7 @@ boolean_t scheduler_reschedule(tcb_t *tcb)
  * @brief Remove ourself from the runnable queue, ensuring that we never
  * run again.
  *
- * @param A locked mutex we're holding before we die. Prevents our stack
+ * @param lock A locked mutex we're holding before we die. Prevents our stack
  * from being freed before we finish.
  */
 void scheduler_die(mutex_t *lock)

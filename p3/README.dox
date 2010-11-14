@@ -66,6 +66,20 @@ Data Structures
   what the spec says. They need to be aligned according to a field in the
   elf header we don't have access to.
 
+<b> Current Bugs </b>
+- We managed to fix all of the bugs we managed to find except one. After
+  implementing ZFOD the exact size of the bss section became important
+  since it became read only and page faulted on first access. However, the
+  exact placement of the bss section is a bit of a mystery since it is
+  aligned to a boundary that changes from executable to executable and is
+  in the elf_hdr. As a result, we were not able to make mandelbrot and
+  cho_variant both work with ZFOD, so we turned it off. If there's a
+  simple fix for this and you care to test it, you can try reenabling ZFOD
+  by in initialize_memory.
+
+- If something goes wrong, enabling debug statements from debug.c might be
+  useful.
+
 <b> Memory Organization: </b>
 
 Memory is arranged into three major segments:

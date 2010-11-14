@@ -10,7 +10,6 @@
 .globl ASM_NAME
 
 /* Generate assembly wrapper for an interrupt or exception handler. 
- * TODO: What segment registers do we need to save? 
  *    Note - any changes to this def file need to be reflected
  *    in reg.h.
  */

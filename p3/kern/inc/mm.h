@@ -83,8 +83,6 @@ void mm_free_address_space(pcb_t* pcb);
 
 /** Requests information **/
 int mm_getflags(void* addr);
-
-/* FIXME mm_validate_write should be deleted!!! */
 boolean_t mm_validate_write(void* addr, int len);
 
 #endif /* end of include guard: MM_1PZ6H5QE */

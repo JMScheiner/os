@@ -10,7 +10,6 @@
 .globl ASM_NAME
 
 /* Generate assembly wrapper for an interrupt or exception handler. 
- * TODO: What segment registers do we need to save? 
  */
 ASM_NAME:
    pusha                /* Save user registers */

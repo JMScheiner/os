@@ -30,19 +30,30 @@ static void* _kvm_initial_table;
 inline void* kvm_initial_table() { return _kvm_initial_table; }
 
 
-/* A list of pages (virtual) that can be allocated.
- *    They are already mapped in the global directory.*/
+/** @brief kvm_bottom is the bottom of kernel virtual memory. 
+ *    KVM is defined as [kvm_bottom, KVM_MEM_END] */
 static void* kvm_bottom;
+
+/** @brief The bottom after all requests are met. */
 static void* kvm_bottom_requested;
+
+/** @brief A list of free frames reserved for the kernel. */
 static free_block_t* kernel_free_list;
+
+/** @brief A lock that protects the kernel free list. */
 static mutex_t kernel_free_lock;
+
+/** @brief A lock that protects the creation of new KVM tables. */
 static mutex_t new_table_lock;
+
+/** @brief The number of free frames available to the kernel. */
+static int n_kernel_frames;
+
+/** @brief Serializes requests for kernel memory. */
+static mutex_t kernel_request_lock;
 
 static void* kvm_alloc_page(void* page);
 static void* kvm_new_table(void* addr);
-
-static int n_kernel_frames;
-static mutex_t kernel_request_lock;
 
 /** 
 * @brief Requests frames for allocation. 
@@ -64,7 +75,10 @@ int kvm_request_frames(int n_user, int n_kernel)
    }
 
    if(kvm_bottom_requested - n_user * PAGE_SIZE <= (void*)KVM_START)
+   {
+      mutex_unlock(&kernel_request_lock);
       return ret;
+   }
    
    ret = mm_request_frames(n_user);
    if(ret == ESUCCESS)
@@ -230,7 +244,7 @@ void kvm_free_page(void* page)
    /* Clear the free frame list part of the recovered page. */
    memset(page, 0, sizeof(free_block_t));
    
-   /* Will there be race conditions on freed kernel pages? (TODO No) */
+   /* Will there be race conditions on freed kernel pages? (No!) */
    page_dirent_t* global_dir = global_pcb()->dir_v;
    page_tablent_t* table = global_dir[ DIR_OFFSET(page) ];
    table = (page_tablent_t*)PAGE_OF(table);

@@ -155,11 +155,17 @@ void quick_unlock_all() {
    enable_interrupts();
 }
 
+/** 
+* @brief Assert that the quick lock is not held. 
+*/
 void quick_assert_unlocked() {
    assert((get_eflags() & EFL_IF) != 0);
    assert(lock_depth == 0);
 }
 
+/** 
+* @brief Assert that the quick lock is held. 
+*/
 void quick_assert_locked() {
    assert((get_eflags() & EFL_IF) == 0);
    assert(lock_depth > 0);

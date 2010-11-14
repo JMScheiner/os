@@ -14,7 +14,7 @@
 
 #define DEBUG_BUF_SIZE 256
 
-//#define KER_DEBUG
+#define KER_DEBUG
 
 char *debug_print_strings[] = {
    //"children", 
