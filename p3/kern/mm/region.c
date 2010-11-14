@@ -50,7 +50,6 @@ int allocate_region(
    if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
       return ENOMEM;
    
-   debug_print("region", "New region = %p", region); 
    region->fault = fault;
    region->start = start;
    region->end = end;

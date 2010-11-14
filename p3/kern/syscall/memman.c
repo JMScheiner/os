@@ -55,8 +55,6 @@ void new_pages_handler(volatile regstate_t reg)
    int len, ret;
    char* start, *arg_addr, *end;
    
-   debug_print("memman", " In new_pages ");
-   
    arg_addr = (void*)SYSCALL_ARG(reg);
    assert((get_eflags() & EFL_IF) != 0);
 

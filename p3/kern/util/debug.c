@@ -35,7 +35,7 @@ char *debug_print_strings[] = {
    //"page", 
    //"readline", 
    //"lifecycle", 
-   //"region", 
+   "region", 
    //"malloc", 
    //"console", 
    //"memman", 
