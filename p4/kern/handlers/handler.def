@@ -1,0 +1,34 @@
+
+#ifndef NAME
+#error NAME undefined
+#endif
+
+#define PASTER(x, y) x ## _ ## y
+#define EVALUATOR(x, y) PASTER(x, y)
+#define ASM_NAME EVALUATOR(asm, NAME)
+
+.globl ASM_NAME
+
+/* Generate assembly wrapper for an interrupt or exception handler. 
+ *    Note - any changes to this def file need to be reflected
+ *    in reg.h.
+ */
+ASM_NAME:
+   pusha       /* Save user registers */
+#ifdef KER_DEBUG
+#ifdef IGNORE_THREAD_COUNT
+   pushl $0
+#else
+   pushl $1
+#endif
+   call check_invariants
+   popl %eax
+#endif
+   call NAME   /* Call handler function */
+   call quick_assert_unlocked
+   popa        /* Restore user registers */
+   iret        /* Return from interrupt */
+
+#undef ASM_NAME
+#undef NAME
+

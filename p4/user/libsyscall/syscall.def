@@ -1,0 +1,35 @@
+
+/* Check that each argument has been defined */
+
+#ifndef PARAM_COUNT
+#error Must define number of parameters
+#endif
+#ifndef TRAP
+#error Must define the trap to execute
+#endif
+#ifndef NAME
+#error Must define the name of the function
+#endif
+
+#include <syscall_int.h>
+
+.globl NAME
+
+NAME:
+#if PARAM_COUNT == 0
+   int    $TRAP           // Generate the trap
+#else
+   pushl  %esi            // Save callee save register
+#if PARAM_COUNT == 1
+   movl   8(%esp), %esi   // Move param to esi register
+#else
+   leal   8(%esp), %esi   // Move address of first param to esi register
+#endif
+   int    $TRAP           // Generate the trap
+   popl   %esi            // Restore the value of %esi
+#endif
+   ret                    // %eax contains the return value
+
+#undef PARAM_COUNT
+#undef TRAP
+#undef NAME

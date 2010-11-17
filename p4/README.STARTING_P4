@@ -1,0 +1,29 @@
+To get started with P4:
+
+1. Make a copy of your P3 directory.
+
+2. Move the update.sh from this directory so it replaces the update.sh
+   present in your newly-made P4 directory.
+
+3. Copy/move user/defswexn.S into your user/ directory.  You will
+   eventually need to edit this file and/or change its name.
+
+4. Copy/move user/libsyscall/swexn.c into your user/libsyscall.  Edit
+   your config.mk to add swexn.o to SYSCALL_OBJS.
+
+5. In your new P4 directory, run "make update".  You should see the
+   following updates:
+   (a) new spec/syscall.h and spec/syscall_int.h -- this is your
+       "mission statement"
+   (b) test file(s) appear in 410user/progs
+   (c) changes to various other files of less concern, e.g.,
+       Makefile, 410user/user.mk.
+
+6. Now "make" should work.  The resulting system would be silly to
+   boot and run, but our goal so far is getting something that
+   compiles and links.
+
+See http://www.cs.cmu.edu/~410/p4/ for what you are supposed to do.
+
+Don't forget that your README.dox for P4 should document your P4,
+not your P3!
