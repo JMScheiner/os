@@ -18,6 +18,7 @@
 #include <asm.h>
 #include <ureg.h>
 #include <swexn.h>
+#include <idt.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
