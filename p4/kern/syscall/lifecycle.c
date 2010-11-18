@@ -67,6 +67,9 @@ void exec_handler(volatile regstate_t reg) {
    char *args_ptr = execargs_buf;
    int total_bytes = 0;
    int argc;
+
+   tcb_t* tcb;
+
    /* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
       RETURN(EARGS);
@@ -127,7 +130,11 @@ void exec_handler(volatile regstate_t reg) {
    }
    void *stack = copy_to_stack(argc, execargs_buf, total_bytes);
 
-   switch_to_user(get_tcb(), execname_buf, stack, 
+   /* Unregister existing software exception handler. */
+   tcb = get_tcb();
+   memset(&tcb->handler, 0, sizeof(handler_t));
+
+   switch_to_user(tcb, execname_buf, stack, 
          (void *)elf_hdr.e_entry);
    
    // Never get here
@@ -162,6 +169,10 @@ void thread_fork_handler(volatile regstate_t reg)
    
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
+
+   /* Duplicate software exception handlers into the new thread. */
+   memcpy((char*)(&new_tcb->handler), (char*)(&get_tcb()->handler),
+      sizeof(handler_t));
    
    scheduler_register(new_tcb);
    RETURN(newtid);
@@ -243,6 +254,10 @@ void fork_handler(volatile regstate_t reg)
       LIST_INSERT_AFTER(current_pcb->children, new_pcb, child_node);
 
    mutex_unlock(&current_pcb->child_lock);
+   
+   /* Duplicate software exception handlers into the new thread. */
+   memcpy((char*)(&new_tcb->handler), (char*)(&current_tcb->handler),
+      sizeof(handler_t));
    
    /* Register the first thread in the new TCB. */
    sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);

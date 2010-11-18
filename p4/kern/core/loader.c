@@ -186,8 +186,11 @@ int initialize_memory(const char *file, simple_elf_t elf, pcb_t* pcb)
       goto fail_init_mem;
       
    // Allocate stack region (same for all processes).
-   if(allocate_stack_region(pcb) < 0) goto fail_init_mem;
-
+   if(allocate_region(
+      USER_STACK_BASE - PAGE_SIZE, USER_STACK_BASE, 
+      PTENT_RW | PTENT_USER, stack_fault, pcb) < 0)
+      goto fail_init_mem;
+      
    initialize_region(file, elf.e_txtoff, elf.e_txtlen, 
       elf.e_txtstart, elf.e_rodatstart);
       

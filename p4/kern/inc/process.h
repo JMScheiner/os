@@ -17,9 +17,6 @@
 /* The starting address of the stack in all processes. */
 #define USER_STACK_BASE 0xc0000000
 
-/* The last address we will allocate for the user. */
-#define USER_STACK_START 0xb0000000
-
 extern pcb_t *init_process;
 
 void free_process_resources(pcb_t* pcb, boolean_t vanishing);

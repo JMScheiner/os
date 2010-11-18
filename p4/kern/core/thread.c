@@ -25,6 +25,7 @@
 #include <global_thread.h>
 #include <simics.h>
 #include <x86/cr.h>
+#include <string.h>
 
 /** @brief Number of pages per kernel stack. */
 
@@ -102,6 +103,9 @@ tcb_t* initialize_thread(pcb_t *pcb)
    tcb->descheduled = FALSE;
    mutex_init(&tcb->deschedule_lock);
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
+
+   /* Initialize the handler to NULL */
+   memset(&tcb->handler, 0, sizeof(handler_t));
    
    int siblings = atomic_add(&pcb->thread_count, 1);
    if (siblings == 0) {

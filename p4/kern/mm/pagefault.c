@@ -51,7 +51,6 @@ void page_fault_handler(ureg_t* reg)
    ecode = reg->error_code;
 
    pcb = get_pcb();
-
    
    /* Our kernel does not page fault. */
    assert(ecode & PF_ECODE_USER);
@@ -169,20 +168,18 @@ void user_fault(void* addr, int ecode)
 /** 
 * @brief The fault handler invoked by a page fault in the stack region. 
 *
-*  Grows the stack if it can, kills the thread otherwise. 
-* 
+*  Since stack frames are generally user R/W - this is generally impossible
+*   under our currently non-fancy framework.
+*
 * @param addr The address that caused the fault. 
 * @param ecode The error code of the fault. 
 */
 void stack_fault(void* addr, int ecode)
 {
-   debug_print("page", "Growing Stack to %p!!!", (void*)PAGE_OF(addr));
-   if(mm_alloc(get_pcb(), (void*)PAGE_OF(addr), 
-         PAGE_SIZE, PTENT_USER | PTENT_RW) < 0)
-   {
-      /* Not being able to grow the stack is a fatal problem. */
-      thread_kill("Fatal: System ran out of resources on stack allocation");
-   }
+   char errbuf[ERRBUF_SIZE];
+   debug_print("page", "stack fault at %p!!!", addr);
+   sprintf(errbuf, "Page Fault: Illegal access to stack region at %p.", addr);
+   thread_kill(errbuf);
 }
 
 /** 

@@ -1,3 +1,12 @@
+/** 
+* @file swexn.c
+*
+* @brief Implements the software exception system call. 
+*
+* @author Tim Wilson
+* @author Justin Scheiner
+* @date 2010-11-17
+*/
 
 #include <reg.h>
 #include <ecodes.h>

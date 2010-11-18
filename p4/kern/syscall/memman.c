@@ -56,7 +56,6 @@ void new_pages_handler(volatile regstate_t reg)
    char* start, *arg_addr, *end;
    
    arg_addr = (void*)SYSCALL_ARG(reg);
-   assert((get_eflags() & EFL_IF) != 0);
 
    if(v_copy_in_ptr(&start, arg_addr) < 0)
       RETURN(EARGS);
@@ -67,12 +66,10 @@ void new_pages_handler(volatile regstate_t reg)
    end = start + len;
    
    /* Check that the requested memory is in user space. */
-   assert((get_eflags() & EFL_IF) != 0);
    if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
       RETURN(EARGS);
    
    /* Check that the requested memory is page aligned. */
-   assert((get_eflags() & EFL_IF) != 0);
    if((PAGE_OFFSET(start) != 0) || (len % PAGE_SIZE != 0))
       RETURN(EARGS);
    
@@ -85,9 +82,7 @@ void new_pages_handler(volatile regstate_t reg)
    mutex_lock(&_new_pages_lock);
    if(region_overlaps(pcb, start, end))
    {
-      assert((get_eflags() & EFL_IF) != 0);
       mutex_unlock(&_new_pages_lock);
-      assert((get_eflags() & EFL_IF) != 0);
       RETURN(ESTATE);
    }
    

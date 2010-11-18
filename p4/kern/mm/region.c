@@ -73,45 +73,6 @@ int allocate_region(
    return ESUCCESS;
 }
 
-/** 
-* @brief Declare the stack region to be a large region below the stack base, 
-*  but only allocate one frame for the new process. 
-* 
-* @param pcb The process / address space to allocate the stack region for. 
-* 
-* @return 0 on success. 
-*/
-int allocate_stack_region(pcb_t* pcb)
-{
-   region_t* region;
-   if((region = (region_t*)scalloc(1, sizeof(region_t))) == NULL)
-   {
-      return ENOMEM;
-   }
-   
-   region->fault = stack_fault;
-   region->start = (void*)USER_STACK_START;
-   region->end = (void*)USER_STACK_BASE;
-   
-   int ret;
-   if((ret = mm_alloc(pcb, (void *)(USER_STACK_BASE - PAGE_SIZE), 
-      PAGE_SIZE, PTENT_RW | PTENT_USER)) < 0)
-   {
-      sfree(region, sizeof(region_t));
-      return ret;
-   }
-
-   mutex_lock(&pcb->region_lock);
-   region->next = pcb->regions;
-   pcb->regions = region;
-   mutex_unlock(&pcb->region_lock);
-   
-   debug_print("region", "Allocated stack region [%p, %p] at %p", 
-      (void*)USER_STACK_START, (void*)USER_STACK_BASE), region;
-   
-   return ESUCCESS;
-}
-
 void free_region_list_helper(region_t* regions)
 {
    region_t *iter, *next; 
