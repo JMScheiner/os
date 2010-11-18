@@ -17,6 +17,7 @@
 #include <ecodes.h>
 #include <asm.h>
 #include <ureg.h>
+#include <swexn.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
@@ -49,10 +50,15 @@ void page_fault_handler(ureg_t* reg)
    ecode = reg->error_code;
 
    pcb = get_pcb();
+
    
    /* Our kernel does not page fault. */
    assert(ecode & PF_ECODE_USER);
    assert(!(ecode & PF_ECODE_RESERVED));
+   
+   reg->cause = IDT_PF;
+   if(swexn_build_context(reg) >= 0)
+      return;
    
    void (*handler)(void*, int);
 

@@ -27,6 +27,7 @@ typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct SLEEP_HEAP sleep_heap_t;
 typedef struct HASHTABLE_LINK hashtable_link_t;
 typedef struct HASHTABLE hashtable_t;
+typedef struct HANDLER handler_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 DEFINE_LIST(pcb_node_t, pcb_t);
@@ -161,6 +162,13 @@ struct PROCESS_CONTROL_BLOCK
    int sanity_constant;
 };
 
+struct HANDLER
+{
+   void* eip;
+   void* esp3;
+   void* arg;
+};
+
 /** @brief Thread control block structure. */
 struct THREAD_CONTROL_BLOCK{
 
@@ -200,6 +208,9 @@ struct THREAD_CONTROL_BLOCK{
 
    /** @brief Our position in the sleep heap. */
    int sleep_index;
+   
+   /** @brief A software exception handler registered by the user. */
+   handler_t handler;
 
    /** @brief A magic constant that should not be changed. If it changes,
     * the kernel stacks have probably been overflowed. */
@@ -251,6 +262,7 @@ struct HASHTABLE
    /** @brief The hashtable. */
    hashtable_link_t **table;
 };
+
 
 #endif /* end of include guard: KERNEL_TYPES_7FFQEKPQ */
 
