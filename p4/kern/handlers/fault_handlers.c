@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <asm_helper.h>
+#include <ureg.h>
 
 #define ERRBUF_SIZE 0x100
 
@@ -99,7 +100,7 @@ void device_not_available_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void double_fault_handler(regstate_error_t reg)
+void double_fault_handler(ureg_t* reg)
 {
    /* This should never happen.*/
    assert(0);
@@ -111,7 +112,7 @@ void double_fault_handler(regstate_error_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void invalid_tss_handler(regstate_error_t reg)
+void invalid_tss_handler(ureg_t* reg)
 {
    /* This should never happen.*/
    assert(0); 
@@ -122,7 +123,7 @@ void invalid_tss_handler(regstate_error_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void segment_not_present_handler(regstate_error_t reg)
+void segment_not_present_handler(ureg_t* reg)
 {
    /* This should never happen.*/
    assert(0); 
@@ -133,7 +134,7 @@ void segment_not_present_handler(regstate_error_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void stack_segment_fault_handler(regstate_error_t reg)
+void stack_segment_fault_handler(ureg_t* reg)
 {
    /* This should never happen.*/
    assert(0); 
@@ -144,7 +145,7 @@ void stack_segment_fault_handler(regstate_error_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void general_protection_handler(regstate_error_t reg)
+void general_protection_handler(ureg_t* reg)
 {
    /* This should never happen.*/
    assert(0); 
@@ -155,7 +156,7 @@ void general_protection_handler(regstate_error_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void alignment_check_handler(regstate_error_t reg)
+void alignment_check_handler(ureg_t* reg)
 {
    assert(0); 
 }

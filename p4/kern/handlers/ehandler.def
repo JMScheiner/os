@@ -22,8 +22,23 @@ ASM_NAME:
    call check_invariants
    popl %eax
 #endif
+   push %gs
+   push %fs
+   push %es
+   push %ds
+   movl %cr2, %eax
+   push %eax
+   push %eax            /* BS Cause field. */
+   push %esp
    call NAME            /* Call handler function */
    call quick_assert_unlocked
+   addl $8, %esp
+   pop %eax
+   movl %eax, %cr2
+   pop %ds
+   pop %es 
+   pop %fs
+   pop %gs
    popa                 /* Restore user registers */
    addl $4, %esp        /* Pop the error code off the stack. */
    iret                 /* Return from interrupt */

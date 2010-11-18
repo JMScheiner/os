@@ -16,18 +16,19 @@
  *
  * Stack    * Offset
  *******************
- * %edi     * 0
- * %esi     * 4
- * %ebp     * 8
- * %esp     * 12
- * %ebx     * 16
- * %edx     * 20
- * %ecx     * 24
- * %eax     * 28
- * %eip     * 32
- * old_esp  * 36
- * new_esp  * 40
- * pd       * 44
+ * %cr3     * 0
+ * %edi     * 4
+ * %esi     * 8
+ * %ebp     * 12
+ * %esp     * 16
+ * %ebx     * 20
+ * %edx     * 24
+ * %ecx     * 28
+ * %eax     * 32
+ * %eip     * 36
+ * old_esp  * 40
+ * new_esp  * 44
+ * pd       * 48
  *
  * @param old_esp Address to store the stack pointer of the current thread
  * @param new_esp Stack address to jump execution to.
@@ -35,12 +36,16 @@
  */
 context_switch:
    pusha                  // Save general purpose registers
-   movl   36(%esp), %eax  // Save stack pointer so someone else 
-   movl   %esp, (%eax)    //   can context switch back to us
-   movl   40(%esp), %eax  // Switch to someone else
-   movl   44(%esp), %ebx  // Grab the page directory
+   movl   %cr2,     %eax  // Push %cr2 onto the stack.
+   pushl  %eax
+   movl   40(%esp), %eax  // Save stack pointer so someone else 
+   movl   %esp,    (%eax) // can context switch back to us
+   movl   44(%esp), %eax  // Switch to someone else
+   movl   48(%esp), %ebx  // Grab the page directory
    movl   %ebx,     %cr3  // Switch page directories. 
    movl   (%eax),   %esp  // Jump stacks.
+   popl   %eax
+   movl   %eax,     %cr2  // Restore %cr2
    popa                   // Restore general purpose registers
    ret
 

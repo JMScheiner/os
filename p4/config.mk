@@ -94,7 +94,7 @@ KUTIL_OBJS += util/hashtable.o util/heap.o util/debug.o util/atomic.o
 KUTIL_OBJS += util/malloc_wrappers.o
 
 KSYSCALL_OBJS = syscall/memman.o syscall/misc.o syscall/lifecycle.o 
-KSYSCALL_OBJS += syscall/threadman.o 
+KSYSCALL_OBJS += syscall/threadman.o syscall/swexn.o
 
 KHANDLER_OBJS = handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
 

@@ -301,6 +301,10 @@ void arrange_global_context()
    
    /* Set up the context context_switch will popa off the stack. */
    esp -= sizeof(pusha_t);
+   esp -= sizeof(int);
+   int* cr2 = (int*)esp;
+   *cr2 = get_cr2();
+   
    tcb->esp = esp;
 }
 
@@ -340,6 +344,10 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
    esp -= sizeof(pusha_t);
    pusha_t* pusha = (pusha_t*)esp;
    pusha->eax = (unsigned long)dir;
+   esp -= 4;
+   int* cr2 = (int*)esp;
+   *cr2 = get_cr2();
+   
    return esp;
 }
 

@@ -81,6 +81,8 @@ void asm_set_status_handler(void);
 
 void asm_vanish_handler(void);
 
+void asm_swexn_handler(void);
+
 void asm_timer_handler(void);
 
 void asm_keyboard_handler(void);

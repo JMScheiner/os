@@ -16,6 +16,7 @@
 #include <stdio.h> /* sprintf */
 #include <ecodes.h>
 #include <asm.h>
+#include <ureg.h>
 
 #define PF_ECODE_NOT_PRESENT 0x1
 #define PF_ECODE_WRITE 0x2
@@ -36,7 +37,7 @@ void generic_fault(void* addr, int ecode);
 * 
 * @param reg The register state on entry to the handler.
 */
-void page_fault_handler(volatile regstate_error_t reg)
+void page_fault_handler(ureg_t* reg)
 {
    int ecode; 
    void* addr;
@@ -44,11 +45,10 @@ void page_fault_handler(volatile regstate_error_t reg)
    region_t* region;
    
    /* The address that causes a page fault resides in cr2.*/
-   addr = (void*)get_cr2();
-   enable_interrupts();
+   addr = (void*)reg->cr2;
+   ecode = reg->error_code;
 
    pcb = get_pcb();
-   ecode = reg.ecode;
    
    /* Our kernel does not page fault. */
    assert(ecode & PF_ECODE_USER);
