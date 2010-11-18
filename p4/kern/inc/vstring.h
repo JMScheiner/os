@@ -11,6 +11,7 @@
 
 #include <mm.h>
 #include <ecodes.h>
+#include <ureg.h>
 
 int v_strcpy(char *dest, char *src, int max_len, boolean_t user_source);
 int v_memcpy(char *dest, char *src, int max_len, boolean_t user_source);
@@ -29,6 +30,38 @@ static inline int v_copy_in_ptr(char** ptr, char* arg_addr)
 {
    int ret = v_memcpy((char*)ptr, arg_addr, sizeof(char*), TRUE);
    if(ret < sizeof(char*))
+      return EFAIL;
+   else return ESUCCESS;
+}
+
+/** 
+* @brief Copies in a void* from user memory. 
+* 
+* @param ptr A local copy of the pointer. 
+* @param arg_addr The address of the user argument. 
+* 
+* @return ESUCCESS on success, EFAIL on failure. 
+*/
+static inline int v_copy_in_vptr(void** ptr, char* arg_addr)
+{
+   int ret = v_memcpy((char*)ptr, arg_addr, sizeof(void*), TRUE);
+   if(ret < sizeof(void*))
+      return EFAIL;
+   else return ESUCCESS;
+}
+
+/** 
+* @brief Copies in a void* from user memory. 
+* 
+* @param ptr A local copy of the pointer. 
+* @param arg_addr The address of the user argument. 
+* 
+* @return ESUCCESS on success, EFAIL on failure. 
+*/
+static inline int v_copy_in_uregptr(ureg_t** ptr, char* arg_addr)
+{
+   int ret = v_memcpy((char*)ptr, arg_addr, sizeof(void*), TRUE);
+   if(ret < sizeof(ureg_t*))
       return EFAIL;
    else return ESUCCESS;
 }
