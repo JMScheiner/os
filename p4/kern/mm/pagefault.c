@@ -57,8 +57,8 @@ void page_fault_handler(ureg_t* reg)
    assert(!(ecode & PF_ECODE_RESERVED));
    
    reg->cause = IDT_PF;
-   if(swexn_build_context(reg) >= 0)
-      return;
+   
+   swexn_try_invoke_handler(reg);
    
    void (*handler)(void*, int);
 

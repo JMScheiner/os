@@ -97,6 +97,7 @@ KSYSCALL_OBJS = syscall/memman.o syscall/misc.o syscall/lifecycle.o
 KSYSCALL_OBJS += syscall/threadman.o syscall/swexn.o
 
 KHANDLER_OBJS = handlers/handler.o handlers/handler_wrappers.o handlers/fault_handlers.o
+KHANDLER_OBJS += handlers/swexn_handler.o
 
 KMM_OBJS = mm/mm.o mm/kvm.o mm/mm_asm.o mm/region.o mm/pagefault.o 
 

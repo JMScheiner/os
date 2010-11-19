@@ -16,6 +16,8 @@
 #include <thread.h>
 #include <common_kern.h>
 #include <mm.h>
+#include <macros.h>
+#include <swexn.h>
 
 /** 
 * @brief Installs or uninstalls a software handler for the current
@@ -79,6 +81,7 @@ void swexn_handler(volatile regstate_t reg)
    {
       tcb->handler.esp3 = NULL;
       tcb->handler.eip = NULL;
+      tcb->handler.arg = NULL;
    }
    else if((esp3 < (void*)USER_MEM_START || esp3 >= (void*)USER_MEM_END) ||
     (eip < (void*)USER_MEM_START || eip >= (void*)USER_MEM_END))
@@ -124,14 +127,49 @@ void swexn_handler(volatile regstate_t reg)
 /** 
 * @brief Checks for a registered exception handler, 
 *  and if it finds one, builds a context for the 
-*  exception handler. 
+*  exception handler and executes it. 
 * 
-* @return ESUCCESS if the context was successfully arranged. 
+* This function never returns unless an error occurs.
 */
-int swexn_build_context(ureg_t* ureg)
+void swexn_try_invoke_handler(ureg_t* ureg)
 {
+   tcb_t *tcb = get_tcb();
+   if (tcb->handler.eip == NULL) {
+      /* No handler is registered. */
+      return;
+   }
 
-   return EFAIL;
+   /* Deregister the current handler. */
+   void *esp3 = tcb->handler.esp3;
+   void *eip = tcb->handler.eip;
+   void *arg = tcb->handler.arg;
+   tcb->handler.esp3 = NULL;
+   tcb->handler.eip = NULL;
+   tcb->handler.arg = NULL;
+   
+   /* Copy the ureg state of the thread when the exception was invoked to
+    * the exception stack. */
+   char *stack_ptr = ALIGN_DOWN((char *)esp3 - sizeof(ureg_t), 
+         sizeof(char *));
+   if (v_memcpy(stack_ptr, (char *)ureg, sizeof(ureg_t), FALSE) != sizeof(ureg_t)) {
+      /* We failed to write to the user exception stack. */
+      return;
+   }
+   
+   /* Copy a fake call frame to the exception stack to make it appear to
+    * the user program as if the exception handler was called directly.
+    * The return address (NULL) in this frame is invalid. Exception
+    * handlers should never return. */
+   void *frame[] = {NULL, stack_ptr, arg};
+   stack_ptr -= sizeof(frame);
+   if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != sizeof(frame)) {
+      /* We failed to write to the user exception stack. */
+      return;
+   }
+
+   /* Return to the user in their software exception handler. */
+   swexn_return(eip, ureg->cs, ureg->eflags, stack_ptr, ureg->ss);
+   assert(FALSE);
 }
 
 
