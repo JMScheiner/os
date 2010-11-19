@@ -18,6 +18,35 @@
 #include <mm.h>
 #include <macros.h>
 #include <swexn.h>
+#include <eflags.h>
+#include <loader.h>
+
+
+/* @brief The user can change carry, parity, auxiliary, 
+ *    zero, sign, overflow, and direction flags 
+ **/
+#define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_AF\
+                           | EFL_ZF | EFL_SF | EFL_OF | EFL_DF\
+                           | EFL_RF )
+
+/** 
+* @brief Checks the users posted changes to eflags.
+* 
+* @param eflags The eflags the user is trying to install.
+* 
+* @return ESUCCESS if the change is valid. 
+*         EFAIL if the change is not.
+*/
+int validate_eflags(int eflags)
+{
+   int ref = get_user_eflags();
+
+   /* Check that the only flags that differ are user modifiable.*/
+   if((eflags ^ ref) & (~EFL_USER_MODIFIABLE))
+      return EFAIL;
+   
+   return ESUCCESS;
+}
 
 /** 
 * @brief Installs or uninstalls a software handler for the current
@@ -101,7 +130,15 @@ void swexn_handler(volatile regstate_t reg)
       if(v_memcpy((char*)&ureg, (char*)uregp, sizeof(ureg_t), TRUE) < 0)
          RETURN(EBUF);
       
+      if(validate_eflags(ureg.eflags) < 0)
+         RETURN(EARGS);
+   
+      if(ureg.cs != reg.cs || ureg.ss != reg.ss)
+         RETURN(EARGS);
+      
+   
       /* Only install values that it is safe for the user to modify. */
+      reg.eflags = ureg.eflags;
       reg.eip = ureg.eip;    
       reg.esp = ureg.esp;    
       reg.pusha.edi = ureg.edi;
