@@ -160,7 +160,7 @@ void swexn_try_invoke_handler(ureg_t* ureg)
     * the user program as if the exception handler was called directly.
     * The return address (NULL) in this frame is invalid. Exception
     * handlers should never return. */
-   void *frame[] = {NULL, stack_ptr, arg};
+   void *frame[] = {NULL, arg, stack_ptr};
    stack_ptr -= sizeof(frame);
    if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != sizeof(frame)) {
       /* We failed to write to the user exception stack. */

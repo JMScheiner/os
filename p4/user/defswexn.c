@@ -26,7 +26,8 @@
  *    Note that a single exception stack is only appropriate for 
  *    single threaded programs.
  **/
-unsigned char _defswexn_stack[SWEXN_STACKSIZE];
+unsigned char _defswexn_stack_buf[SWEXN_STACKSIZE] = {0};
+unsigned char* _defswexn_stack = (_defswexn_stack_buf + SWEXN_STACKSIZE);
 
 /** 
 * @brief Implements the autostack feature for simple user processes.
