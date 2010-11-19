@@ -35,7 +35,9 @@ UPDATE_METHOD = afs
 410TESTS += mem_eat_test mem_permissions minclone_mem
 410TESTS += new_pages print_basic register_test remove_pages_test1
 410TESTS += remove_pages_test2 slaughter sleep_test1 stack_test1
-410TESTS += wait_getpid wild_test1 yield_desc_mkrun
+410TESTS += wait_getpid wild_test1 yield_desc_mkrun swexn_dispatch
+410TESTS += swexn_basic_test swexn_stands_for_swextensible
+410TESTS += swexn_uninstall_test swexn_cookie_monster swexn_regs
 
 ###########################################################################
 # Test programs you have written which you wish to run

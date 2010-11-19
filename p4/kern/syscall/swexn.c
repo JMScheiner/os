@@ -120,7 +120,8 @@ void swexn_handler(volatile regstate_t reg)
       tcb->handler.eip = eip;
       tcb->handler.arg = arg;
    }
-
+   
+   if (uregp != NULL) return;
    RETURN(ESUCCESS);
 }
 

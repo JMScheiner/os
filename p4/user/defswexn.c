@@ -39,7 +39,7 @@ unsigned char* _defswexn_stack = (_defswexn_stack_buf + SWEXN_STACKSIZE);
 */
 int _handle_pagefault(ureg_t* ureg)
 {
-   lprintf(" Handling a pagefault in userspace!");
+   //lprintf(" Handling a pagefault in userspace!");
    void* addr = (void*)ureg->cr2;
    
    /* Check for a page fault in the autostack region. */
