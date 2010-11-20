@@ -99,7 +99,7 @@
          LIST_NEXT(node, instance) = node; \
          LIST_PREV(node, instance) = node; \
       } \
-      else if (LIST_NEXT(node, instance) == NULL) {\
+      else if (!LIST_CONTAINS(node, instance)) {\
          LIST_NEXT(LIST_PREV(list, instance), instance) = (node); \
          LIST_PREV(node, instance) = LIST_PREV(list, instance); \
          LIST_PREV(list, instance) = (node); \
@@ -149,7 +149,7 @@
          assert(list == node); \
          list = NULL; \
       } \
-      else if (LIST_NEXT(node, instance) != NULL) \
+      else if (LIST_CONTAINS(node, instance)) \
       { \
          if( (list) == (node) ) \
          { \
@@ -163,6 +163,9 @@
       LIST_NEXT(node, instance) = NULL; \
       LIST_PREV(node, instance) = NULL; \
    } while (0)
+
+#define LIST_CONTAINS(node, instance) \
+   (LIST_NEXT(node, instance) != NULL)
 
 #endif
 

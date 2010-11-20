@@ -21,6 +21,7 @@
 #include <context_switch.h>
 #include <scheduler.h>
 #include <mutex.h>
+#include <cond.h>
 #include <debug.h>
 #include <global_thread.h>
 #include <simics.h>
@@ -60,12 +61,12 @@ void thread_init(void)
 /** 
 * @brief Frees the resources for this thread. 
 *
-*  In reality - this frees the kernel stack. 
-* 
 * @param tcb The TCB to free. 
 */
 void free_thread_resources(tcb_t* tcb)
 {
+   mutex_destroy(&tcb->deschedule_lock);
+   cond_destroy(&tcb->swexn_signal);
    kvm_free_page((void*)tcb);
 }
 
@@ -102,6 +103,7 @@ tcb_t* initialize_thread(pcb_t *pcb)
    tcb->blocked = FALSE;
    tcb->descheduled = FALSE;
    mutex_init(&tcb->deschedule_lock);
+   cond_init(&tcb->swexn_signal);
    tcb->sanity_constant = TCB_SANITY_CONSTANT;
 
    /* Initialize the handler to NULL */

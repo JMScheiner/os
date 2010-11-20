@@ -49,7 +49,6 @@ void global_thread_init()
    
    cond_init(&_global_pcb.wait_signal);
    cond_init(&_global_pcb.vanish_signal);
-   cond_init(&_global_pcb.swexn_signal);
 
    _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
@@ -68,6 +67,7 @@ void global_thread_init()
    _global_tcb->sleep_index = 0;
    _global_tcb->sanity_constant = TCB_SANITY_CONSTANT;
    _global_tcb->dir_p = _global_pcb.dir_p;
+   cond_init(&_global_tcb->swexn_signal);
 
    arrange_global_context();
 }

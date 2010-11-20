@@ -133,6 +133,7 @@ void exec_handler(volatile regstate_t reg) {
 
    /* Unregister existing software exception handler. */
    tcb = get_tcb();
+   unlock_swexn_stack();
    memset(&tcb->handler, 0, sizeof(handler_t));
 
    switch_to_user(tcb, execname_buf, stack, 
@@ -155,10 +156,12 @@ void exec_handler(volatile regstate_t reg) {
 void thread_fork_handler(volatile regstate_t reg)
 {
    unsigned long newtid;
-   pcb_t* pcb;
-   tcb_t* new_tcb;
+   pcb_t *pcb;
+   tcb_t *tcb;
+   tcb_t *new_tcb;
 
-   pcb = get_pcb();
+   tcb = get_tcb();
+   pcb = tcb->pcb;
    debug_print("thread_fork", "Called from process %p", pcb);
    new_tcb = initialize_thread(pcb);
    
@@ -172,8 +175,9 @@ void thread_fork_handler(volatile regstate_t reg)
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
    
-   /* Remove the exception handler for the new thread. */
-   memset(&new_tcb->handler, 0, sizeof(handler_t));
+   /* Duplicate software exception handlers into the new thread. */
+   memcpy((char*)(&new_tcb->handler), (char*)(&tcb->handler),
+      sizeof(handler_t));
    
    scheduler_register(new_tcb);
    RETURN(newtid);
@@ -428,6 +432,8 @@ void vanish_handler()
     **/
    tcb->dir_p = global_pcb()->dir_p;
 
+   unlock_swexn_stack();
+
    int remaining_threads = atomic_add(&pcb->thread_count, -1);
    if (remaining_threads == 1) {
       /* We are the last thread in the process. We should free our process
@@ -516,15 +522,11 @@ void vanish_handler()
    hashtable_remove(tcb_table(), tcb->tid);
    mutex_unlock(&tcb_table()->lock);
 
-   unlock_swexn_stack();
-
-   mutex_destroy(&tcb->deschedule_lock);
-   
    mutex_lock(&zombie_stack_lock);
    debug_print("vanish", "Freeing zombie %p", zombie_stack);
    /* Free the stack of he last thread who exited. */
    if (zombie_stack) 
-      kvm_free_page(zombie_stack);
+      free_thread_resources(zombie_stack);
    zombie_stack = tcb;
    /* Pass off our lock so no one frees us before we jump off our stack
     * for the last time. */
