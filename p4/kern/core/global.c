@@ -45,8 +45,12 @@ void global_thread_init()
    mutex_init(&_global_pcb.waiter_lock);
    mutex_init(&_global_pcb.check_waiter_lock);
    mutex_init(&_global_pcb.child_lock);
+   mutex_init(&_global_pcb.swexn_lock);
+   
    cond_init(&_global_pcb.wait_signal);
    cond_init(&_global_pcb.vanish_signal);
+   cond_init(&_global_pcb.swexn_signal);
+
    _global_pcb.sanity_constant = PCB_SANITY_CONSTANT;
 
    LIST_INIT_NONEMPTY(&_global_pcb, global_node);

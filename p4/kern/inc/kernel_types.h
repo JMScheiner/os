@@ -22,6 +22,7 @@ typedef struct MUTEX mutex_t;
 typedef struct COND cond_t;
 typedef struct REGION region_t;
 typedef struct STATUS status_t;
+typedef struct SWEXN_STACK swexn_stack_t;
 typedef struct PROCESS_CONTROL_BLOCK pcb_t;
 typedef struct THREAD_CONTROL_BLOCK tcb_t;
 typedef struct SLEEP_HEAP sleep_heap_t;
@@ -31,6 +32,7 @@ typedef struct HANDLER handler_t;
 
 DEFINE_LIST(tcb_node_t, tcb_t);
 DEFINE_LIST(pcb_node_t, pcb_t);
+DEFINE_LIST(stack_node_t, void *);
 
 /** @brief Queue node in a mutex. */
 struct MUTEX_NODE {
@@ -97,6 +99,12 @@ struct STATUS {
    struct STATUS *next;
 };
 
+struct SWEXN_STACK {
+   void *stack;
+
+   struct SWEXN_STACK *next;
+};
+
 /** @brief Process control block structure. */
 struct PROCESS_CONTROL_BLOCK
 {
@@ -130,6 +138,8 @@ struct PROCESS_CONTROL_BLOCK
    /** @brief Pointer to the list of exited child statuses. */
    status_t *zombie_statuses;
 
+   swexn_stack_t *swexn_stacks;
+
    /** @brief Base phys and virt addresses of the processes page directory. */
    void *dir_p;
    void *dir_v;
@@ -139,7 +149,8 @@ struct PROCESS_CONTROL_BLOCK
    
    /** @brief Mutual exclusion locks for pcb. */
    mutex_t region_lock, directory_lock, status_lock, 
-           waiter_lock, check_waiter_lock, child_lock;
+           waiter_lock, check_waiter_lock, child_lock,
+           swexn_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */
@@ -156,6 +167,8 @@ struct PROCESS_CONTROL_BLOCK
 
    /** @brief Signal to indicate that we are free to vanish. */
    cond_t vanish_signal;
+
+   cond_t swexn_signal;
 
    /** @brief A magic constant that should not be changed. If it changes,
     * memory has been corrupted. */
@@ -211,6 +224,9 @@ struct THREAD_CONTROL_BLOCK{
    
    /** @brief A software exception handler registered by the user. */
    handler_t handler;
+
+   swexn_stack_t swexn_stack;
+   boolean_t handling_exception;
 
    /** @brief A magic constant that should not be changed. If it changes,
     * the kernel stacks have probably been overflowed. */

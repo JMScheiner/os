@@ -39,6 +39,7 @@
 #include <thread.h>
 #include <hashtable.h>
 #include <common_kern.h>
+#include <swexn.h>
 
 void *zombie_stack = NULL;
 mutex_t zombie_stack_lock;
@@ -514,7 +515,11 @@ void vanish_handler()
    /* Remove ourself from the global table of threads. */
    hashtable_remove(tcb_table(), tcb->tid);
    mutex_unlock(&tcb_table()->lock);
+
+   unlock_swexn_stack();
+
    mutex_destroy(&tcb->deschedule_lock);
+   
    mutex_lock(&zombie_stack_lock);
    debug_print("vanish", "Freeing zombie %p", zombie_stack);
    /* Free the stack of he last thread who exited. */

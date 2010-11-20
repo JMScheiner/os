@@ -20,7 +20,9 @@
 #include <swexn.h>
 #include <eflags.h>
 #include <loader.h>
-
+#include <types.h>
+#include <mutex.h>
+#include <cond.h>
 
 /* @brief The user can change carry, parity, auxiliary, 
  *    zero, sign, overflow, and direction flags 
@@ -89,7 +91,7 @@ void swexn_handler(volatile regstate_t reg)
    boolean_t register_handler;
    
    char *arg_addr = (char *)SYSCALL_ARG(reg);
-   tcb_t* tcb = get_tcb();
+   tcb_t *tcb = get_tcb();
    
    /** Copy in arguments. **/
    if(v_copy_in_vptr(&esp3, arg_addr) < 0)
@@ -148,6 +150,7 @@ void swexn_handler(volatile regstate_t reg)
       reg.pusha.edx = ureg.edx;
       reg.pusha.ecx = ureg.ecx;
       reg.pusha.eax = ureg.eax;
+      unlock_swexn_stack();
    }
 
    /* If we've made it to this point, it's safe to to install the handler. */
@@ -185,11 +188,15 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    tcb->handler.eip = NULL;
    tcb->handler.arg = NULL;
    
+   if (!(tcb->handling_exception && tcb->swexn_stack.stack == esp3))
+      lock_swexn_stack(esp3);
+
    /* Copy the ureg state of the thread when the exception was invoked to
     * the exception stack. */
    char *stack_ptr = ALIGN_DOWN((char *)esp3 - sizeof(ureg_t), 
          sizeof(char *));
-   if (v_memcpy(stack_ptr, (char *)ureg, sizeof(ureg_t), FALSE) != sizeof(ureg_t)) {
+   if (v_memcpy(stack_ptr, (char *)ureg, sizeof(ureg_t), FALSE) != 
+         sizeof(ureg_t)) {
       /* We failed to write to the user exception stack. */
       return;
    }
@@ -200,7 +207,8 @@ void swexn_try_invoke_handler(ureg_t* ureg)
     * handlers should never return. */
    void *frame[] = {NULL, arg, stack_ptr};
    stack_ptr -= sizeof(frame);
-   if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != sizeof(frame)) {
+   if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != 
+         sizeof(frame)) {
       /* We failed to write to the user exception stack. */
       return;
    }
@@ -210,6 +218,49 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    assert(FALSE);
 }
 
+void lock_swexn_stack(void *esp3) {
+   tcb_t *tcb = get_tcb();
+   pcb_t *pcb = tcb->pcb;
+   tcb->swexn_stack.stack = esp3;
+   swexn_stack_t *stack;
+stack_check:
+   mutex_lock(&pcb->swexn_lock);
+   for (stack = pcb->swexn_stacks; stack != NULL; stack = stack->next) {
+      if (stack->stack == esp3) {
+         quick_lock();
+         mutex_unlock(&pcb->swexn_lock);
+         cond_wait(&pcb->swexn_signal);
+         goto stack_check;
+      }
+   }
+   
+   tcb->swexn_stack.next = pcb->swexn_stacks;
+   pcb->swexn_stacks = &tcb->swexn_stack;
+   tcb->handling_exception = TRUE;
+   mutex_unlock(&pcb->swexn_lock);
+}
 
-
+void unlock_swexn_stack() {
+   tcb_t *tcb = get_tcb();
+   pcb_t *pcb = tcb->pcb;
+   if (tcb->handling_exception) {
+      tcb->handling_exception = FALSE;
+      swexn_stack_t *stack;
+      swexn_stack_t *prev_stack = NULL;
+      mutex_lock(&pcb->swexn_lock);
+      for (stack = pcb->swexn_stacks; stack != NULL; 
+            stack = stack->next) {
+         if (stack == &tcb->swexn_stack) {
+            if (prev_stack == NULL)
+               pcb->swexn_stacks = stack->next;
+            else
+               prev_stack->next = stack->next;
+            cond_signal(&pcb->swexn_signal);
+            mutex_unlock(&pcb->swexn_lock);
+            return;
+         }
+      }
+      assert(FALSE);
+   }
+}
 
