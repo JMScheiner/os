@@ -165,14 +165,14 @@ void thread_fork_handler(volatile regstate_t reg)
       RETURN(ENOMEM);
    
    newtid = new_tcb->tid;
-   debug_print("thread_fork", "New tcb %p, thread_count = %d", new_tcb, pcb->thread_count);
+   debug_print("thread_fork", "New tcb %p, thread_count = %d", 
+      new_tcb, pcb->thread_count);
    
    new_tcb->esp = arrange_fork_context(
       new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
-
-   /* Duplicate software exception handlers into the new thread. */
-   memcpy((char*)(&new_tcb->handler), (char*)(&get_tcb()->handler),
-      sizeof(handler_t));
+   
+   /* Remove the exception handler for the new thread. */
+   memset(&new_tcb->handler, 0, sizeof(handler_t));
    
    scheduler_register(new_tcb);
    RETURN(newtid);

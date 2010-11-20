@@ -55,6 +55,7 @@ void new_pages_handler(volatile regstate_t reg)
    int len, ret;
    char* start, *arg_addr, *end;
    
+   
    arg_addr = (void*)SYSCALL_ARG(reg);
 
    if(v_copy_in_ptr(&start, arg_addr) < 0)
@@ -64,6 +65,9 @@ void new_pages_handler(volatile regstate_t reg)
       RETURN(EARGS);
    
    end = start + len;
+   
+   debug_print("memman", " Attempting to allocate [%p, %p] for new_pages", 
+      start, end);
    
    /* Check that the requested memory is in user space. */
    if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
@@ -86,7 +90,8 @@ void new_pages_handler(volatile regstate_t reg)
       RETURN(ESTATE);
    }
    
-   debug_print("memman", " Allocating new region [%p, %p] for new_pages", start, end);
+   debug_print("memman", " Allocating new region [%p, %p] for new_pages", 
+      start, end);
    
    if((ret = allocate_region(start, 
       end, PTENT_USER | PTENT_RW, user_fault, get_pcb())) < 0)

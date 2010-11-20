@@ -158,8 +158,8 @@ void free_region_list(pcb_t* pcb)
 */
 inline boolean_t region_overlaps_helper(void* start0, void* end0, void* start1, void* end1)
 {
-   return ((start0 < start1 && start1 < end0) ||
-           (start1 < start0 && start0 < end1));
+   return ((start0 <= start1 && start1 < end0) ||
+           (start1 <= start0 && start0 < end1));
 }
 
 /** 
