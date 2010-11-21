@@ -188,6 +188,7 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    tcb->handler.eip = NULL;
    tcb->handler.arg = NULL;
    
+   unlock_swexn_stack();
    lock_swexn_stack(esp3);
 
    /* Copy the ureg state of the thread when the exception was invoked to
@@ -247,7 +248,7 @@ void lock_swexn_stack(void *esp3) {
    /* Check to see if someone is already using our swexn stack. If so,
     * wait until they finish. */
    LIST_FORALL(pcb->swexn_list, swexn_thread, swexn_node) {
-      if (swexn_thread->swexn_stack == esp3 && swexn_thread != tcb) {
+      if (swexn_thread->swexn_stack == esp3) {
          quick_lock();
          mutex_unlock(&pcb->swexn_lock);
          cond_wait(&swexn_thread->swexn_signal);
