@@ -38,7 +38,8 @@ char *debug_print_strings[] = {
    //"region", 
    //"malloc", 
    //"console", 
-   "memman", 
+   //"memman",
+   "swexn",
    NULL};
 
 #ifdef KER_DEBUG

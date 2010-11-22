@@ -94,6 +94,7 @@ pcb_t* initialize_process(boolean_t first_process)
       goto fail_pcb;
 
    LIST_INIT_EMPTY(pcb->children);
+   LIST_INIT_EMPTY(pcb->swexn_list);
    LIST_INIT_NODE(pcb, global_node);
    LIST_INIT_NODE(pcb, child_node);
    

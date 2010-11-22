@@ -88,7 +88,9 @@ tcb_t* initialize_thread(pcb_t *pcb)
    /* Put the TCB at the bottom of the kernel stack. */
    tcb_t* tcb = (tcb_t*)kstack_page;
    tcb->esp = kstack_page + PAGE_SIZE; 
-   
+  
+   LIST_INIT_NODE(tcb, swexn_node);
+
    /* Keep a copy of the physical directory, since we can context switch 
     *  without the PCB */
    tcb->dir_p = pcb->dir_p;

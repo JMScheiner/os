@@ -49,8 +49,9 @@ void handler(void *arg, ureg_t *uregs)
    lprintf("Thread %d done on stack %p", 
          tid, stack);
 
-   // Jump over the division statement that caused the fault
-   uregs->eip += 6;
+   // Jump over the null dereference that caused the fault
+   lprintf("Faulting instruction was %x", uregs->esp);
+   uregs->eip += 2;
    stack_pos = (stack_pos + 1) % (sizeof(stack_arr) / sizeof(stack_arr[0]));
 
    stack = stack_arr[stack_pos];
@@ -79,11 +80,12 @@ void *dumb(void *arg) {
 
    for (i = 0; i < reps; i++) {
       lprintf("Thread %d about to do something stupid", gettid());
-      i = i / divisor;
-      lprintf("Yay, back from exception handler! Let's do it again");
+      ret += *(int *)NULL;
+      lprintf("Yay, back from exception handler in iteration %d", i);
    }
 
    thr_exit(arg);
+   lprintf("%d", ret);
    assert(0);
    return arg;
 }

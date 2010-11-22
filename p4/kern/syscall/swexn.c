@@ -23,6 +23,7 @@
 #include <types.h>
 #include <mutex.h>
 #include <cond.h>
+#include <debug.h>
 
 /* @brief The user can change carry, parity, auxiliary, 
  *    zero, sign, overflow, direction, and resume flags 
@@ -30,6 +31,8 @@
 #define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_AF\
                            | EFL_ZF | EFL_SF | EFL_OF | EFL_DF\
                            | EFL_RF )
+
+int swexn_max_id = 0;
 
 /** 
 * @brief Checks the users posted changes to eflags.
@@ -239,6 +242,7 @@ void lock_swexn_stack(void *esp3) {
 
    tcb->swexn_stack = esp3;
    mutex_lock(&pcb->swexn_lock);
+   debug_print("swexn", "Thread %d locking swexn stack %p", tcb->tid, esp3);
 
    /* Insert ourself at the head of the stack list so anyone trying to use
     * our swexn stack will wait on us. */
@@ -248,12 +252,16 @@ void lock_swexn_stack(void *esp3) {
    /* Check to see if someone is already using our swexn stack. If so,
     * wait until they finish. */
    LIST_FORALL(pcb->swexn_list, swexn_thread, swexn_node) {
-      if (swexn_thread->swexn_stack == esp3) {
+      if (swexn_thread->swexn_stack == esp3 && swexn_thread != tcb) {
+         debug_print("swexn", "Thread %d waiting for swexn stack %p", tcb->tid, esp3);
          quick_lock();
          mutex_unlock(&pcb->swexn_lock);
          cond_wait(&swexn_thread->swexn_signal);
+         break;
       }
    }
+   
+   debug_print("swexn", "Thread %d acquired for swexn stack %p", tcb->tid, esp3);
 
    /* We're clear to use the swexn stack. */
    mutex_unlock(&pcb->swexn_lock);
@@ -266,10 +274,12 @@ void lock_swexn_stack(void *esp3) {
 void unlock_swexn_stack() {
    tcb_t *tcb = get_tcb();
    pcb_t *pcb = tcb->pcb;
+   debug_print("swexn", "Thread %d unlocking", tcb->tid);
    if (LIST_CONTAINS(tcb, swexn_node)) {
       mutex_lock(&pcb->swexn_lock);
       LIST_REMOVE(pcb->swexn_list, tcb, swexn_node);
       cond_signal(&tcb->swexn_signal);
+      debug_print("swexn", "Thread %d unlocked", tcb->tid);
       mutex_unlock(&pcb->swexn_lock);
    }
 }
