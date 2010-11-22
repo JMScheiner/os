@@ -23,10 +23,10 @@
 * 
 * @param reg The register state on entry to the handler.
 */
-void divide_error_handler(regstate_t reg)
+void divide_error_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
-   sprintf(errbuf, "Divide by zero, %%eip = 0x%ld", reg.eip);
+   sprintf(errbuf, "Divide by zero, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
 
@@ -35,7 +35,7 @@ void divide_error_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void debug_handler(regstate_t reg)
+void debug_handler(ureg_t* reg)
 {
    lprintf("Ignoring debug ");
 }
@@ -45,7 +45,7 @@ void debug_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void breakpoint_handler(regstate_t reg)
+void breakpoint_handler(ureg_t* reg)
 {
    lprintf("Ignoring breakpoint ");
 }
@@ -55,7 +55,7 @@ void breakpoint_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void overflow_handler(regstate_t reg)
+void overflow_handler(ureg_t* reg)
 {
    /* Explicitly ignore overflows, since we have no signal mechanism. */
 }
@@ -65,7 +65,7 @@ void overflow_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void bound_range_exceeded_handler(regstate_t reg)
+void bound_range_exceeded_handler(ureg_t* reg)
 {
    /* Explicitly ignore bound range exceeded, 
     * since we have no signal mechanism. */
@@ -76,10 +76,10 @@ void bound_range_exceeded_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void invalid_opcode_handler(regstate_t reg)
+void invalid_opcode_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
-   sprintf(errbuf, "Invalid instruction, %%eip = 0x%ld", reg.eip);
+   sprintf(errbuf, "Invalid instruction, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
 
@@ -88,10 +88,10 @@ void invalid_opcode_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void device_not_available_handler(regstate_t reg)
+void device_not_available_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
-   sprintf(errbuf, "Device not available exception at %%eip = 0x%ld", reg.eip);
+   sprintf(errbuf, "Device not available exception at %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
 
@@ -166,7 +166,7 @@ void alignment_check_handler(ureg_t* reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void machine_check_handler(regstate_t reg)
+void machine_check_handler(ureg_t* reg)
 {
    /* Something disastrous happened. */
    halt();
@@ -177,7 +177,7 @@ void machine_check_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void syscall_handler(regstate_t reg)
+void syscall_handler(ureg_t* reg)
 {
    /* Doesn't do anything. */
 }
@@ -187,7 +187,7 @@ void syscall_handler(regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void misbehave_handler(regstate_t reg)
+void misbehave_handler(ureg_t* reg)
 {
    /* Doesn't do anything. */
 }
