@@ -86,10 +86,10 @@ static cond_t keyboard_signal;
 * 
 * @param reg The register state on entry to the handler.
 */
-void getchar_handler(volatile regstate_t reg)
+void getchar_handler(ureg_t* reg)
 {
    debug_print("keyboard", "Ignoring getchar");
-   RETURN(EFAIL);
+   RETURN(reg, EFAIL);
 }
 
 /** @brief Reads the next line from the console and copies it into the
@@ -124,7 +124,7 @@ void getchar_handler(volatile regstate_t reg)
  * @param reg The register state on entry containing the buffer to read to
  * and the maximum length to read.
  */
-void readline_handler(volatile regstate_t reg)
+void readline_handler(ureg_t* reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    int len;
@@ -132,14 +132,14 @@ void readline_handler(volatile regstate_t reg)
    char readbuf[KEY_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if (len < 0 || len > KEY_BUF_SIZE) {
       debug_print("readline", "len %d unreasonable.", len);
-      RETURN(ELEN);
+      RETURN(reg, ELEN);
    }
    
    debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
@@ -151,9 +151,9 @@ void readline_handler(volatile regstate_t reg)
    int copied;
    if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
       debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
-      RETURN(EBUF);
+      RETURN(reg, EBUF);
    }
-   RETURN(read);
+   RETURN(reg, read);
 }
 
 /** 

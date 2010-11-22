@@ -26,7 +26,7 @@
  *
  * @param reg Ignored
  */
-void halt_handler(volatile regstate_t reg)
+void halt_handler(ureg_t*  reg)
 {
    sim_halt();
    halt();
@@ -44,7 +44,7 @@ void halt_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void ls_handler(volatile regstate_t reg)
+void ls_handler(ureg_t*  reg)
 {
    char *arg_addr, *filename, *buf; 
    char zero = 0;
@@ -54,10 +54,10 @@ void ls_handler(volatile regstate_t reg)
    arg_addr = (char *)SYSCALL_ARG(reg);
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    total = 0;
    for(i = 0; i < exec2obj_userapp_count; i++)
@@ -67,7 +67,7 @@ void ls_handler(volatile regstate_t reg)
       
       /* If we couldn't copy the whole filename, return with failure. */
       if(copied < strlen(filename))
-         RETURN(EBUF);
+         RETURN(reg, EBUF);
       
       len -= copied;
       buf += copied;
@@ -75,7 +75,7 @@ void ls_handler(volatile regstate_t reg)
    }
    
    v_memcpy(buf, &zero, 1, FALSE);
-   RETURN(total);
+   RETURN(reg, total);
 }
 
 

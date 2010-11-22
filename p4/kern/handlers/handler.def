@@ -3,6 +3,10 @@
 #error NAME undefined
 #endif
 
+#ifndef CAUSE 
+#error CAUSE undefined
+#endif
+
 #define PASTER(x, y) x ## _ ## y
 #define EVALUATOR(x, y) PASTER(x, y)
 #define ASM_NAME EVALUATOR(asm, NAME)
@@ -10,11 +14,14 @@
 .globl ASM_NAME
 
 /* Generate assembly wrapper for an interrupt or exception handler. 
- *    Note - any changes to this def file need to be reflected
- *    in reg.h.
  */
 ASM_NAME:
-   pusha       /* Save user registers */
+
+#ifndef ECODE_GENERATED
+   push $0              /* Fake error code. */
+#endif
+
+   pusha                /* Save user registers */
 #ifdef KER_DEBUG
 #ifdef IGNORE_THREAD_COUNT
    pushl $0
@@ -24,11 +31,29 @@ ASM_NAME:
    call check_invariants
    popl %eax
 #endif
-   call NAME   /* Call handler function */
+   push %gs
+   push %fs
+   push %es
+   push %ds
+   movl %cr2, %eax
+   push %eax
+   push $CAUSE
+   push %esp
+   call NAME            /* Call handler function */
    call quick_assert_unlocked
-   popa        /* Restore user registers */
-   iret        /* Return from interrupt */
+   addl $8, %esp         /* Pop the cause field / ureg_t*. */
+   pop %eax
+   movl %eax, %cr2
+   pop %ds
+   pop %es 
+   pop %fs
+   pop %gs
+   popa                 /* Restore user registers */
+   addl $4, %esp        /* Pop the error code off the stack. */
+   iret                 /* Return from interrupt */
 
 #undef ASM_NAME
 #undef NAME
+#undef CAUSE
+#undef ECODE_GENERATED
 

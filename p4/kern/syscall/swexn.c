@@ -79,7 +79,7 @@ int validate_eflags(int eflags)
 * 
 * @param reg The register state on entry to the handler.
 */
-void swexn_handler(volatile regstate_t reg)
+void swexn_handler(ureg_t* reg)
 {
    void* esp3;
    void* eip;
@@ -93,16 +93,16 @@ void swexn_handler(volatile regstate_t reg)
    
    /** Copy in arguments. **/
    if(v_copy_in_vptr(&esp3, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_vptr(&eip, arg_addr + sizeof(void*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_vptr(&arg, arg_addr + 2 * sizeof(void*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_uregptr(&uregp, arg_addr + 3 * sizeof(void*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    /** Unregister, or reject bad values. */
    register_handler = (esp3 != NULL) && (eip != NULL);
@@ -118,7 +118,7 @@ void swexn_handler(volatile regstate_t reg)
       /* Reject "clearly wrong" values of eip and esp3. 
        *  TODO Reject %eip's outside of the text region.
        **/
-      RETURN(EFAIL);
+      RETURN(reg, EFAIL);
    }
    
    /* Install the new register state if we can. 
@@ -128,26 +128,26 @@ void swexn_handler(volatile regstate_t reg)
    if(uregp != NULL)
    {
       if(v_memcpy((char*)&ureg, (char*)uregp, sizeof(ureg_t), TRUE) < 0)
-         RETURN(EBUF);
+         RETURN(reg, EBUF);
       
       if(validate_eflags(ureg.eflags) < 0)
-         RETURN(EARGS);
+         RETURN(reg, EARGS);
    
-      if(ureg.cs != reg.cs || ureg.ss != reg.ss)
-         RETURN(EARGS);
+      if(ureg.cs != reg->cs || ureg.ss != reg->ss)
+         RETURN(reg, EARGS);
       
    
       /* Only install values that it is safe for the user to modify. */
-      reg.eflags = ureg.eflags;
-      reg.eip = ureg.eip;    
-      reg.esp = ureg.esp;    
-      reg.pusha.edi = ureg.edi;
-      reg.pusha.esi = ureg.esi;
-      reg.pusha.ebp = ureg.ebp;
-      reg.pusha.ebx = ureg.ebx;
-      reg.pusha.edx = ureg.edx;
-      reg.pusha.ecx = ureg.ecx;
-      reg.pusha.eax = ureg.eax;
+      reg->eflags = ureg.eflags;
+      reg->eip = ureg.eip;    
+      reg->esp = ureg.esp;    
+      reg->edi = ureg.edi;
+      reg->esi = ureg.esi;
+      reg->ebp = ureg.ebp;
+      reg->ebx = ureg.ebx;
+      reg->edx = ureg.edx;
+      reg->ecx = ureg.ecx;
+      reg->eax = ureg.eax;
    }
 
    /* If we've made it to this point, it's safe to to install the handler. */
@@ -159,7 +159,7 @@ void swexn_handler(volatile regstate_t reg)
    }
    
    if (uregp != NULL) return;
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /** 

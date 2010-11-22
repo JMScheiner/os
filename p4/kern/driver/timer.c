@@ -21,6 +21,7 @@
 #include <asm_helper.h>
 #include <thread.h>
 #include <reg.h>
+#include <ureg.h>
 #include <mutex.h>
 
 /* In reality this is 9.99931276 milliseconds.
@@ -54,7 +55,7 @@ void timer_init()
 *
 * @param reg Ignored
 */
-void timer_handler(regstate_t reg)
+void timer_handler(ureg_t* reg)
 {
    atomic_add_volatile(&ticks, 1);
    outb(INT_CTL_PORT, INT_ACK_CURRENT);
@@ -65,9 +66,6 @@ void timer_handler(regstate_t reg)
    
    /* Run the next thread. */
    scheduler_next();
-   
-   /* If this fails then we've probably corrupted a kernel stack. */
-   assert(reg.eip);
 }
 
 /** 

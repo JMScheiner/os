@@ -12,6 +12,7 @@
 #include <lifecycle.h>
 #include <global_thread.h>
 #include <reg.h>
+#include <ureg.h>
 #include <mm.h>
 #include <kvm.h>
 #include <vstring.h>
@@ -57,7 +58,7 @@ void lifecycle_init() {
  *
  * @param reg The register state of the user upon calling exec.
  */
-void exec_handler(volatile regstate_t reg) {
+void exec_handler(ureg_t*  reg) {
    quick_assert_unlocked();
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
@@ -72,19 +73,19 @@ void exec_handler(volatile regstate_t reg) {
 
    /* Verify that the arguments lie in valid memory. */
    if(v_copy_in_ptr(&execname, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_dptr(&argvec, arg_addr + sizeof(char*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    pcb_t* pcb = get_pcb();
 
    /* If we pass this every other thread has exited or is exiting. */
    if(pcb->thread_count > 1)
-      RETURN(EMULTHR);
+      RETURN(reg, EMULTHR);
    
    if(v_strcpy((char*)execname_buf, execname, MAX_NAME_LENGTH, TRUE) < 0) 
-      RETURN(ENAME);
+      RETURN(reg, ENAME);
 
    debug_print("exec", "Called with program %s", execname_buf);
 
@@ -93,10 +94,10 @@ void exec_handler(volatile regstate_t reg) {
    {
       char* arg;
       if (total_bytes == MAX_TOTAL_LENGTH) 
-         RETURN(EBUF);
+         RETURN(reg, EBUF);
       
       if(v_copy_in_ptr(&arg, (char*)argvec) < 0)
-         RETURN(EARGS);
+         RETURN(reg, EARGS);
       
       if(arg == NULL)
          break;
@@ -104,7 +105,7 @@ void exec_handler(volatile regstate_t reg) {
       int arg_len = v_strcpy(args_ptr, arg, MAX_TOTAL_LENGTH - total_bytes, TRUE);
       
       if (arg_len < 0) 
-         RETURN(EARGS);
+         RETURN(reg, EARGS);
       
       debug_print("exec", "Arg %d is %s", argc, args_ptr);
       total_bytes += arg_len;
@@ -114,7 +115,7 @@ void exec_handler(volatile regstate_t reg) {
    int err;
    simple_elf_t elf_hdr;
    if ((err = get_elf(execname_buf, &elf_hdr)) != ELF_SUCCESS) {
-      RETURN(err);
+      RETURN(reg, err);
    }
    
    /* Free user memory, user memory regions. */
@@ -151,7 +152,7 @@ void exec_handler(volatile regstate_t reg) {
 * 
 * @param reg The register state put on the stack by INT and PUSHA
 */
-void thread_fork_handler(volatile regstate_t reg)
+void thread_fork_handler(ureg_t*  reg)
 {
    unsigned long newtid;
    pcb_t* pcb;
@@ -162,20 +163,20 @@ void thread_fork_handler(volatile regstate_t reg)
    new_tcb = initialize_thread(pcb);
    
    if(new_tcb == NULL)
-      RETURN(ENOMEM);
+      RETURN(reg, ENOMEM);
    
    newtid = new_tcb->tid;
    debug_print("thread_fork", "New tcb %p, thread_count = %d", 
       new_tcb, pcb->thread_count);
    
    new_tcb->esp = arrange_fork_context(
-      new_tcb->kstack, (regstate_t*)&reg, (void*)pcb->dir_p);
+      new_tcb->kstack, reg, (void*)pcb->dir_p);
    
    /* Remove the exception handler for the new thread. */
    memset(&new_tcb->handler, 0, sizeof(handler_t));
    
    scheduler_register(new_tcb);
-   RETURN(newtid);
+   RETURN(reg, newtid);
 }
 
 /** 
@@ -189,7 +190,7 @@ void thread_fork_handler(volatile regstate_t reg)
 * 
 * @param reg The register state put on the stack by INT and PUSHA
 */
-void fork_handler(volatile regstate_t reg)
+void fork_handler(ureg_t*  reg)
 {
    unsigned long newpid; 
    pcb_t *new_pcb; 
@@ -201,7 +202,7 @@ void fork_handler(volatile regstate_t reg)
    
    if(current_pcb->thread_count > 1) {
       debug_print("fork", "Failed due to multiple threads");
-      RETURN(EMULTHR);
+      RETURN(reg, EMULTHR);
    }
    
    new_pcb = initialize_process(FALSE);
@@ -241,7 +242,7 @@ void fork_handler(volatile regstate_t reg)
    assert(new_tcb->kstack != NULL);
 
    new_tcb->esp = arrange_fork_context(
-      new_tcb->kstack, (regstate_t*)&reg, new_pcb->dir_p);
+      new_tcb->kstack, reg, new_pcb->dir_p);
   
    debug_print("children", "%p has %d children before incrementing",
          current_pcb, current_pcb->unclaimed_children);
@@ -262,7 +263,7 @@ void fork_handler(volatile regstate_t reg)
    /* Register the first thread in the new TCB. */
    sim_reg_child(new_pcb->dir_p, current_pcb->dir_p);
    scheduler_register(new_tcb);
-   RETURN(new_tcb->tid);
+   RETURN(reg, new_tcb->tid);
 
 fork_fail_dup: 
 
@@ -278,7 +279,7 @@ fork_fail_dup_regions:
    sfree(new_pcb->status, sizeof(status_t));
    free_process_resources(new_pcb, FALSE);
 fork_fail_pcb: 
-   RETURN(ENOMEM);
+   RETURN(reg, ENOMEM);
 }
 
 /** 
@@ -299,15 +300,26 @@ void arrange_global_context()
    
    /* First give it a proper "iret frame" */
    /* Register contents do not matter. */
-   regstate_t reg;
+   ureg_t reg;
+
+   reg.error_code = 0;
+   reg.cause = 0;
+
    reg.eip = (uint32_t)(loop_stub);
-   reg.cs = SEGSEL_KERNEL_CS;
    reg.eflags = get_eflags() | EFL_IF;
    reg.esp = (uint32_t)tcb->kstack;
-   reg.ss = SEGSEL_KERNEL_DS;
    
-   esp -= sizeof(regstate_t);
-   memcpy(esp, (void*)&reg, sizeof(regstate_t));
+   reg.cs = SEGSEL_KERNEL_CS;
+   reg.ss = SEGSEL_KERNEL_DS;
+   reg.ds = SEGSEL_KERNEL_DS;
+   reg.es = SEGSEL_KERNEL_DS;
+   reg.fs = SEGSEL_KERNEL_DS;
+   reg.gs = SEGSEL_KERNEL_DS;
+   
+   reg.cr2 = get_cr2();
+   
+   esp -= sizeof(ureg_t);
+   memcpy(esp, (void*)&reg, sizeof(ureg_t));
    
    /* Push the return address for a context switches ret */
    esp -= 4; 
@@ -338,15 +350,15 @@ void arrange_global_context()
 * @return The stack pointer to context switch to. Should be installed into 
 *  the new threads TCB so the context switcher knows where to jump.
 */
-void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
+void* arrange_fork_context(void* esp, ureg_t* reg, void* dir)
 {
    /* First give it a proper "iret frame" */
-   esp -= sizeof(regstate_t);
-   memcpy(esp, (void*)reg, sizeof(regstate_t));
+   esp -= sizeof(ureg_t);
+   memcpy(esp, (void*)reg, sizeof(ureg_t));
    
    /* Set eax to zero for the iret from either thread_fork or fork. */
-   regstate_t* new_reg = (regstate_t*)esp;
-   new_reg->pusha.eax = 0;
+   ureg_t* new_reg = (ureg_t*)esp;
+   new_reg->eax = 0;
    
    /* Push the return address for context switches ret */
    esp -= 4; 
@@ -371,7 +383,7 @@ void* arrange_fork_context(void* esp, regstate_t* reg, void* dir)
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void set_status_handler(volatile regstate_t reg)
+void set_status_handler(ureg_t*  reg)
 {
    pcb_t *pcb = get_pcb();
    pcb->status->status = (int)SYSCALL_ARG(reg);
@@ -533,13 +545,13 @@ void vanish_handler()
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void wait_handler(volatile regstate_t reg)
+void wait_handler(ureg_t*  reg)
 {
    int *status_addr = (int *)SYSCALL_ARG(reg);
    debug_print("wait", "Called with status address %p", status_addr);
    if (status_addr != NULL && 
          !mm_validate_write(status_addr, sizeof(int))) {
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    }
    
    pcb_t *pcb = get_pcb();
@@ -549,7 +561,7 @@ void wait_handler(volatile regstate_t reg)
       /* There are threads waiting on every child process. We will not be 
        * able to collect a status so return immediately. */
       mutex_unlock(&pcb->check_waiter_lock);
-      RETURN(ECHILD);
+      RETURN(reg, ECHILD);
    }
 
    debug_print("children", "%p has %d children before decrementing",
@@ -592,7 +604,7 @@ void wait_handler(volatile regstate_t reg)
    }
    int tid = status->tid;
    sfree(status, sizeof(status_t));
-   RETURN(tid);
+   RETURN(reg, tid);
 }
 
 /** 
@@ -601,9 +613,9 @@ void wait_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void task_vanish_handler(volatile regstate_t reg)
+void task_vanish_handler(ureg_t*  reg)
 {
    debug_print("vanish", "task_vanish being ignored.");
-   RETURN(EFAIL);
+   RETURN(reg, EFAIL);
 }
 

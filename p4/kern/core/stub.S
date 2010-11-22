@@ -10,7 +10,15 @@
 pop_stub: 
    cli                   /* Disable interrupts */
    call set_esp0_helper  /* Set esp0 so we return to the right kernel stack. */
+   addl $4, %esp         /* Pop the cause field */
+   pop %eax              
+   movl %eax, %cr2       /* Restore cr2 */
+   pop %ds               /* Restore segment registers.*/
+   pop %es 
+   pop %fs
+   pop %gs
    popa                  /* Restore user registers */
+   addl $4, %esp         /* Pop the error code off the stack. */
    iret                  /* Return from interrupt */
 
 /** @def void loop_forever()

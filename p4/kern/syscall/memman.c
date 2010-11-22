@@ -8,6 +8,7 @@
 
 #include <memman.h>
 #include <reg.h>
+#include <ureg.h>
 #include <mm.h>
 #include <simics.h>
 #include <pagefault.h>
@@ -50,7 +51,7 @@ void memman_init()
 *
 * @param reg The register state on entry to the handler.
 */
-void new_pages_handler(volatile regstate_t reg)
+void new_pages_handler(ureg_t*  reg)
 {
    int len, ret;
    char* start, *arg_addr, *end;
@@ -59,10 +60,10 @@ void new_pages_handler(volatile regstate_t reg)
    arg_addr = (void*)SYSCALL_ARG(reg);
 
    if(v_copy_in_ptr(&start, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_int(&len, arg_addr + sizeof(char*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    end = start + len;
    
@@ -71,11 +72,11 @@ void new_pages_handler(volatile regstate_t reg)
    
    /* Check that the requested memory is in user space. */
    if((start < (char*)USER_MEM_START) || (end > (char*)USER_MEM_END))
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    /* Check that the requested memory is page aligned. */
    if((PAGE_OFFSET(start) != 0) || (len % PAGE_SIZE != 0))
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    pcb_t* pcb = get_pcb();
    
@@ -87,7 +88,7 @@ void new_pages_handler(volatile regstate_t reg)
    if(region_overlaps(pcb, start, end))
    {
       mutex_unlock(&_new_pages_lock);
-      RETURN(ESTATE);
+      RETURN(reg, ESTATE);
    }
    
    debug_print("memman", " Allocating new region [%p, %p] for new_pages", 
@@ -98,11 +99,11 @@ void new_pages_handler(volatile regstate_t reg)
    {
       debug_print("memman", "new_pages failure");
       mutex_unlock(&_new_pages_lock);
-      RETURN(ret);
+      RETURN(reg, ret);
    }
    
    mutex_unlock(&_new_pages_lock);
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /* @brief Deallocates the specified memory region, which must presently be 
@@ -112,14 +113,14 @@ void new_pages_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry to new_pages. 
 */
-void remove_pages_handler(volatile regstate_t reg)
+void remove_pages_handler(ureg_t*  reg)
 {
    pcb_t* pcb;
    void* start;
    
    start = (char*)SYSCALL_ARG(reg);
    if(start < (void*)USER_MEM_START || start > (void*)USER_MEM_END)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    pcb = get_pcb();
    
@@ -128,7 +129,7 @@ void remove_pages_handler(volatile regstate_t reg)
    ret = free_region(pcb, start);
    mutex_unlock(&_new_pages_lock);
 
-   RETURN(ret);
+   RETURN(reg, ret);
 }
 
 

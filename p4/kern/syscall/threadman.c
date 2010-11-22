@@ -21,9 +21,9 @@
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void gettid_handler(volatile regstate_t reg)
+void gettid_handler(ureg_t*  reg)
 {
-   RETURN(get_tcb()->tid);
+   RETURN(reg, get_tcb()->tid);
 }
 
 /** 
@@ -44,14 +44,14 @@ void gettid_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void yield_handler(volatile regstate_t reg)
+void yield_handler(ureg_t*  reg)
 {
    int tid = (int)SYSCALL_ARG(reg);
    if (tid == -1) {
       debug_print("yield", "%d yielding to anyone", get_tcb()->tid);
       quick_lock();
       scheduler_next();
-      RETURN(ESUCCESS);
+      RETURN(reg, ESUCCESS);
    }
    else {
       /* Find the thread in the tcb table. Hold onto the table lock so the
@@ -63,17 +63,17 @@ void yield_handler(volatile regstate_t reg)
          mutex_unlock(&tcb_table()->lock);
          debug_print("yield", "%d failed to find desired yield", 
                get_tcb()->tid);
-         RETURN(ENAME);
+         RETURN(reg, ENAME);
       }
       else if (scheduler_run(next, &tcb_table()->lock)) {
          /* scheduler_run released our lock */
-         RETURN(ESUCCESS);
+         RETURN(reg, ESUCCESS);
       }
       else {
          /* scheduler_run released our lock */
          debug_print("yield", "%d desired yield is descheduled or blocked", 
                get_tcb()->tid);
-         RETURN(ESTATE);
+         RETURN(reg, ESTATE);
       }
    }
 }
@@ -99,7 +99,7 @@ void yield_handler(volatile regstate_t reg)
 *
 * @param reg The register state on entry and exit of the handler.
 */
-void deschedule_handler(volatile regstate_t reg)
+void deschedule_handler(ureg_t*  reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    int reject;
@@ -110,7 +110,7 @@ void deschedule_handler(volatile regstate_t reg)
    {
       debug_print("deschedule", "Failed to copy reject arg");
       mutex_unlock(&tcb->deschedule_lock);
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    }
    if (reject == 0) {
       debug_print("deschedule", "Descheduling %d now", get_tcb()->tid);
@@ -122,7 +122,7 @@ void deschedule_handler(volatile regstate_t reg)
       debug_print("deschedule", "Reject nonzero");
       mutex_unlock(&tcb->deschedule_lock);
    }
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /** 
@@ -137,7 +137,7 @@ void deschedule_handler(volatile regstate_t reg)
 *
 * @param reg The register state on entry and exit of the handler.
 */
-void make_runnable_handler(volatile regstate_t reg)
+void make_runnable_handler(ureg_t*  reg)
 {
    int tid = (int)SYSCALL_ARG(reg);
    int ret = 0;
@@ -159,7 +159,7 @@ void make_runnable_handler(volatile regstate_t reg)
       mutex_unlock(&tcb->deschedule_lock);
    }
    mutex_unlock(&tcb_table()->lock);
-   RETURN(ret);
+   RETURN(reg, ret);
 }
 
 /** 
@@ -168,9 +168,9 @@ void make_runnable_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void get_ticks_handler(volatile regstate_t reg)
+void get_ticks_handler(ureg_t*  reg)
 {
-   RETURN(time());
+   RETURN(reg, time());
 }
 
 /** 
@@ -187,14 +187,14 @@ void get_ticks_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void sleep_handler(volatile regstate_t reg)
+void sleep_handler(ureg_t*  reg)
 {
    int ticks = (int)SYSCALL_ARG(reg);
    
-   if(ticks < 0) RETURN(EARGS); 
-   if(ticks == 0) RETURN(ESUCCESS);
+   if(ticks < 0) RETURN(reg, EARGS); 
+   if(ticks == 0) RETURN(reg, ESUCCESS);
 
-   RETURN(scheduler_sleep(ticks));
+   RETURN(reg, scheduler_sleep(ticks));
 }
 
 

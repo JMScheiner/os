@@ -11,6 +11,7 @@
 #define KEYBOARD_UM5LT9N0
 
 #include <reg.h>
+#include <ureg.h>
 
 /* NOTE: This value should be a power of 2, since we do mod by & */
 #define KEY_BUF_SIZE 2048
@@ -22,8 +23,8 @@ int readchar(void);
 */
 void asm_keyboard_wrapper(void);
 
-void getchar_handler(volatile regstate_t reg);
-void readline_handler(volatile regstate_t reg);
+void getchar_handler(ureg_t*  reg);
+void readline_handler(ureg_t*  reg);
 int readline(char *buf, int len);
 void keyboard_init(void);
 

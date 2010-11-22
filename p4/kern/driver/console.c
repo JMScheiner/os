@@ -80,7 +80,7 @@ mutex_t *get_print_lock() {
 * 
 * @param reg The register state on entry to print.
 */
-void print_handler(volatile regstate_t reg)
+void print_handler(ureg_t* reg)
 {
    int len;
    char* buf;
@@ -88,19 +88,19 @@ void print_handler(volatile regstate_t reg)
    char printbuf[PRINT_BUF_SIZE];
    
    if(v_copy_in_int(&len, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    if(v_copy_in_ptr(&buf, arg_addr + sizeof(int)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    if (len < 0 || len > PRINT_BUF_SIZE) {
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    }
    
    /* Copy buf to prevent the memory it lies in from being freed during the
     * call to putbytes. */
    if (v_memcpy(printbuf, buf, len, TRUE) != len) {
-      RETURN(EBUF);
+      RETURN(reg, EBUF);
    }
 
    /* Ensure sequential access to the console screen. */
@@ -108,7 +108,7 @@ void print_handler(volatile regstate_t reg)
    putbytes(printbuf, len);
    mutex_unlock(&print_lock);
 
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /** 
@@ -118,14 +118,14 @@ void print_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void set_term_color_handler(volatile regstate_t reg)
+void set_term_color_handler(ureg_t* reg)
 {
    int color = (int)SYSCALL_ARG(reg);
    if((color < 0) || color > MAX_VALID_COLOR)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    set_term_color(color); 
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /** 
@@ -133,24 +133,24 @@ void set_term_color_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void set_cursor_pos_handler(volatile regstate_t reg)
+void set_cursor_pos_handler(ureg_t* reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    int row, col;
    
    if(v_copy_in_int(&row, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    if(v_copy_in_int(&col, arg_addr + sizeof(int)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    if( 0 > row || row >= CONSOLE_HEIGHT 
     || 0 > col || col >= CONSOLE_WIDTH)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    set_cursor(row, col);
    debug_print("console", "Successfully set cursor position. ");
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /** 
@@ -158,7 +158,7 @@ void set_cursor_pos_handler(volatile regstate_t reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void get_cursor_pos_handler(volatile regstate_t reg)
+void get_cursor_pos_handler(ureg_t* reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    int *row, *col;
@@ -166,21 +166,21 @@ void get_cursor_pos_handler(volatile regstate_t reg)
 
    /* Copy in user space addresses. */
    if(v_copy_in_intptr(&row, arg_addr) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
    
    if(v_copy_in_intptr(&col, arg_addr + sizeof(int*)) < 0)
-      RETURN(EARGS);
+      RETURN(reg, EARGS);
 
    get_cursor(&myrow, &mycol);
 
    /* Copy out row and column. */
    if(v_copy_out_int(row, myrow) < 0)
-      RETURN(EBUF);
+      RETURN(reg, EBUF);
 
    if(v_copy_out_int(col, mycol) < 0)
-      RETURN(EBUF);
+      RETURN(reg, EBUF);
 
-   RETURN(ESUCCESS);
+   RETURN(reg, ESUCCESS);
 }
 
 /************** End Syscall wrappers . **************/
