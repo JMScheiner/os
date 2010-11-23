@@ -55,6 +55,7 @@ void free_process_resources(pcb_t* pcb, boolean_t vanishing)
    mutex_destroy(&pcb->waiter_lock);
    mutex_destroy(&pcb->check_waiter_lock);
    mutex_destroy(&pcb->child_lock);
+   mutex_destroy(&pcb->swexn_lock);
    cond_destroy(&pcb->wait_signal);
    cond_destroy(&pcb->vanish_signal);
    sfree(pcb, sizeof(pcb_t));
@@ -93,6 +94,7 @@ pcb_t* initialize_process(boolean_t first_process)
       goto fail_pcb;
 
    LIST_INIT_EMPTY(pcb->children);
+   LIST_INIT_EMPTY(pcb->swexn_list);
    LIST_INIT_NODE(pcb, global_node);
    LIST_INIT_NODE(pcb, child_node);
    
@@ -128,6 +130,7 @@ pcb_t* initialize_process(boolean_t first_process)
    mutex_init(&pcb->waiter_lock);
    mutex_init(&pcb->check_waiter_lock);
    mutex_init(&pcb->child_lock);
+   mutex_init(&pcb->swexn_lock);
 
    cond_init(&pcb->wait_signal);
    cond_init(&pcb->vanish_signal);

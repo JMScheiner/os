@@ -139,7 +139,8 @@ struct PROCESS_CONTROL_BLOCK
    
    /** @brief Mutual exclusion locks for pcb. */
    mutex_t region_lock, directory_lock, status_lock, 
-           waiter_lock, check_waiter_lock, child_lock;
+           waiter_lock, check_waiter_lock, child_lock,
+           swexn_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */
@@ -148,8 +149,12 @@ struct PROCESS_CONTROL_BLOCK
    /** @brief Circular list of our children. */
    pcb_t *children;
 
-   /** @brief Our node in our parents children list. */
+   /** @brief Our node in our parent's children list. */
    pcb_node_t child_node;
+
+   /** @brief Circular list of software exception stacks currently being
+    * used by threads in this process. */
+   tcb_t *swexn_list;
 
    /** @brief Signal to indicate a child process has vanished. */
    cond_t wait_signal;
@@ -162,10 +167,16 @@ struct PROCESS_CONTROL_BLOCK
    int sanity_constant;
 };
 
+/** @brief Information about a software exception handler. */
 struct HANDLER
 {
+   /** @brief The address of the software exception handler. */
    void* eip;
+
+   /** @brief The base of the stack for the software exception handler. */
    void* esp3;
+
+   /** @brief An argument to the software exception handler. */
    void* arg;
 };
 
@@ -211,6 +222,18 @@ struct THREAD_CONTROL_BLOCK{
    
    /** @brief A software exception handler registered by the user. */
    handler_t handler;
+
+   /** @brief The last exception handler stack this thread executed on.
+    * NOTE: This is not necessarily the last stack that was registered. */
+   void *swexn_stack;
+
+   /** @brief Pointer to our place in the swexn handler stack list for our
+    * process. */
+   tcb_node_t swexn_node;
+
+   /** @brief Condition variable to ensure only one thread runs on a given 
+    * software exception stack at a time. */
+   cond_t swexn_signal;
 
    /** @brief A magic constant that should not be changed. If it changes,
     * the kernel stacks have probably been overflowed. */

@@ -48,8 +48,8 @@ UPDATE_METHOD = afs
 STUDENTTESTS = gettid_test exec_test1 exec_test2 fork_test tfork_test
 STUDENTTESTS += autostack sleep ls_test fault_and_die malloc_test
 STUDENTTESTS += agility_drill cvar_test cyclone join_specific_test
-STUDENTTESTS += juggle mandelbrot startle thr_exit_join racer
-STUDENTTESTS += mycho metacho zfod_test dividezero float
+STUDENTTESTS += juggle mandelbrot startle thr_exit_join racer evil_user
+STUDENTTESTS += mycho metacho zfod_test dividezero float swexn_sleepers
 
 ###########################################################################
 # Object files for your thread library

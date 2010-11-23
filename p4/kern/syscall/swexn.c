@@ -20,13 +20,18 @@
 #include <swexn.h>
 #include <eflags.h>
 #include <loader.h>
-
+#include <types.h>
+#include <mutex.h>
+#include <cond.h>
+#include <debug.h>
 
 /* @brief The user can change carry, parity, auxiliary, 
- *    zero, sign, overflow, and direction flags 
+ *    zero, sign, overflow, direction, and resume flags 
  **/
 #define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_RF\
                            | EFL_ZF | EFL_SF | EFL_OF | EFL_DF)
+
+int swexn_max_id = 0;
 
 /** 
 * @brief Checks the users posted changes to eflags.
@@ -88,7 +93,7 @@ void swexn_handler(ureg_t* reg)
    boolean_t register_handler;
    
    char *arg_addr = (char *)SYSCALL_ARG(reg);
-   tcb_t* tcb = get_tcb();
+   tcb_t *tcb = get_tcb();
    
    /** Copy in arguments. **/
    if(v_copy_in_vptr(&esp3, arg_addr) < 0)
@@ -121,8 +126,8 @@ void swexn_handler(ureg_t* reg)
    }
    
    /* Install the new register state if we can. 
-    *  - Note that installing behavior is undefined if we are unregistering 
-    *    a handler.  I chose to let it succeed.
+    *  - Note that installing behavior is undefined if we are 
+    *    unregistering a handler.  I chose to let it succeed.
     **/
    if(uregp != NULL)
    {
@@ -134,7 +139,6 @@ void swexn_handler(ureg_t* reg)
    
       if(ureg.cs != reg->cs || ureg.ss != reg->ss)
          RETURN(reg, EARGS);
-      
    
       /* Only install values that it is safe for the user to modify. */
       reg->eflags = ureg.eflags;
@@ -147,6 +151,7 @@ void swexn_handler(ureg_t* reg)
       reg->edx = ureg.edx;
       reg->ecx = ureg.ecx;
       reg->eax = ureg.eax;
+      unlock_swexn_stack();
    }
 
    /* If we've made it to this point, it's safe to to install the handler. */
@@ -184,11 +189,15 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    tcb->handler.eip = NULL;
    tcb->handler.arg = NULL;
    
+   unlock_swexn_stack();
+   lock_swexn_stack(esp3);
+
    /* Copy the ureg state of the thread when the exception was invoked to
     * the exception stack. */
    char *stack_ptr = ALIGN_DOWN((char *)esp3 - sizeof(ureg_t), 
          sizeof(char *));
-   if (v_memcpy(stack_ptr, (char *)ureg, sizeof(ureg_t), FALSE) != sizeof(ureg_t)) {
+   if (v_memcpy(stack_ptr, (char *)ureg, sizeof(ureg_t), FALSE) != 
+         sizeof(ureg_t)) {
       /* We failed to write to the user exception stack. */
       return;
    }
@@ -199,7 +208,8 @@ void swexn_try_invoke_handler(ureg_t* ureg)
     * handlers should never return. */
    void *frame[] = {NULL, arg, stack_ptr};
    stack_ptr -= sizeof(frame);
-   if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != sizeof(frame)) {
+   if (v_memcpy(stack_ptr, (char *)frame, sizeof(frame), FALSE) != 
+         sizeof(frame)) {
       /* We failed to write to the user exception stack. */
       return;
    }
@@ -209,6 +219,73 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    assert(FALSE);
 }
 
+/**
+ * @brief Lock the exception stack we will be executing on, so no other
+ * thread can use it.
+ *
+ * NOTE: This only locks the base address of our stack. We cannot help it
+ * if two threads try to use different but overlapping swexn stacks.
+ *
+ * NOTE2: The swexn stack is unlocked when a thread vanishes, or when they
+ * leave the swexn handler via a call to swexn. If neither of these events
+ * occurs, any other threads attempting to use this stack will block
+ * forever.
+ *
+ * @param esp3 The base address of the stack to lock.
+ */
+void lock_swexn_stack(void *esp3) {
+   tcb_t *tcb = get_tcb();
+   pcb_t *pcb = tcb->pcb;
+   tcb_t *swexn_thread;
 
+   tcb->swexn_stack = esp3;
+   mutex_lock(&pcb->swexn_lock);
+   debug_print("swexn", "Thread %d locking swexn stack %p", tcb->tid, esp3);
 
+   /* Insert ourself at the head of the stack list so anyone trying to use
+    * our swexn stack will wait on us. */
+   LIST_INSERT_BEFORE(pcb->swexn_list, tcb, swexn_node);
+   pcb->swexn_list = tcb;
+
+   /* Check to see if someone is already using/waiting for our swexn stack. 
+    * If so, wait until they finish. */
+   LIST_FORALL(pcb->swexn_list, swexn_thread, swexn_node) {
+      if (swexn_thread->swexn_stack == esp3 && swexn_thread != tcb) {
+         debug_print("swexn", "Thread %d waiting for swexn stack %p", 
+               tcb->tid, esp3);
+         quick_lock();
+         mutex_unlock(&pcb->swexn_lock);
+         cond_wait(&swexn_thread->swexn_signal);
+         /* Everyone head of us is done/using a different stack. We are free 
+          * to take the stack. */
+         debug_print("swexn", "Thread %d acquired for swexn stack %p after waiting", 
+               tcb->tid, esp3);
+         return;
+      }
+   }
+   
+   debug_print("swexn", "Thread %d acquired for swexn stack %p", tcb->tid, esp3);
+
+   /* We're clear to use the swexn stack. */
+   mutex_unlock(&pcb->swexn_lock);
+}
+
+/**
+ * @brief Unlock the swexn stack we've been running on so another thread
+ * in this process may use it. If we haven't locked a stack, do nothing.
+ */
+void unlock_swexn_stack() {
+   tcb_t *tcb = get_tcb();
+   pcb_t *pcb = tcb->pcb;
+   debug_print("swexn", "Thread %d unlocking", tcb->tid);
+   if (LIST_CONTAINS(tcb, swexn_node)) {
+      /* Remove ourself from the stack list and signal anyone who was
+       * waiting for us to finish. */
+      mutex_lock(&pcb->swexn_lock);
+      LIST_REMOVE(pcb->swexn_list, tcb, swexn_node);
+      cond_signal(&tcb->swexn_signal);
+      debug_print("swexn", "Thread %d unlocked", tcb->tid);
+      mutex_unlock(&pcb->swexn_lock);
+   }
+}
 
