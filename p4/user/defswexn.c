@@ -25,6 +25,12 @@
 /** @brief The stack that the below code executes on.
  *    Note that a single exception stack is only appropriate for 
  *    single threaded programs.
+ *
+ *  NOTE: I'm slightly concerned that crt0 calls
+ *  swexn_return = swexn((void *)&_defswexn_stack, _defswexn, 0, 0);
+ *  instead of
+ *  swexn_return = swexn(_defswexn_stack, _defswexn, 0, 0);
+ *  but this code works for either way of doing this.
  **/
 unsigned char _defswexn_stack_buf[SWEXN_STACKSIZE] = {0};
 unsigned char* _defswexn_stack = (_defswexn_stack_buf + SWEXN_STACKSIZE);

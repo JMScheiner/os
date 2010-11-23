@@ -249,14 +249,17 @@ void lock_swexn_stack(void *esp3) {
    LIST_INSERT_BEFORE(pcb->swexn_list, tcb, swexn_node);
    pcb->swexn_list = tcb;
 
-   /* Check to see if someone is already using our swexn stack. If so,
-    * wait until they finish. */
+   /* Check to see if someone is already using/waiting for our swexn stack. 
+    * If so, wait until they finish. */
    LIST_FORALL(pcb->swexn_list, swexn_thread, swexn_node) {
       if (swexn_thread->swexn_stack == esp3 && swexn_thread != tcb) {
-         debug_print("swexn", "Thread %d waiting for swexn stack %p", tcb->tid, esp3);
+         debug_print("swexn", "Thread %d waiting for swexn stack %p", 
+               tcb->tid, esp3);
          quick_lock();
          mutex_unlock(&pcb->swexn_lock);
          cond_wait(&swexn_thread->swexn_signal);
+         /* Everyone head of us is done/using a different stack. We are free 
+          * to take the stack. */
          break;
       }
    }
@@ -269,13 +272,15 @@ void lock_swexn_stack(void *esp3) {
 
 /**
  * @brief Unlock the swexn stack we've been running on so another thread
- * in this process may use it.
+ * in this process may use it. If we haven't locked a stack, do nothing.
  */
 void unlock_swexn_stack() {
    tcb_t *tcb = get_tcb();
    pcb_t *pcb = tcb->pcb;
    debug_print("swexn", "Thread %d unlocking", tcb->tid);
    if (LIST_CONTAINS(tcb, swexn_node)) {
+      /* Remove ourself from the stack list and signal anyone who was
+       * waiting for us to finish. */
       mutex_lock(&pcb->swexn_lock);
       LIST_REMOVE(pcb->swexn_list, tcb, swexn_node);
       cond_signal(&tcb->swexn_signal);

@@ -16,17 +16,22 @@
 #include "simics.h"
 
 #define STACK_SIZE 2048
+
+/* Create 3 exception stacks to be shared by all threads. */
 char swexn_stack1[STACK_SIZE];
 char swexn_stack2[STACK_SIZE];
 char swexn_stack3[STACK_SIZE];
 #define SWEXN_STACK1 ((void*)(swexn_stack1 + STACK_SIZE - 8))
 #define SWEXN_STACK2 ((void*)(swexn_stack2 + STACK_SIZE - 8))
 #define SWEXN_STACK3 ((void*)(swexn_stack3 + STACK_SIZE - 8))
+
+/* A list of tick values so threads can sleep for varying lengths of time. */
 int tick_pos = 0;
 int tick_arr[] = {3, 11, 7, 4, 10, 2, 3, 5, 14, 8, 2, 6, 9};
 int stack_pos = 0;
 void *stack_arr[] = {SWEXN_STACK1, SWEXN_STACK2, SWEXN_STACK3};
-int divisor = 0;
+
+/* Default number of threads and repetitions to use. */
 int threads = 25;
 int reps = 25;
 
@@ -46,8 +51,7 @@ void handler(void *arg, ureg_t *uregs)
       sleep(ticks);
       assert(tid == gettid());
    }
-   lprintf("Thread %d done on stack %p", 
-         tid, stack);
+   lprintf("Thread %d done on stack %p", tid, stack);
 
    // Jump over the null dereference that caused the fault
    lprintf("Faulting instruction was %x", uregs->esp);
@@ -85,6 +89,7 @@ void *dumb(void *arg) {
    }
 
    thr_exit(arg);
+   // Force the compiler to keep the null dereference.
    lprintf("%d", ret);
    assert(0);
    return arg;
