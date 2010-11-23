@@ -15,6 +15,8 @@
 #include <assert.h>
 #include <asm_helper.h>
 #include <ureg.h>
+#include <swexn.h>
+#include <debug.h>
 
 #define ERRBUF_SIZE 0x100
 
@@ -26,6 +28,9 @@
 void divide_error_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
+   
+   swexn_try_invoke_handler(reg);
+   
    sprintf(errbuf, "Divide by zero, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
@@ -37,7 +42,8 @@ void divide_error_handler(ureg_t* reg)
 */
 void debug_handler(ureg_t* reg)
 {
-   lprintf("Ignoring debug ");
+   swexn_try_invoke_handler(reg);
+   debug_print("handlers", "Ignoring debug ");
 }
 
 /** 
@@ -47,7 +53,7 @@ void debug_handler(ureg_t* reg)
 */
 void breakpoint_handler(ureg_t* reg)
 {
-   lprintf("Ignoring breakpoint ");
+   debug_print("handlers", "Ignoring breakpoint");
 }
 
 /** 
@@ -67,8 +73,7 @@ void overflow_handler(ureg_t* reg)
 */
 void bound_range_exceeded_handler(ureg_t* reg)
 {
-   /* Explicitly ignore bound range exceeded, 
-    * since we have no signal mechanism. */
+   swexn_try_invoke_handler(reg);
 }
 
 /** 
@@ -79,6 +84,7 @@ void bound_range_exceeded_handler(ureg_t* reg)
 void invalid_opcode_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
+   swexn_try_invoke_handler(reg);
    sprintf(errbuf, "Invalid instruction, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
@@ -91,11 +97,12 @@ void invalid_opcode_handler(ureg_t* reg)
 void device_not_available_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
+   swexn_try_invoke_handler(reg);
    sprintf(errbuf, "Device not available exception at %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
 
-/** 
+/**
 * @brief We don't double fault. Ever. 
 * 
 * @param reg The register state on entry to the handler.
@@ -114,7 +121,9 @@ void double_fault_handler(ureg_t* reg)
 */
 void invalid_tss_handler(ureg_t* reg)
 {
-   /* This should never happen.*/
+   /* This should never happen. Don't invoke the 
+    *  exception handler, since there is nothing 
+    *  the user can do. */
    assert(0); 
 }
 
@@ -152,7 +161,7 @@ void general_protection_handler(ureg_t* reg)
 }
 
 /** 
-* @brief We don't do alignment checking.
+* @brief We don't allow alignment checking.
 * 
 * @param reg The register state on entry to the handler.
 */

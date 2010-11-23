@@ -25,9 +25,8 @@
 /* @brief The user can change carry, parity, auxiliary, 
  *    zero, sign, overflow, and direction flags 
  **/
-#define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_AF\
-                           | EFL_ZF | EFL_SF | EFL_OF | EFL_DF\
-                           | EFL_RF )
+#define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_RF\
+                           | EFL_ZF | EFL_SF | EFL_OF | EFL_DF)
 
 /** 
 * @brief Checks the users posted changes to eflags.
