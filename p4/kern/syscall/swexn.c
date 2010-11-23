@@ -260,7 +260,9 @@ void lock_swexn_stack(void *esp3) {
          cond_wait(&swexn_thread->swexn_signal);
          /* Everyone head of us is done/using a different stack. We are free 
           * to take the stack. */
-         break;
+         debug_print("swexn", "Thread %d acquired for swexn stack %p after waiting", 
+               tcb->tid, esp3);
+         return;
       }
    }
    

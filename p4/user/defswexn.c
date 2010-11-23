@@ -30,7 +30,8 @@
  *  swexn_return = swexn((void *)&_defswexn_stack, _defswexn, 0, 0);
  *  instead of
  *  swexn_return = swexn(_defswexn_stack, _defswexn, 0, 0);
- *  but this code works for either way of doing this.
+ *  but this code works for either way of doing this (though only by
+ *  chance).
  **/
 unsigned char _defswexn_stack_buf[SWEXN_STACKSIZE] = {0};
 unsigned char* _defswexn_stack = (_defswexn_stack_buf + SWEXN_STACKSIZE);
