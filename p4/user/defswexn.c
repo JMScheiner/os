@@ -34,7 +34,7 @@
  *  chance).
  **/
 unsigned char _defswexn_stack_buf[SWEXN_STACKSIZE] = {0};
-unsigned char* _defswexn_stack = (_defswexn_stack_buf + SWEXN_STACKSIZE);
+unsigned char* _defswexn_stack_ptr = (_defswexn_stack_buf + SWEXN_STACKSIZE);
 
 /** 
 * @brief Implements the autostack feature for simple user processes.
@@ -89,7 +89,7 @@ void _defswexn(void* arg, ureg_t* ureg)
    
    /* Only reregister a handler if we succeeded in fixing the problem. */
    if(result >= 0)
-      swexn(_defswexn_stack, _defswexn, 0, ureg);
+      swexn(_defswexn_stack_ptr, _defswexn, 0, ureg);
 }
 
 
