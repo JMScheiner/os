@@ -33,7 +33,7 @@
 /** @brief The number of ticks since boot.
  * This overflows every 12 hours - but is fine for the purposes of 15410.
  */
-static volatile unsigned int ticks;
+static unsigned int ticks;
 
 /** 
 * @brief Initializes the timer. 
@@ -57,7 +57,7 @@ void timer_init()
 */
 void timer_handler(ureg_t* reg)
 {
-   atomic_add_volatile(&ticks, 1);
+   ticks++;
    outb(INT_CTL_PORT, INT_ACK_CURRENT);
 
    /* Interrupts are disabled, so set the lock depth to 1 to indicate
@@ -73,7 +73,7 @@ void timer_handler(ureg_t* reg)
 * 
 * @return The number of ticks since the handler has been installed.
 */
-long time(void)
+long get_time(void)
 {
    return ticks;
 }

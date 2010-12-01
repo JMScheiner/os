@@ -170,7 +170,7 @@ void make_runnable_handler(ureg_t*  reg)
 */
 void get_ticks_handler(ureg_t*  reg)
 {
-   RETURN(reg, time());
+   RETURN(reg, get_time());
 }
 
 /** 
