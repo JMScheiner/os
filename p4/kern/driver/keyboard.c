@@ -22,6 +22,7 @@
 #include <vstring.h>
 #include <console.h>
 #include <ecodes.h>
+#include <types.h>
 
 /*********************************************************************/
 /*                                                                   */
@@ -53,12 +54,23 @@ static unsigned int keybuf_divider = 0;
 /** @brief One past the last character in the buffer. */
 static unsigned int keybuf_tail = 0;
 
-/** @brief The number of new line characters in the buffer. */
-static int newlines = 0;
+/*
+ * The print keybuf stores characters that should be printed to the
+ * console screen. The keyboard handler cannot print these characters,
+ * because printing requires locking the print lock. Therefore readers
+ * must take care of printing characters from the buffer that the handler
+ * will populate.
+ */
 
-/** @brief The number of threads currently waiting to read from the
- * buffer. */
-static int readers = 0;
+/** @brief The buffer for characters to be printed to the screen. Includes
+ * backspace characters. */
+static char print_keybuf[KEY_BUF_SIZE];
+
+/** @brief The first unread character in the print buffer. */
+static unsigned int print_keybuf_head = 0;
+
+/** @brief One past the last character in the print buffer. */
+static unsigned int print_keybuf_tail = 0;
 
 /** @brief Mutual exclusion lock ensuring reads from the keyboard are not
  * interleaved. */
@@ -76,6 +88,8 @@ static cond_t keyboard_signal;
 #define PREV(index) \
    (((index) - 1) & (KEY_BUF_SIZE - 1))
 
+static inline void async_putbyte(char c);
+static inline boolean_t echo_to_console();
 
 /** 
 * @brief Returns a single character from the character input stream. 
@@ -156,6 +170,37 @@ void readline_handler(ureg_t* reg)
    RETURN(reg, read);
 }
 
+/**
+ * @brief Place a character in the buffer of characters to be printed to
+ * the screen. They will not be printed until a reader arrives who will
+ * read them.
+ *
+ * @param c The character to place in the buffer.
+ */
+static inline void async_putbyte(char c) {
+   int next = NEXT(print_keybuf_tail);
+   if (next != print_keybuf_head) {
+      print_keybuf[print_keybuf_tail] = c;
+      print_keybuf_tail = next;
+   }
+}
+
+/**
+ * @brief Echo the characters in the key buffer that will be read by
+ * readline to the console screen.
+ *
+ * @return True if a newline was read, false otherwise
+ */
+static inline boolean_t echo_to_console() {
+   while (print_keybuf_head != print_keybuf_tail) {
+      char c = print_keybuf[print_keybuf_head];
+      putbyte(c);
+      print_keybuf_head = NEXT(print_keybuf_head);
+      if (c == '\n') return TRUE;
+   }
+   return FALSE;
+}
+
 /** 
 * @brief Process a scancode from the keyboard port. If there is space
 * available, store it in the keybuf queue.
@@ -165,6 +210,10 @@ void readline_handler(ureg_t* reg)
 */
 void keyboard_handler(void)
 {
+   /* Interrupts are disabled, so set the lock depth to 1 
+    * to indicate this, otherwise cond_signal will enable all
+    * interrupts. */
+   quick_lock();
    int next_tail = NEXT(keybuf_tail);
    kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
    if (KH_HASDATA(augchar) && KH_ISMAKE(augchar)) {
@@ -174,62 +223,76 @@ void keyboard_handler(void)
          if (keybuf_tail != keybuf_head && 
                keybuf_tail != keybuf_divider) {
             keybuf_tail = PREV(keybuf_tail);
-            if (readers > 0) putbyte(c);
+            async_putbyte(c);
          }
       }
       else {
-         if (next_tail == keybuf_head && newlines == 0) {
+         if (next_tail == keybuf_head && 
+               keybuf[PREV(keybuf_tail)] != '\n') {
             // Backup one char so we can place the new char
             next_tail = keybuf_tail;
             keybuf_tail = PREV(keybuf_tail);
-            if (readers > 0) putbyte('\b');
+            async_putbyte('\b');
          }
          if (next_tail != keybuf_head) {
             keybuf[keybuf_tail] = c;
             keybuf_tail = next_tail;
-            if (readers > 0) putbyte(c);
+            async_putbyte(c);
             if (c == '\n') {
                /* A blocked thread can be released if a full line has 
-                * been read. */
-               atomic_add(&readers, -1);
-               newlines++;
+                * been read, so move up the keybuf_divider. */
                keybuf_divider = keybuf_tail;
-               /* Interrupts are disabled, so set the lock depth to 1 
-                * to indicate this, otherwise cond_signal will enable all
-                * interrupts. */
-               quick_lock();
-               cond_signal(&keyboard_signal);
-               quick_unlock();
             }
          }
       }
+      /* Notify any readers */
+      cond_signal(&keyboard_signal);
    }
    outb(INT_CTL_PORT, INT_ACK_CURRENT);
-   enable_interrupts();
+   quick_unlock();
 }
 
+/**
+ * @brief Read a line entered from the keyboard into buf
+ *
+ * @param buf The buffer to read into. This should be a safe buffer in
+ * kernel memory.
+ * @param len The maximum number of bytes to read into the buffer.
+ *
+ * @return The number of characters read into the buffer.
+ */
 int readline(char *buf, int len) {
-   /* Prevent other readers from interfering. They can't accomplish 
-    * anything until we're done anyway. */
-   atomic_add(&readers, 1);
+   mutex_t *lock = get_print_lock();
+   boolean_t done = FALSE;
+   do {
+      mutex_lock(lock);
+      /* Print out any characters that we will read later. */
+      if (!(done = echo_to_console())) {
+         quick_lock();
+         /* Make absolutely sure there are no newlines in the buffer
+          * before going to sleep. This should be fast, since most/all
+          * characters in the buffer should already have been printed. */
+         if (!(done = echo_to_console())) {
+            mutex_unlock(lock);
+            cond_wait(&keyboard_signal);
+         }
+         else {
+            mutex_unlock(lock);
+            quick_unlock();
+         }
+      }
+      else {
+         mutex_unlock(lock);
+      }
+   } while (!done);
    
-   quick_lock();
-   if (newlines == 0) {
-      /* Wait for the keyboard_handler to process a full line. */
-      cond_wait(&keyboard_signal);
-   }
-   else {
-      quick_unlock();
-   }
    int read;
-   assert(newlines > 0);
-   
    debug_print("readline", "Beginning read!");
    for (read = 0; read < len; read++) {
       buf[read] = keybuf[keybuf_head];
       keybuf_head = NEXT(keybuf_head);
       if (buf[read] == '\n') {
-         atomic_add(&newlines, -1);
+         read++;
          break;
       }
    }
