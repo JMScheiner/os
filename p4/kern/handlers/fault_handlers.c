@@ -43,7 +43,6 @@ void divide_error_handler(ureg_t* reg)
 void debug_handler(ureg_t* reg)
 {
    swexn_try_invoke_handler(reg);
-   debug_print("handlers", "Ignoring debug ");
 }
 
 /** 
@@ -53,7 +52,7 @@ void debug_handler(ureg_t* reg)
 */
 void breakpoint_handler(ureg_t* reg)
 {
-   debug_print("handlers", "Ignoring breakpoint");
+   swexn_try_invoke_handler(reg);
 }
 
 /** 
@@ -63,7 +62,7 @@ void breakpoint_handler(ureg_t* reg)
 */
 void overflow_handler(ureg_t* reg)
 {
-   /* Explicitly ignore overflows, since we have no signal mechanism. */
+   swexn_try_invoke_handler(reg);
 }
 
 /** 

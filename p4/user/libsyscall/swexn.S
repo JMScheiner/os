@@ -2,5 +2,3 @@
 #define TRAP SWEXN_INT
 #define NAME swexn
 #include "syscall.def"
-
-
