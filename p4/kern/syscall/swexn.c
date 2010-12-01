@@ -173,13 +173,17 @@ void swexn_handler(ureg_t* reg)
 * 
 * This function never returns unless an error occurs.
 */
-void swexn_try_invoke_handler(ureg_t* ureg)
+void swexn_try_invoke_handler(ureg_t* ureg, boolean_t pagefault)
 {
    tcb_t *tcb = get_tcb();
    if (tcb->handler.eip == NULL) {
       /* No handler is registered. */
       return;
    }
+   
+   /* Required by the spec. */
+   if(!pagefault)
+      ureg->cr2 = 0;
 
    /* Deregister the current handler. */
    void *esp3 = tcb->handler.esp3;

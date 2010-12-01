@@ -29,7 +29,7 @@ void divide_error_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
    
-   swexn_try_invoke_handler(reg);
+   swexn_try_invoke_handler(reg, FALSE);
    
    sprintf(errbuf, "Divide by zero, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
@@ -42,8 +42,7 @@ void divide_error_handler(ureg_t* reg)
 */
 void debug_handler(ureg_t* reg)
 {
-   swexn_try_invoke_handler(reg);
-   debug_print("handlers", "Ignoring debug ");
+   swexn_try_invoke_handler(reg, FALSE);
 }
 
 /** 
@@ -53,7 +52,7 @@ void debug_handler(ureg_t* reg)
 */
 void breakpoint_handler(ureg_t* reg)
 {
-   debug_print("handlers", "Ignoring breakpoint");
+   swexn_try_invoke_handler(reg, FALSE);
 }
 
 /** 
@@ -63,7 +62,7 @@ void breakpoint_handler(ureg_t* reg)
 */
 void overflow_handler(ureg_t* reg)
 {
-   /* Explicitly ignore overflows, since we have no signal mechanism. */
+   swexn_try_invoke_handler(reg, FALSE);
 }
 
 /** 
@@ -73,7 +72,7 @@ void overflow_handler(ureg_t* reg)
 */
 void bound_range_exceeded_handler(ureg_t* reg)
 {
-   swexn_try_invoke_handler(reg);
+   swexn_try_invoke_handler(reg, FALSE);
 }
 
 /** 
@@ -84,7 +83,7 @@ void bound_range_exceeded_handler(ureg_t* reg)
 void invalid_opcode_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
-   swexn_try_invoke_handler(reg);
+   swexn_try_invoke_handler(reg, FALSE);
    sprintf(errbuf, "Invalid instruction, %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
@@ -97,7 +96,7 @@ void invalid_opcode_handler(ureg_t* reg)
 void device_not_available_handler(ureg_t* reg)
 {
    char errbuf[ERRBUF_SIZE];
-   swexn_try_invoke_handler(reg);
+   swexn_try_invoke_handler(reg, FALSE);
    sprintf(errbuf, "Device not available exception at %%eip = 0x%d", reg->eip);
    thread_kill(errbuf);
 }
