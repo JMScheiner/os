@@ -16,6 +16,7 @@
 #include <thread.h>
 #include <common_kern.h>
 #include <mm.h>
+#include <x86/idt.h>
 #include <macros.h>
 #include <swexn.h>
 #include <eflags.h>
@@ -116,14 +117,6 @@ void swexn_handler(ureg_t* reg)
       tcb->handler.eip = NULL;
       tcb->handler.arg = NULL;
    }
-   else if((esp3 < (void*)USER_MEM_START || esp3 >= (void*)USER_MEM_END) ||
-    (eip < (void*)USER_MEM_START || eip >= (void*)USER_MEM_END))
-   {
-      /* Reject "clearly wrong" values of eip and esp3. 
-       *  TODO Reject %eip's outside of the text region.
-       **/
-      RETURN(reg, EFAIL);
-   }
    
    /* Install the new register state if we can. 
     *  - Note that installing behavior is undefined if we are 
@@ -153,6 +146,14 @@ void swexn_handler(ureg_t* reg)
       reg->eax = ureg.eax;
       unlock_swexn_stack();
    }
+   
+   /* Note that this deliberately happens after installation. */
+   if((esp3 < (void*)USER_MEM_START || esp3 >= (void*)USER_MEM_END) ||
+    (eip < (void*)USER_MEM_START || eip >= (void*)USER_MEM_END))
+   {
+      /* Reject "clearly wrong" values of eip and esp3. */
+      RETURN(reg, EFAIL);
+   }
 
    /* If we've made it to this point, it's safe to to install the handler. */
    if(register_handler)
@@ -173,7 +174,7 @@ void swexn_handler(ureg_t* reg)
 * 
 * This function never returns unless an error occurs.
 */
-void swexn_try_invoke_handler(ureg_t* ureg, boolean_t pagefault)
+void swexn_try_invoke_handler(ureg_t* ureg)
 {
    tcb_t *tcb = get_tcb();
    if (tcb->handler.eip == NULL) {
@@ -181,10 +182,6 @@ void swexn_try_invoke_handler(ureg_t* ureg, boolean_t pagefault)
       return;
    }
    
-   /* Required by the spec. */
-   if(!pagefault)
-      ureg->cr2 = 0;
-
    /* Deregister the current handler. */
    void *esp3 = tcb->handler.esp3;
    void *eip = tcb->handler.eip;
@@ -217,6 +214,10 @@ void swexn_try_invoke_handler(ureg_t* ureg, boolean_t pagefault)
       /* We failed to write to the user exception stack. */
       return;
    }
+
+   /* Required by the spec. */
+   if(ureg->cause != IDT_PF)
+      ureg->cr2 = 0;
 
    /* Return to the user in their software exception handler. */
    swexn_return(eip, ureg->cs, ureg->eflags, stack_ptr, ureg->ss);

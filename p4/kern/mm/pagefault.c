@@ -56,7 +56,7 @@ void page_fault_handler(ureg_t* reg)
    assert(ecode & PF_ECODE_USER);
    assert(!(ecode & PF_ECODE_RESERVED));
    
-   swexn_try_invoke_handler(reg, TRUE);
+   swexn_try_invoke_handler(reg);
    
    void (*handler)(void*, int);
 

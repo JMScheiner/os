@@ -4,7 +4,7 @@
 
 #include <ureg.h>
 
-void swexn_try_invoke_handler(ureg_t* ureg, boolean_t pagefault);
+void swexn_try_invoke_handler(ureg_t* ureg);
 void swexn_return(void *eip, unsigned int cs_reg, unsigned int eflags, 
       void *esp, unsigned int ss_reg);
 void lock_swexn_stack(void *stack);
