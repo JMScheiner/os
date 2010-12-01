@@ -163,7 +163,10 @@ void swexn_handler(ureg_t* reg)
       tcb->handler.arg = arg;
    }
    
+   /* Don't overwrite eax with a return code if we are installing values
+    * into the user registers. */
    if (uregp != NULL) return;
+
    RETURN(reg, ESUCCESS);
 }
 
@@ -190,6 +193,9 @@ void swexn_try_invoke_handler(ureg_t* ureg)
    tcb->handler.eip = NULL;
    tcb->handler.arg = NULL;
    
+   /* Prevent other threads from invoking handlers on the same exception
+    * stack. If we were on an exception stack, we give up the right to
+    * return to it. */
    unlock_swexn_stack();
    lock_swexn_stack(esp3);
 
@@ -256,6 +262,8 @@ void lock_swexn_stack(void *esp3) {
     * If so, wait until they finish. */
    LIST_FORALL(pcb->swexn_list, swexn_thread, swexn_node) {
       if (swexn_thread->swexn_stack == esp3 && swexn_thread != tcb) {
+         /* Someone is using the swexn stack. We need to wait for them to
+          * finish. */
          debug_print("swexn", "Thread %d waiting for swexn stack %p", 
                tcb->tid, esp3);
          quick_lock();
@@ -263,11 +271,14 @@ void lock_swexn_stack(void *esp3) {
          cond_wait(&swexn_thread->swexn_signal);
          /* Everyone head of us is done/using a different stack. We are free 
           * to take the stack. */
-         debug_print("swexn", "Thread %d acquired for swexn stack %p after waiting", 
+         debug_print("swexn", 
+               "Thread %d acquired for swexn stack %p after waiting", 
                tcb->tid, esp3);
          return;
       }
    }
+
+   /* No one was using the swexn stack. */
    
    debug_print("swexn", "Thread %d acquired for swexn stack %p", tcb->tid, esp3);
 

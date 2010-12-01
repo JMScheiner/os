@@ -20,6 +20,6 @@ void timer_init(void);
 *  - Pops all registers.
 */
 void asm_timer_wrapper(void);
-long time(void);
+long get_time(void);
 
 #endif /* end of include guard: TIMER_39YOD2E4 */

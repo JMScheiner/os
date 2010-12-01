@@ -12,6 +12,7 @@
 
 #include <common_user.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include <syscall.h>
 #include <ureg.h>
@@ -22,17 +23,7 @@
 #define ESUCCESS 0
 #define EFAIL -1
 
-/** @brief The stack that the below code executes on.
- *    Note that a single exception stack is only appropriate for 
- *    single threaded programs.
- *
- *  NOTE: I'm slightly concerned that crt0 calls
- *  swexn_return = swexn((void *)&_defswexn_stack, _defswexn, 0, 0);
- *  instead of
- *  swexn_return = swexn(_defswexn_stack, _defswexn, 0, 0);
- *  but this code works for either way of doing this (though only by
- *  chance).
- **/
+/** @brief The stack that the below code executes on. */
 unsigned char _defswexn_stack_buf[SWEXN_STACKSIZE] = {0};
 unsigned char* _defswexn_stack_ptr = (_defswexn_stack_buf + SWEXN_STACKSIZE);
 
@@ -90,6 +81,11 @@ void _defswexn(void* arg, ureg_t* ureg)
    /* Only reregister a handler if we succeeded in fixing the problem. */
    if(result >= 0)
       swexn(_defswexn_stack_ptr, _defswexn, 0, ureg);
+
+   // These should go with each failure.
+   printf("Failed to handle exception %d\n", ureg->cause);
+   // FIXME Un magic this magic constant
+   exit(-2);
 }
 
 

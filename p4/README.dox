@@ -1,0 +1,30 @@
+/**
+
+@mainpage 15-410 Project 4
+@author Tim Wilson (tjwilson) 
+@author Justin Scheiner (jscheine)
+
+<b>Installing registers</b>
+
+<b>Multi-threaded software exception handler</b>
+We chose to use the same default _defswexn handler that we use in single
+threaded programs as the default handler for multi-threaded programs. The
+main benefit to this is that the user thread library does not need to
+change at all.
+
+To make this work, threads must "lock" a software exception stack during
+the time the execute on it. The pcb stores a list of locked stacks, and
+whenever a thread tries to use an exception stack, it blocks until all
+other threads in the same process finish using that stack. Whenever a
+thread finishes executing on a software exception stack, either by
+vanishing, or by calling swexn, the exception stack is unlocked for use by
+another thread.
+
+This approach allows for configurable amounts of concurrency. In the
+default case, all threads will use the same software exception stack, so
+exceptions will be handled serially. If exceptions are infrequent this is
+simple and fairly efficient. If exceptions are expected to be more
+frequent, more exception stacks can be allocated, up to the logical
+maximum of using one exception stack per thread.
+
+*/

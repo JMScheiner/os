@@ -219,7 +219,7 @@ void scheduler_next()
    unsigned long now;
    //debug_print("scheduler", "scheduler_next, old tcb = %p", tcb);
    sleeper = heap_peek(&sleepers); 
-   now = time();
+   now = get_time();
    
    /* If it is time to wake up a thread, put him last in the run queue. */
    if(sleeper && sleeper->wakeup < now)
@@ -296,7 +296,7 @@ int scheduler_sleep(unsigned long ticks)
        * the heap. */
       quick_lock();
       mutex_unlock(&sleep_double_lock);
-      tcb->wakeup = time() + ticks;
+      tcb->wakeup = get_time() + ticks;
       heap_insert(&sleepers, tcb);
       LIST_REMOVE(runnable, tcb, scheduler_node);
       scheduler_next();
