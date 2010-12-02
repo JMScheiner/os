@@ -22,7 +22,6 @@
 #include <lifecycle.h>
 #include <malloc.h>
 #include <ecodes.h>
-#include <keyboard.h>
 
 #define INIT_PROGRAM "init"
 
@@ -224,9 +223,6 @@ static void scheduler_switch(tcb_t *old_tcb, tcb_t *new_tcb)
    quick_fake_unlock();
    context_switch(&old_tcb->esp, &new_tcb->esp, new_tcb->dir_p);
    quick_unlock_all();
-   /* The keyboard handler cannot print to the console, so we should do it
-    * ourself whenever possible. */
-   echo_to_console();
 }
 
 /**

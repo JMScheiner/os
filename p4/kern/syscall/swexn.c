@@ -1,7 +1,12 @@
 /** 
 * @file swexn.c
 *
-* @brief Implements the software exception system call. 
+* @brief Implements the software exception system call.
+*
+* When users call swexn they are directed to swexn_handler which takes
+* care of registering swexn handlers and changing the user's registers.
+* When an exception occurs, swexn_try_invoke_handler is called to lock the
+* user's exception stack and start the user's exception handler.
 *
 * @author Tim Wilson
 * @author Justin Scheiner
@@ -31,8 +36,6 @@
  **/
 #define EFL_USER_MODIFIABLE (EFL_CF | EFL_PF | EFL_AF | EFL_RF\
                            | EFL_ZF | EFL_SF | EFL_OF | EFL_DF)
-
-int swexn_max_id = 0;
 
 /** 
 * @brief Checks the users posted changes to eflags.
