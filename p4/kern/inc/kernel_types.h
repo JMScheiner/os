@@ -140,7 +140,7 @@ struct PROCESS_CONTROL_BLOCK
    /** @brief Mutual exclusion locks for pcb. */
    mutex_t region_lock, directory_lock, status_lock, 
            waiter_lock, check_waiter_lock, child_lock,
-           swexn_lock;
+           swexn_lock, new_pages_lock;
    
    /** @brief Our node in a global list of PCBs, used when allocating new 
     *  tables for kernel virtual memory. */

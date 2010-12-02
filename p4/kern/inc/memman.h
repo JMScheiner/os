@@ -16,8 +16,6 @@
 
 #define NEW_PAGES_INVALID_ARGS -1
 
-mutex_t* new_pages_lock(void);
-
 void memman_init(void);
 void new_pages_handler(ureg_t*  reg);
 void remove_pages_handler(ureg_t*  reg);

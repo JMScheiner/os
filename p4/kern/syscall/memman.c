@@ -21,21 +21,9 @@
 #include <debug.h>
 #include <eflags.h>
 
-/* @brief Protects us from the user removing pages while we try 
- *  to execute a validated copy from user space. */
-mutex_t _new_pages_lock;
-
-
-/** 
-* @brief Return the new_pages lock. 
-* 
-* @return The new_pages lock. 
-*/
-inline mutex_t* new_pages_lock(){ return &_new_pages_lock; }
-
 void memman_init()
 {
-   mutex_init(&_new_pages_lock);
+   /* Nothing! */
 }
 
 /** 
@@ -84,10 +72,10 @@ void new_pages_handler(ureg_t*  reg)
     * already allocated. */
    
    assert((get_eflags() & EFL_IF) != 0);
-   mutex_lock(&_new_pages_lock);
+   mutex_lock(&pcb->new_pages_lock);
    if(region_overlaps(pcb, start, end))
    {
-      mutex_unlock(&_new_pages_lock);
+      mutex_unlock(&pcb->new_pages_lock);
       RETURN(reg, ESTATE);
    }
    
@@ -98,11 +86,11 @@ void new_pages_handler(ureg_t*  reg)
       end, PTENT_USER | PTENT_RW, user_fault, get_pcb())) < 0)
    {
       debug_print("memman", "new_pages failure");
-      mutex_unlock(&_new_pages_lock);
+      mutex_unlock(&pcb->new_pages_lock);
       RETURN(reg, ret);
    }
    
-   mutex_unlock(&_new_pages_lock);
+   mutex_unlock(&pcb->new_pages_lock);
    RETURN(reg, ESUCCESS);
 }
 
@@ -125,9 +113,9 @@ void remove_pages_handler(ureg_t*  reg)
    pcb = get_pcb();
    
    int ret;
-   mutex_lock(&_new_pages_lock);
+   mutex_lock(&pcb->new_pages_lock);
    ret = free_region(pcb, start);
-   mutex_unlock(&_new_pages_lock);
+   mutex_unlock(&pcb->new_pages_lock);
 
    RETURN(reg, ret);
 }

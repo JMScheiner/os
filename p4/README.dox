@@ -4,13 +4,27 @@
 @author Tim Wilson (tjwilson) 
 @author Justin Scheiner (jscheine)
 
+Kernel version 0.02
+
+Good news everyone! Readline has been corrected, writes to the console can
+now be preempted. 
+
+<center> <b> Software Exceptions </b> </center>
+
 <b>Installing registers</b>
+The user is allowed to change all registers with the exception of 
+segment registers and cr2, attempts to change which are silently ignored. 
+In addition the value of eflags is carefully checked for invalid changes. 
+
+The utility of allowing the user to change eflags is obvious, as a number 
+of exceptions are synchronous to the instruction stream and respond to a flag 
+in eflags.  We specifically allow the user to change the carry, parity, 
+auxiliary, zero, sign, overflow, direction, and resume flags. All other changes
+are rejected. 
 
 <b>Multi-threaded software exception handler</b>
-We chose to use the same default _defswexn handler that we use in single
-threaded programs as the default handler for multi-threaded programs. The
-main benefit to this is that the user thread library does not need to
-change at all.
+In general, multithreaded programs can run exception handlers with as 
+much parallelism as they want. 
 
 To make this work, threads must "lock" a software exception stack during
 the time the execute on it. The pcb stores a list of locked stacks, and
@@ -26,5 +40,9 @@ exceptions will be handled serially. If exceptions are infrequent this is
 simple and fairly efficient. If exceptions are expected to be more
 frequent, more exception stacks can be allocated, up to the logical
 maximum of using one exception stack per thread.
+
+In our thread library, a custom exception handler is registered whose primary
+responsibility is to get the dying thread to thr_exit, where it's resources 
+will be recovered and it's status (-2) will be made available to thread_wait.
 
 */

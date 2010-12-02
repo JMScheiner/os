@@ -91,6 +91,7 @@ int v_cpy(char *dst, char *src, int max_len,
    int n;
    boolean_t (*validate_write)(void*);
    boolean_t (*validate_read)(void*);
+   pcb_t* pcb = get_pcb();
    
    if(user_source) {
       validate_read = validate_user_read;
@@ -101,11 +102,10 @@ int v_cpy(char *dst, char *src, int max_len,
       validate_write = validate_user_write;
    }
 
-   mutex_t* lock = new_pages_lock();
-   mutex_lock(lock);
+   mutex_lock(&pcb->new_pages_lock);
    
    if(!validate_read(src) || !validate_write(dst)) {
-      mutex_unlock(lock);
+      mutex_unlock(&pcb->new_pages_lock);
       return EBUF;
    }
    
@@ -119,7 +119,7 @@ int v_cpy(char *dst, char *src, int max_len,
       
       if (copying_string) {
          if((*dst = *src) == '\0') {
-            mutex_unlock(lock);
+            mutex_unlock(&pcb->new_pages_lock);
             return n + 1;
          }
       }
@@ -128,7 +128,7 @@ int v_cpy(char *dst, char *src, int max_len,
       }
    }
    
-   mutex_unlock(lock);
+   mutex_unlock(&pcb->new_pages_lock);
    
    if (!copying_string)
       return n;

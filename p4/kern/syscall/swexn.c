@@ -112,15 +112,6 @@ void swexn_handler(ureg_t* reg)
    if(v_copy_in_uregptr(&uregp, arg_addr + 3 * sizeof(void*)) < 0)
       RETURN(reg, EARGS);
    
-   /** Unregister, or reject bad values. */
-   register_handler = (esp3 != NULL) && (eip != NULL);
-   if(!register_handler)
-   {
-      tcb->handler.esp3 = NULL;
-      tcb->handler.eip = NULL;
-      tcb->handler.arg = NULL;
-   }
-   
    /* Install the new register state if we can. 
     *  - Note that installing behavior is undefined if we are 
     *    unregistering a handler.  I chose to let it succeed.
@@ -131,9 +122,6 @@ void swexn_handler(ureg_t* reg)
          RETURN(reg, EBUF);
       
       if(validate_eflags(ureg.eflags) < 0)
-         RETURN(reg, EARGS);
-   
-      if(ureg.cs != reg->cs || ureg.ss != reg->ss)
          RETURN(reg, EARGS);
    
       /* Only install values that it is safe for the user to modify. */
@@ -150,6 +138,17 @@ void swexn_handler(ureg_t* reg)
       unlock_swexn_stack();
    }
    
+   /** Unregister, or reject bad values. */
+   register_handler = (esp3 != NULL) && (eip != NULL);
+   if(!register_handler)
+   {
+      tcb->handler.esp3 = NULL;
+      tcb->handler.eip = NULL;
+      tcb->handler.arg = NULL;
+      if (uregp != NULL) return;
+      RETURN(reg, ESUCCESS);
+   }
+   
    /* Note that this deliberately happens after installation. */
    if((esp3 < (void*)USER_MEM_START || esp3 >= (void*)USER_MEM_END) ||
     (eip < (void*)USER_MEM_START || eip >= (void*)USER_MEM_END))
@@ -159,12 +158,9 @@ void swexn_handler(ureg_t* reg)
    }
 
    /* If we've made it to this point, it's safe to to install the handler. */
-   if(register_handler)
-   {
-      tcb->handler.esp3 = esp3;
-      tcb->handler.eip = eip;
-      tcb->handler.arg = arg;
-   }
+   tcb->handler.esp3 = esp3;
+   tcb->handler.eip = eip;
+   tcb->handler.arg = arg;
    
    /* Don't overwrite eax with a return code if we are installing values
     * into the user registers. */
