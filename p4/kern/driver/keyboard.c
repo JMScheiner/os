@@ -80,6 +80,13 @@ static mutex_t keyboard_lock;
  */
 static cond_t keyboard_signal;
 
+/** @brief True iff there is a reader waiting for a line. */
+static boolean_t reader = FALSE;
+
+/** @brief True iff a full line has been printed to the console, but not
+ * yet completely consumed by readlines. */
+static boolean_t full_line = FALSE;
+
 /** @brief Get the index in keybuf following the given index. */
 #define NEXT(index) \
    (((index) + 1) & (KEY_BUF_SIZE - 1))
@@ -89,7 +96,6 @@ static cond_t keyboard_signal;
    (((index) - 1) & (KEY_BUF_SIZE - 1))
 
 static inline void async_putbyte(char c);
-static inline boolean_t echo_to_console();
 
 /** 
 * @brief Returns a single character from the character input stream. 
@@ -159,9 +165,7 @@ void readline_handler(ureg_t* reg)
    debug_print("readline", "0x%x: reading up to %d chars to %p\n", 
          get_tcb()->tid, len, buf);
    
-   mutex_lock(&keyboard_lock);
    int read = readline(readbuf, len);
-   mutex_unlock(&keyboard_lock);
    int copied;
    if ((copied = v_memcpy(buf, readbuf, read, FALSE)) != read) {
       debug_print("readline", "Only wrote %d out of %d chars read", copied, read);
@@ -188,17 +192,25 @@ static inline void async_putbyte(char c) {
 /**
  * @brief Echo the characters in the key buffer that will be read by
  * readline to the console screen.
- *
- * @return True if a newline was read, false otherwise
  */
-static inline boolean_t echo_to_console() {
-   while (print_keybuf_head != print_keybuf_tail) {
-      char c = print_keybuf[print_keybuf_head];
-      putbyte(c);
-      print_keybuf_head = NEXT(print_keybuf_head);
-      if (c == '\n') return TRUE;
+void echo_to_console() {
+   if (reader && !full_line) {
+      mutex_t *lock = get_print_lock();
+      mutex_lock(lock);
+      while (print_keybuf_head != print_keybuf_tail) {
+         char c = print_keybuf[print_keybuf_head];
+         putbyte(c);
+         print_keybuf_head = NEXT(print_keybuf_head);
+         if (c == '\n') {
+            reader = FALSE;
+            full_line = TRUE;
+            /* Notify any readers */
+            cond_signal(&keyboard_signal);
+            break;
+         }
+      }
+      mutex_unlock(lock);
    }
-   return FALSE;
 }
 
 /** 
@@ -245,15 +257,14 @@ void keyboard_handler(void)
             }
          }
       }
-      /* Notify any readers */
-      cond_signal(&keyboard_signal);
    }
    outb(INT_CTL_PORT, INT_ACK_CURRENT);
    quick_unlock();
 }
 
 /**
- * @brief Read a line entered from the keyboard into buf
+ * @brief Read a line entered from the keyboard into buf. This
+ * runs serially.
  *
  * @param buf The buffer to read into. This should be a safe buffer in
  * kernel memory.
@@ -262,41 +273,32 @@ void keyboard_handler(void)
  * @return The number of characters read into the buffer.
  */
 int readline(char *buf, int len) {
-   mutex_t *lock = get_print_lock();
-   boolean_t done = FALSE;
-   do {
-      mutex_lock(lock);
-      /* Print out any characters that we will read later. */
-      if (!(done = echo_to_console())) {
-         quick_lock();
-         /* Make absolutely sure there are no newlines in the buffer
-          * before going to sleep. This should be fast, since most/all
-          * characters in the buffer should already have been printed. */
-         if (!(done = echo_to_console())) {
-            mutex_unlock(lock);
-            cond_wait(&keyboard_signal);
-         }
-         else {
-            mutex_unlock(lock);
-            quick_unlock();
-         }
-      }
-      else {
-         mutex_unlock(lock);
-      }
-   } while (!done);
-   
+   mutex_lock(&keyboard_lock);
+
+   /* Indicate there is a reader so we echo to the console. */
+   reader = TRUE;
+
+   /* Wait until a full line has been placed in the buffer. */
+   quick_lock();
+   if (!full_line)
+      cond_wait(&keyboard_signal);
+   else
+      quick_unlock();
+
+   assert(full_line);
    int read;
    debug_print("readline", "Beginning read!");
    for (read = 0; read < len; read++) {
       buf[read] = keybuf[keybuf_head];
       keybuf_head = NEXT(keybuf_head);
       if (buf[read] == '\n') {
+         full_line = FALSE;
          read++;
          break;
       }
    }
    debug_print("readline", "Read complete!");
+   mutex_unlock(&keyboard_lock);
    return read;
 }
 

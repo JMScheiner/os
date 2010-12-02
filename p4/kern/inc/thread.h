@@ -10,6 +10,7 @@
 #ifndef THREAD_FWFWJ23E
 #define THREAD_FWFWJ23E
 
+/** @brief Number of pages per kernel stack. */
 #define KERNEL_STACK_SIZE 1
 
 #include <kernel_types.h>

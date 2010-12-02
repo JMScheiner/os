@@ -22,6 +22,7 @@
 #include <lifecycle.h>
 #include <malloc.h>
 #include <ecodes.h>
+#include <keyboard.h>
 
 #define INIT_PROGRAM "init"
 
@@ -270,6 +271,10 @@ void scheduler_next()
    quick_fake_unlock();
    context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);
    quick_unlock_all();
+
+   /* The keyboard handler cannot print to the console, so we should do it
+    * ourself whenever possible. */
+   echo_to_console();
 }
 
 /**

@@ -12,6 +12,7 @@
 
 #include <reg.h>
 #include <ureg.h>
+#include <types.h>
 
 /* NOTE: This value should be a power of 2, since we do mod by & */
 #define KEY_BUF_SIZE 2048
@@ -23,6 +24,7 @@ int readchar(void);
 */
 void asm_keyboard_wrapper(void);
 
+void echo_to_console();
 void getchar_handler(ureg_t*  reg);
 void readline_handler(ureg_t*  reg);
 int readline(char *buf, int len);
