@@ -58,6 +58,8 @@ static mutex_t sleep_double_lock;
  */
 static int blocked_count = 0;
 
+static void scheduler_switch(tcb_t *old_tcb, tcb_t *new_tcb);
+
 /** 
 * @brief Initialize the scheduler.
 */
@@ -209,6 +211,25 @@ void scheduler_die(mutex_t *lock)
 }
 
 /**
+ * @brief Switch to another thread. Interrupts are disabled at this point.
+ *
+ * @param old_tcb The thread we are switching from
+ * @param new_tcb The thread we are switching to
+ */
+static void scheduler_switch(tcb_t *old_tcb, tcb_t *new_tcb)
+{
+   debug_print("scheduler", "Now running thread %p", new_tcb);
+   set_esp0((int)new_tcb->kstack);
+   assert(new_tcb->dir_p);
+   quick_fake_unlock();
+   context_switch(&old_tcb->esp, &new_tcb->esp, new_tcb->dir_p);
+   quick_unlock_all();
+   /* The keyboard handler cannot print to the console, so we should do it
+    * ourself whenever possible. */
+   echo_to_console();
+}
+
+/**
  * @brief Switch to the next thread in the runnable queue.
  *    This function should never be called with interrupts enabled!!!!!!
  */
@@ -239,13 +260,7 @@ void scheduler_next()
       if(sleeper || blocked_count > 0)
       {
          tcb_t *next = global_tcb();
-         //debug_print("scheduler", "Now running global thread %p", next);
-         set_esp0((int)next->kstack);
-
-         assert(next->dir_p);
-         quick_fake_unlock();
-         context_switch(&tcb->esp, &next->esp, next->dir_p);
-         quick_unlock_all();
+         scheduler_switch(tcb, next);
          return;
       }
       else {
@@ -265,16 +280,7 @@ void scheduler_next()
    }
    
    runnable = LIST_NEXT(runnable, scheduler_node);
-   debug_print("scheduler", "now running %p", runnable);
-   set_esp0((int)runnable->kstack);
-   assert(runnable->dir_p);
-   quick_fake_unlock();
-   context_switch(&tcb->esp, &runnable->esp, runnable->dir_p);
-   quick_unlock_all();
-
-   /* The keyboard handler cannot print to the console, so we should do it
-    * ourself whenever possible. */
-   echo_to_console();
+   scheduler_switch(tcb, runnable);
 }
 
 /**
