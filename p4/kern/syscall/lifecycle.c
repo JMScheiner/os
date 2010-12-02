@@ -59,7 +59,7 @@ void lifecycle_init() {
  *
  * @param reg The register state of the user upon calling exec.
  */
-void exec_handler(ureg_t*  reg) {
+void exec_handler(ureg_t *reg) {
    quick_assert_unlocked();
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    char* execname;
@@ -154,7 +154,7 @@ void exec_handler(ureg_t*  reg) {
 * 
 * @param reg The register state put on the stack by INT and PUSHA
 */
-void thread_fork_handler(ureg_t*  reg)
+void thread_fork_handler(ureg_t *reg)
 {
    unsigned long newtid;
    pcb_t *pcb;
@@ -195,7 +195,7 @@ void thread_fork_handler(ureg_t*  reg)
 * 
 * @param reg The register state put on the stack by INT and PUSHA
 */
-void fork_handler(ureg_t*  reg)
+void fork_handler(ureg_t *reg)
 {
    unsigned long newpid; 
    pcb_t *new_pcb; 
@@ -388,7 +388,7 @@ void* arrange_fork_context(void* esp, ureg_t* reg, void* dir)
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void set_status_handler(ureg_t*  reg)
+void set_status_handler(ureg_t *reg)
 {
    pcb_t *pcb = get_pcb();
    pcb->status->status = (int)SYSCALL_ARG(reg);
@@ -552,7 +552,7 @@ void vanish_handler()
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void wait_handler(ureg_t*  reg)
+void wait_handler(ureg_t* reg)
 {
    int *status_addr = (int *)SYSCALL_ARG(reg);
    debug_print("wait", "Called with status address %p", status_addr);
@@ -620,7 +620,7 @@ void wait_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry and exit of the handler. 
 */
-void task_vanish_handler(ureg_t*  reg)
+void task_vanish_handler(ureg_t *reg)
 {
    debug_print("vanish", "task_vanish being ignored.");
    RETURN(reg, EFAIL);

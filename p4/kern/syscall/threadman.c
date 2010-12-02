@@ -21,7 +21,7 @@
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void gettid_handler(ureg_t*  reg)
+void gettid_handler(ureg_t *reg)
 {
    RETURN(reg, get_tcb()->tid);
 }
@@ -44,7 +44,7 @@ void gettid_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void yield_handler(ureg_t*  reg)
+void yield_handler(ureg_t *reg)
 {
    int tid = (int)SYSCALL_ARG(reg);
    if (tid == -1) {
@@ -99,7 +99,7 @@ void yield_handler(ureg_t*  reg)
 *
 * @param reg The register state on entry and exit of the handler.
 */
-void deschedule_handler(ureg_t*  reg)
+void deschedule_handler(ureg_t *reg)
 {
    char *arg_addr = (char *)SYSCALL_ARG(reg);
    int reject;
@@ -137,7 +137,7 @@ void deschedule_handler(ureg_t*  reg)
 *
 * @param reg The register state on entry and exit of the handler.
 */
-void make_runnable_handler(ureg_t*  reg)
+void make_runnable_handler(ureg_t *reg)
 {
    int tid = (int)SYSCALL_ARG(reg);
    int ret = 0;
@@ -168,7 +168,7 @@ void make_runnable_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void get_ticks_handler(ureg_t*  reg)
+void get_ticks_handler(ureg_t *reg)
 {
    RETURN(reg, get_time());
 }
@@ -187,7 +187,7 @@ void get_ticks_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry and exit of the handler.
 */
-void sleep_handler(ureg_t*  reg)
+void sleep_handler(ureg_t *reg)
 {
    int ticks = (int)SYSCALL_ARG(reg);
    
