@@ -82,6 +82,10 @@ static tcb_t *main_thread;
 
 static unsigned int hash(int key);
 
+#define SWEXN_STACKSIZE 0x500
+unsigned char exception_stack[SWEXN_STACKSIZE] = {0};
+void thread_swexn(void* arg, ureg_t* ureg);
+
 /** @brief Align an address by rounding down to the nearest address containing
  * a tcb pointer. */
 #define ALIGN_DOWN_TCB(address) \
@@ -161,6 +165,8 @@ int thr_init(unsigned int size) {
    mutex_debug_print("Initializing kill stack lock...");
    ret |= mutex_init(&kill_stack_lock);
 
+   swexn(exception_stack + SWEXN_STACKSIZE, thread_swexn, get_addr(), 0);
+   
    /* Initialized the "int" stack. Since interrupts are atomic, 
     *    and all information gets copied to the kernel stack, no need to lock. */
    int_stack = int_stack_top + INT_STACK_SIZE + ESP_ALIGN - 1;
@@ -285,6 +291,8 @@ void thr_child_init(void *(*func)(void*), void* arg, tcb_t* tcb) {
    tcb->initialized = TRUE;
    assert(mutex_unlock(&tcb->lock) == 0);
    assert(cond_signal(&tcb->init_signal) == 0);
+   
+   swexn(exception_stack + SWEXN_STACKSIZE, thread_swexn, get_addr(), 0);
    
    thread_debug_print("[%d] Done initializing. About to enter function.", tcb->tid);
    thr_exit(func(arg));
@@ -483,3 +491,40 @@ void clean_up_thread(int tid, char *old_stack)
       kill_stack_tid);
    mutex_unlock_and_vanish(&kill_stack_lock, int_stack);
 }
+
+/** 
+* @brief Software exception handler for threads.
+*
+*  Main purpose is to resume execution on the correct stack in 
+*   thread_exit.
+* 
+* @param esp The stack pointer the exception handler was initialized with. 
+*  Since the purpose of the handler is to cleanly die, esp can be anywhere
+*  reasonable on the threads stack. 
+*
+* @param ureg Register state on exception. 
+*/
+void thread_swexn(void* esp, ureg_t* ureg)
+{
+   int* status;
+   void** retsite;
+   
+   /* Push the status onto the stack for thr_exit. */
+   esp -= sizeof(void*);
+   status = (int*)esp;
+   *status = -2;
+   
+   /* Push a fake return address. */
+   esp -= sizeof(void*);
+   retsite = esp;
+   *retsite = NULL;
+
+   /* Modify ureg to begin execution in thr_exit. */
+   ureg->esp = (long)esp;
+   ureg->eip = (long)thr_exit;
+
+   swexn(0, 0, 0, ureg);
+}
+
+
+
