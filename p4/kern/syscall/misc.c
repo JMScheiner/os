@@ -26,7 +26,7 @@
  *
  * @param reg Ignored
  */
-void halt_handler(ureg_t*  reg)
+void halt_handler(ureg_t *reg)
 {
    sim_halt();
    halt();
@@ -44,7 +44,7 @@ void halt_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry to the handler.
 */
-void ls_handler(ureg_t*  reg)
+void ls_handler(ureg_t *reg)
 {
    char *arg_addr, *filename, *buf; 
    char zero = 0;

@@ -51,7 +51,7 @@ void memman_init()
 *
 * @param reg The register state on entry to the handler.
 */
-void new_pages_handler(ureg_t*  reg)
+void new_pages_handler(ureg_t *reg)
 {
    int len, ret;
    char* start, *arg_addr, *end;
@@ -113,7 +113,7 @@ void new_pages_handler(ureg_t*  reg)
 * 
 * @param reg The register state on entry to new_pages. 
 */
-void remove_pages_handler(ureg_t*  reg)
+void remove_pages_handler(ureg_t *reg)
 {
    pcb_t* pcb;
    void* start;
