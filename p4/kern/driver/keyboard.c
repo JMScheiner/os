@@ -222,10 +222,6 @@ void echo_to_console() {
 */
 void keyboard_handler(void)
 {
-   /* Interrupts are disabled, so set the lock depth to 1 
-    * to indicate this, otherwise cond_signal will enable all
-    * interrupts. */
-   quick_lock();
    int next_tail = NEXT(keybuf_tail);
    kh_type augchar = process_scancode(inb(KEYBOARD_PORT));
    if (KH_HASDATA(augchar) && KH_ISMAKE(augchar)) {
@@ -259,7 +255,10 @@ void keyboard_handler(void)
       }
    }
    outb(INT_CTL_PORT, INT_ACK_CURRENT);
-   quick_unlock();
+  
+   /* Echo characters to the screen if there is a reader waiting. */
+   enable_interrupts();
+   echo_to_console();
 }
 
 /**
