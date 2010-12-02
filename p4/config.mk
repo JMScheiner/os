@@ -50,6 +50,7 @@ STUDENTTESTS += autostack sleep ls_test fault_and_die malloc_test
 STUDENTTESTS += agility_drill cvar_test cyclone join_specific_test
 STUDENTTESTS += juggle mandelbrot startle thr_exit_join racer evil_user
 STUDENTTESTS += mycho metacho zfod_test dividezero float swexn_sleepers
+STUDENTTESTS += thread_fail
 
 ###########################################################################
 # Object files for your thread library
